@@ -8,3 +8,10 @@ contain superseded decisions and do not override current repository files.
 
 `../archive/releases/BMMS-Collection.zip` preserves previous BMMS prototypes,
 milestones and generated packages.
+
+
+## Current approved specifications
+
+- `specifications/SPEC-001-PROPRESENTER-INTEGRATION.md`
+- `specifications/SPEC-002-SCRIPTURE-SOURCE-AND-UI.md`
+- `specifications/SPEC-003-SMART-FLYER-PROPRESENTER.md`

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0] - 2026-07-22
+
+### Added
+
+- ProPresenter integration architecture and adapter scaffold.
+- Global ProPresenter configuration schema.
+- Scripture Manual/ProPresenter source specification.
+- Scripture and Smart Flyer control reorganization specification.
+- Smart Flyer real-time ProPresenter workflow specification.
+- Shared control architecture.
+- Initial ProPresenter adapter tests.
+
 ## [0.1.0] - 2026-07-22
 
 ### Added

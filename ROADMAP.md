@@ -59,3 +59,15 @@ Status: complete.
 - portable mode;
 - crash recovery;
 - release signing.
+
+
+## Approved integration update — 2026-07-22
+
+- global ProPresenter integration;
+- visible IP/host and port configuration;
+- Scripture Manual/ProPresenter selector;
+- Scripture control audit and reorganization;
+- shared property controls;
+- Smart Flyer interface reorganization;
+- Smart Flyer ProPresenter source after Smart Engine completion;
+- assisted real-time flyer analysis.
