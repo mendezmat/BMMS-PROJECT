@@ -13,3 +13,5 @@ export { getByPath, resolveTemplate, resolveElement, resolveDocument, listBindin
 export { listBroadcastComponents, createBroadcastComponent, createScriptureComponent, createLowerThirdComponent } from "./broadcast-components.js";
 
 export { createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata, normalizeCategory } from "./templates.js";
+
+export { createAnimationConfig, normalizeAnimationSet, animationToCss } from "./animations.js";

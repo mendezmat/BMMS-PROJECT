@@ -35,6 +35,33 @@ async function api(path, options = {}) {
 
 const clone = value => structuredClone(value);
 
+function defaultAnimationConfig(phase = "enter") {
+  return {
+    enabled: false,
+    type: "none",
+    duration: phase === "enter" ? 600 : 500,
+    delay: 0,
+    easing: phase === "enter" ? "ease-out" : "ease-in",
+    direction: phase === "enter" ? "left" : "right",
+    distance: 120
+  };
+}
+
+function defaultAnimationSet() {
+  return {
+    enter: defaultAnimationConfig("enter"),
+    exit: defaultAnimationConfig("exit")
+  };
+}
+
+function ensureAnimation(element) {
+  const current = element.animation || {};
+  return {
+    enter: { ...defaultAnimationConfig("enter"), ...(current.enter || {}) },
+    exit: { ...defaultAnimationConfig("exit"), ...(current.exit || {}) }
+  };
+}
+
 function resolveTemplate(template, context = dataContext) {
   return String(template ?? "").replace(
     /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}|\{\s*([a-zA-Z0-9_.-]+)\s*\}/g,
@@ -136,7 +163,8 @@ function createElement(type) {
     rotation: 0,
     opacity: 1,
     visible: true,
-    locked: false
+    locked: false,
+    animation: defaultAnimationSet()
   };
   return type === "text"
     ? {
@@ -345,6 +373,16 @@ function renderProperties() {
     return;
   }
   if (!primary) return;
+
+  const phase = $("#animationPhase")?.value || "enter";
+  const animation = ensureAnimation(primary)[phase];
+  $("#animationEnabled").checked = animation.enabled === true;
+  $("#animationType").value = animation.type || "none";
+  $("#animationDuration").value = animation.duration ?? 600;
+  $("#animationDelay").value = animation.delay ?? 0;
+  $("#animationEasing").value = animation.easing || "ease-out";
+  $("#animationDirection").value = animation.direction || "left";
+  $("#animationDistance").value = animation.distance ?? 120;
 
   const values = {
     propName: primary.name,
@@ -683,6 +721,153 @@ function nudge(dx, dy) {
   scheduleSave();
 }
 
+
+function updateSelectedAnimation(patch) {
+  const phase = $("#animationPhase").value;
+  const next = {
+    ...documentState,
+    elements: documentState.elements.map(element => {
+      if (!selectedIds.has(element.id)) return element;
+      const animation = ensureAnimation(element);
+      return {
+        ...element,
+        animation: {
+          ...animation,
+          [phase]: { ...animation[phase], ...patch }
+        }
+      };
+    })
+  };
+  commit(next);
+}
+
+
+const activeAnimationFrames = new Map();
+
+function previewAnimationPhase(phase, ids = selectedIds) {
+  const targetIds = [...ids];
+
+  for (const id of targetIds) {
+    const node = [...stage.querySelectorAll(".editor-element")]
+      .find(candidate => candidate.dataset.id === id);
+    const element = documentState.elements.find(item => item.id === id);
+    if (!node || !element) continue;
+
+    const config = ensureAnimation(element)[phase];
+    if (!config.enabled || config.type === "none") continue;
+
+    cancelElementAnimation(id);
+    runElementAnimation(node, element, config, phase);
+  }
+}
+
+function runElementAnimation(node, element, config, phase) {
+  const duration = Math.max(1, Number(config.duration) || 600);
+  const delay = Math.max(0, Number(config.delay) || 0);
+  const startedAt = performance.now() + delay;
+  const baseOpacity = Number.isFinite(Number(element.opacity))
+    ? Number(element.opacity)
+    : 1;
+
+  node.classList.add("animation-previewing");
+
+  const frame = now => {
+    if (now < startedAt) {
+      applyAnimationFrame(node, element, config, phase === "enter" ? 0 : 1, baseOpacity);
+      activeAnimationFrames.set(element.id, requestAnimationFrame(frame));
+      return;
+    }
+
+    const linearProgress = Math.min(1, (now - startedAt) / duration);
+    const easedProgress = applyEasing(linearProgress, config.easing || "ease-out");
+    const progress = phase === "enter" ? easedProgress : 1 - easedProgress;
+
+    applyAnimationFrame(node, element, config, progress, baseOpacity);
+
+    if (linearProgress < 1) {
+      activeAnimationFrames.set(element.id, requestAnimationFrame(frame));
+      return;
+    }
+
+    restoreElementFrame(node, element);
+    node.classList.remove("animation-previewing");
+    activeAnimationFrames.delete(element.id);
+  };
+
+  activeAnimationFrames.set(element.id, requestAnimationFrame(frame));
+}
+
+function cancelElementAnimation(id) {
+  const frameId = activeAnimationFrames.get(id);
+  if (frameId !== undefined) cancelAnimationFrame(frameId);
+  activeAnimationFrames.delete(id);
+
+  const node = [...stage.querySelectorAll(".editor-element")]
+    .find(candidate => candidate.dataset.id === id);
+  const element = documentState.elements.find(item => item.id === id);
+  if (node && element) restoreElementFrame(node, element);
+}
+
+function applyAnimationFrame(node, element, config, progress, baseOpacity) {
+  const distance = Math.max(0, Number(config.distance) || 120);
+  const rotation = Number(element.rotation) || 0;
+  let x = 0;
+  let y = 0;
+  let scale = 1;
+  let opacity = baseOpacity;
+  let clipPath = "inset(0 0 0 0)";
+
+  if (config.type === "fade") {
+    opacity = baseOpacity * progress;
+  }
+
+  if (config.type === "scale") {
+    opacity = baseOpacity * progress;
+    scale = 0.82 + (0.18 * progress);
+  }
+
+  if (config.type === "slide") {
+    opacity = baseOpacity * progress;
+    const remaining = 1 - progress;
+    if (config.direction === "right") x = distance * remaining;
+    else if (config.direction === "up") y = -distance * remaining;
+    else if (config.direction === "down") y = distance * remaining;
+    else x = -distance * remaining;
+  }
+
+  if (config.type === "wipe") {
+    const hidden = (1 - progress) * 100;
+    if (config.direction === "right") clipPath = `inset(0 ${hidden}% 0 0)`;
+    else if (config.direction === "up") clipPath = `inset(${hidden}% 0 0 0)`;
+    else if (config.direction === "down") clipPath = `inset(0 0 ${hidden}% 0)`;
+    else clipPath = `inset(0 0 0 ${hidden}%)`;
+  }
+
+  node.style.opacity = String(opacity);
+  node.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg) scale(${scale})`;
+  node.style.clipPath = clipPath;
+}
+
+function restoreElementFrame(node, element) {
+  node.style.opacity = String(element.opacity ?? 1);
+  node.style.transform = `rotate(${element.rotation || 0}deg)`;
+  node.style.clipPath = "inset(0 0 0 0)";
+}
+
+function applyEasing(progress, easing) {
+  if (easing === "linear") return progress;
+  if (easing === "ease-in") return progress * progress;
+  if (easing === "ease-in-out") {
+    return progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+  }
+  if (easing === "ease") {
+    return 1 - Math.pow(1 - progress, 2.4);
+  }
+  return 1 - Math.pow(1 - progress, 3);
+}
+
 function fitStage() {
   const viewport = $("#stageViewport");
   const availableWidth = Math.max(320, viewport.clientWidth - 64);
@@ -931,6 +1116,48 @@ $("#closeTemplates")?.addEventListener("click", () => $("#templatesPanel").class
 $("#saveAsTemplate")?.addEventListener("click", saveCurrentAsTemplate);
 $("#templateSearch")?.addEventListener("input", renderTemplates);
 $("#templateCategoryFilter")?.addEventListener("change", renderTemplates);
+
+
+$("#animationPhase")?.addEventListener("change", renderProperties);
+$("#animationEnabled")?.addEventListener("change", event =>
+  updateSelectedAnimation({ enabled: event.target.checked })
+);
+$("#animationType")?.addEventListener("change", event =>
+  updateSelectedAnimation({
+    type: event.target.value,
+    enabled: event.target.value !== "none"
+  })
+);
+$("#animationDuration")?.addEventListener("change", event =>
+  updateSelectedAnimation({ duration: Number(event.target.value) })
+);
+$("#animationDelay")?.addEventListener("change", event =>
+  updateSelectedAnimation({ delay: Number(event.target.value) })
+);
+$("#animationEasing")?.addEventListener("change", event =>
+  updateSelectedAnimation({ easing: event.target.value })
+);
+$("#animationDirection")?.addEventListener("change", event =>
+  updateSelectedAnimation({ direction: event.target.value })
+);
+$("#animationDistance")?.addEventListener("change", event =>
+  updateSelectedAnimation({ distance: Number(event.target.value) })
+);
+$("#previewSelectedAnimation")?.addEventListener("click", () =>
+  previewAnimationPhase($("#animationPhase").value)
+);
+$("#previewEnter")?.addEventListener("click", () => {
+  const ids = selectedIds.size
+    ? new Set(selectedIds)
+    : new Set(documentState.elements.map(element => element.id));
+  previewAnimationPhase("enter", ids);
+});
+$("#previewExit")?.addEventListener("click", () => {
+  const ids = selectedIds.size
+    ? new Set(selectedIds)
+    : new Set(documentState.elements.map(element => element.id));
+  previewAnimationPhase("exit", ids);
+});
 
 window.addEventListener("resize", fitStage);
 $("#stageViewport").addEventListener("wheel", event => {

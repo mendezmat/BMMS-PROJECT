@@ -32,7 +32,11 @@ export function createElement(type, overrides = {}) {
     componentId: overrides.componentId,
     componentType: overrides.componentType,
     componentRole: overrides.componentRole,
-    groupId: overrides.groupId
+    groupId: overrides.groupId,
+    animation: overrides.animation || {
+      enter: { enabled: false, type: "none", duration: 600, delay: 0, easing: "ease-out", direction: "left", distance: 120 },
+      exit: { enabled: false, type: "none", duration: 500, delay: 0, easing: "ease-in", direction: "right", distance: 120 }
+    }
   };
 
   if (type === "text") {

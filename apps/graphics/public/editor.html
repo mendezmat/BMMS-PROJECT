@@ -47,6 +47,59 @@
 <details open><summary>Transformación</summary><div class="section-body"><label>Nombre<input id="propName"></label><div class="grid four"><label>X<input id="propX" type="number"></label><label>Y<input id="propY" type="number"></label><label>W<input id="propWidth" type="number"></label><label>H<input id="propHeight" type="number"></label></div><div class="grid two"><label>Rotación<input id="propRotation" type="number"></label><label>Opacidad<input id="propOpacity" type="number" min="0" max="100"></label></div></div></details>
 <details id="textProperties"><summary>Texto</summary><div class="section-body"><label>Contenido<textarea id="propText" rows="4"></textarea></label><div class="grid two"><label>Tipografía<input id="propFontFamily"></label><label>Tamaño<input id="propFontSize" type="number"></label><label>Peso<select id="propFontWeight"><option>300</option><option>400</option><option>600</option><option>700</option><option>800</option></select></label><label>Alineación<select id="propAlign"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></label><label>Color<input id="propColor" type="color"></label><label>Interlineado<input id="propLineHeight" type="number" step=".05"></label></div></div></details>
 
+
+<details id="animationProperties" open>
+  <summary>Animación</summary>
+  <div class="section-body property-stack">
+    <label>Fase
+      <select id="animationPhase">
+        <option value="enter">Entrada</option>
+        <option value="exit">Salida</option>
+      </select>
+    </label>
+    <label class="toggle-row">
+      <span>Activada</span>
+      <input id="animationEnabled" type="checkbox">
+    </label>
+    <label>Tipo
+      <select id="animationType">
+        <option value="none">Ninguna</option>
+        <option value="fade">Fade</option>
+        <option value="slide">Slide</option>
+        <option value="scale">Scale</option>
+        <option value="wipe">Wipe</option>
+      </select>
+    </label>
+    <label>Duración (ms)
+      <input id="animationDuration" type="number" min="0" max="10000" step="50">
+    </label>
+    <label>Delay (ms)
+      <input id="animationDelay" type="number" min="0" max="10000" step="50">
+    </label>
+    <label>Curva
+      <select id="animationEasing">
+        <option value="linear">Linear</option>
+        <option value="ease">Ease</option>
+        <option value="ease-in">Ease In</option>
+        <option value="ease-out">Ease Out</option>
+        <option value="ease-in-out">Ease In Out</option>
+      </select>
+    </label>
+    <label>Dirección
+      <select id="animationDirection">
+        <option value="left">Izquierda</option>
+        <option value="right">Derecha</option>
+        <option value="up">Arriba</option>
+        <option value="down">Abajo</option>
+      </select>
+    </label>
+    <label>Distancia
+      <input id="animationDistance" type="number" min="0" max="2000" step="10">
+    </label>
+    <button id="previewSelectedAnimation">Previsualizar selección</button>
+  </div>
+</details>
+
 <details id="bindingProperties">
   <summary>Datos</summary>
   <div class="section-body">

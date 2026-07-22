@@ -165,3 +165,16 @@
 .template-card-actions button{padding:7px;font-size:10px}
 .template-empty{padding:20px;border:1px dashed #343b46;border-radius:9px;color:#7d8793;font-size:12px;text-align:center}
 .favorite-active{color:#ffd76a}
+
+/* BMMS 1.0 Alpha — Animation system */
+.animation-previewing{pointer-events:none}
+.toggle-row{display:flex!important;align-items:center;justify-content:space-between}
+.toggle-row input{width:auto}
+#previewEnter,#previewExit{white-space:nowrap}
+.animation-status{
+  font-size:10px;
+  padding:4px 7px;
+  border-radius:999px;
+  background:#1d2630;
+  color:#aeb8c4;
+}

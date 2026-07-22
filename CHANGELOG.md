@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.0.0-alpha.2] - 2026-07-22
+
+### Fixed
+
+- Connected all animation inspector and preview controls.
+- Replaced editor preview playback with a requestAnimationFrame composition loop.
+- Fixed Fade, Slide, Scale and Wipe playback.
+- Restores element geometry and opacity after previews.
+- Added regression tests for animation control wiring.
+
+
+## [1.0.0-alpha.1] - 2026-07-22
+
+### Added
+
+- Element enter and exit animation settings.
+- Fade, slide, scale and wipe animations.
+- Duration, delay, easing, direction and distance controls.
+- Editor animation preview.
+- Browser-source animation control API.
+- Automated animation tests.
+
 ## [0.9.1] - 2026-07-22
 
 ### Fixed
