@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BMMS Graphics</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>BMMS Graphics</strong>
+      <span class="version">Prototype v0.1</span>
+    </div>
+    <a href="/overlay/lower-third" target="_blank">Abrir overlay</a>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <button class="nav active">Lower Third</button>
+      <button class="nav" disabled>Scripture</button>
+      <button class="nav" disabled>Smart Flyer</button>
+      <button class="nav" disabled>Countdown</button>
+    </aside>
+
+    <section class="workspace">
+      <div class="section-title">
+        <div>
+          <h1>Lower Third</h1>
+          <p>Primer vertical slice funcional de BMMS.</p>
+        </div>
+        <span id="statusBadge" class="badge preview">PREVIEW</span>
+      </div>
+
+      <div class="preview-frame">
+        <iframe id="preview" src="/overlay/lower-third" title="Preview"></iframe>
+      </div>
+
+      <div class="transport">
+        <button id="takeIn" class="primary">TAKE IN</button>
+        <button id="takeOut">TAKE OUT</button>
+      </div>
+    </section>
+
+    <aside class="inspector">
+      <h2>Propiedades</h2>
+
+      <label>
+        Línea principal
+        <input id="primary" maxlength="80">
+      </label>
+
+      <label>
+        Línea secundaria
+        <input id="secondary" maxlength="100">
+      </label>
+
+      <label>
+        Etiqueta
+        <input id="accent" maxlength="30">
+      </label>
+
+      <label>
+        Alineación
+        <select id="align">
+          <option value="left">Izquierda</option>
+          <option value="center">Centro</option>
+        </select>
+      </label>
+
+      <label>
+        Animación
+        <input id="animationMs" type="range" min="100" max="1200" step="20">
+        <output id="animationValue"></output>
+      </label>
+
+      <div class="info">
+        Los cambios se guardan automáticamente y aparecen en el overlay en tiempo real.
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

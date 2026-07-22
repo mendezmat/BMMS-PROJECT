@@ -1,63 +1,66 @@
-# BMMS-PROJECT
+# BMMS PROJECT
 
-> Plataforma modular para producción audiovisual, broadcast, iglesias y eventos en vivo.
+BMMS is a modular platform for live-production graphics, automation and
+operator tools under the By MMS product family.
 
-BMMS es un ecosistema de software bajo la marca **BMMS** para centralizar herramientas técnicas de gráficos, automatización, monitoreo y asistencia inteligente.
+## Repository status
 
-El proyecto comenzó como una solución para gráficos bíblicos y evolucionó hacia una plataforma modular compuesta por una base común, herramientas especializadas y un motor inteligente compartido.
+**Repository creation stage: complete.**
 
-## Arquitectura del producto
+This is now the single canonical repository. Previous generated packages are
+preserved under `archive/` and must be treated as historical references.
 
-```text
-BMMS
-├── BMMS Central
-├── BMMS Foundation
-├── BMMS Smart Engine
-└── BMMS Tools
-    ├── BMMS Graphics
-    ├── BMMS TB Tool
-    └── futuras herramientas
+## Current executable prototype
+
+The repository includes a working BMMS Graphics baseline with:
+
+- local Foundation bootstrap;
+- service container;
+- Event Bus;
+- structured logging;
+- JSON configuration persistence;
+- browser Overlay Runtime;
+- real-time Lower Third editor;
+- `TAKE IN` and `TAKE OUT`;
+- an independent Browser Source URL.
+
+## Requirements
+
+- Node.js 20 or newer.
+
+## Run
+
+```bash
+npm install
+npm start
 ```
 
-### BMMS Graphics
+Open:
 
-- Scripture
-- Smart Flyer
-- Lower Third
-- Countdown
+- Editor: `http://localhost:4173`
+- Lower Third overlay: `http://localhost:4173/overlay/lower-third`
 
-### BMMS Smart Engine
+## Validate
 
-- Vision Core
-- Layout Engine
-- OCR Provider System
-- Semantic Engine
-- Knowledge Engine
-- Recommendation Engine
-- Learning Engine
-- Benchmark Suite
+```bash
+npm run check
+npm test
+```
 
-## Estado actual
+## Canonical structure
 
-- Foundation: base funcional previa.
-- Scripture: validado por el usuario.
-- Smart Flyer: funcional; Smart Engine requiere reescritura.
-- Smart Engine 2.0: prioridad actual.
-- Lower Third y Countdown: definidos como módulos.
-- TB Tool: futura herramienta independiente.
+```text
+apps/                 BMMS applications
+packages/             reusable platform packages
+tests/                automated tests
+docs/                 current and historical documentation
+archive/              immutable prior artifacts
+scripts/              repository automation
+.github/              issue templates and CI
+```
 
-## Fuente de verdad
+## Next phase
 
-Este repositorio debe ser la fuente oficial del proyecto. Las conversaciones sirven para trabajar; las decisiones definitivas deben registrarse aquí.
-
-## Reglas
-
-1. Toda funcionalidad nueva debe tener una SPEC.
-2. Toda decisión arquitectónica relevante debe tener un ADR.
-3. Ningún componente se considera terminado solo porque compile.
-4. Smart Engine debe evaluarse con benchmark.
-5. No se publica una versión con regresiones conocidas.
-
-## Licencia
-
-Pendiente de definición.
+The next stage is product implementation, not repository creation. Development
+continues incrementally in this repository, starting with Foundation
+stabilization and the Lower Third vertical slice.

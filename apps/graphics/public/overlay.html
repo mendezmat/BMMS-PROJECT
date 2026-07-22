@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BMMS Lower Third Overlay</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    .stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .lower-third {
+      position: absolute;
+      left: 5vw;
+      right: 5vw;
+      bottom: 8vh;
+      display: flex;
+      justify-content: flex-start;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(28px);
+      transition-property: opacity, transform;
+      transition-timing-function: cubic-bezier(.2,.8,.2,1);
+    }
+
+    .lower-third.center { justify-content: center; }
+
+    .lower-third.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card {
+      min-width: 420px;
+      max-width: 760px;
+      padding: 20px 24px 21px;
+      border-left: 7px solid #ffffff;
+      border-radius: 4px 14px 14px 4px;
+      background: rgba(10,12,15,.92);
+      box-shadow: 0 16px 44px rgba(0,0,0,.35);
+      backdrop-filter: blur(12px);
+    }
+
+    .accent {
+      display: inline-block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #aeb8c6;
+    }
+
+    .primary {
+      font-size: clamp(30px, 3.2vw, 58px);
+      line-height: 1.02;
+      font-weight: 800;
+      color: white;
+    }
+
+    .secondary {
+      margin-top: 7px;
+      font-size: clamp(18px, 1.8vw, 30px);
+      color: #c9ced6;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div id="lowerThird" class="lower-third">
+      <div class="card">
+        <div id="accent" class="accent"></div>
+        <div id="primary" class="primary"></div>
+        <div id="secondary" class="secondary"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const lowerThird = document.querySelector("#lowerThird");
+    const primary = document.querySelector("#primary");
+    const secondary = document.querySelector("#secondary");
+    const accent = document.querySelector("#accent");
+
+    function render(state) {
+      primary.textContent = state.primary || "";
+      secondary.textContent = state.secondary || "";
+      accent.textContent = state.accent || "";
+      lowerThird.classList.toggle("visible", Boolean(state.visible));
+      lowerThird.classList.toggle("center", state.align === "center");
+      lowerThird.style.transitionDuration = `${state.animationMs || 420}ms`;
+    }
+
+    fetch("/api/state").then(r => r.json()).then(render);
+
+    const events = new EventSource("/api/events");
+    events.onmessage = event => render(JSON.parse(event.data));
+  </script>
+</body>
+</html>

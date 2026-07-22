@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose a BMMS capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Production problem
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected operator outcome
+    validations:
+      required: true
