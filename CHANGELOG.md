@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0] - 2026-07-22
+
+### Added
+
+- Visual Editor 2 interaction system.
+- Eight resize handles and rotation control.
+- Smart center guides and snapping.
+- Zoom presets, safe areas and grid controls.
+- Layer visibility and locking controls.
+
+
 ## [0.4.0] - 2026-07-22
 
 ### Added
