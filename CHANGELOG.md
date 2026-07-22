@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0] - 2026-07-22
+
+### Added
+
+- Provider-agnostic graphics data-binding engine.
+- Manual and bound text content modes.
+- Scripture and Lower Third data context.
+- Binding presets and live editor preview.
+- Independent graphics browser-source output.
+- SSE refresh for graphics output.
+- Data-binding automated tests.
+
 ## [0.5.0] - 2026-07-22
 
 ### Added

@@ -11,6 +11,8 @@ import {
 import { OverlayRuntime } from "../../packages/overlay-runtime/src/index.js";
 import { defaultAppState } from "../../packages/shared/src/default-app-state.js";
 import { defaultGraphicsDocument } from "../../packages/shared/src/default-graphics-document.js";
+import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphics-data-context.js";
+import { resolveDocument } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter } from "../../packages/integrations/src/propresenter/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,6 +60,7 @@ async function saveState(nextState) {
 events.subscribe("graphics.lower-third.updated", async event => {
   overlays.setState(event.payload);
   await saveState({ ...appState, lowerThird: event.payload });
+  broadcast("lower-third-updated", event.payload);
 });
 
 events.subscribe("integration.propresenter.status.changed", event => {
@@ -129,6 +132,12 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/editor.css") {
     return serveFile(response, "editor.css", "text/css; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/overlay/graphics") {
+    return serveFile(response, "graphics-overlay.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/graphics-overlay.js") {
+    return serveFile(response, "graphics-overlay.js", "text/javascript; charset=utf-8");
+  }
   if (request.method === "GET" && url.pathname === "/overlay/lower-third") {
     return serveFile(response, "overlay.html", "text/html; charset=utf-8");
   }
@@ -150,10 +159,19 @@ const server = http.createServer(async (request, response) => {
         updatedAt: new Date().toISOString()
       };
       await saveState({ ...appState, graphicsDocument });
+      broadcast("graphics-document-updated", graphicsDocument);
       return json(response, 200, graphicsDocument);
     } catch (error) {
       return json(response, 400, { error: error.message });
     }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/graphics/output") {
+    const context = buildGraphicsDataContext(appState);
+    return json(response, 200, {
+      document: resolveDocument(graphicsDocument, context),
+      context
+    });
   }
 
   if (request.method === "GET" && url.pathname === "/api/app-state") {
@@ -281,6 +299,7 @@ const host = process.env.BMMS_HOST || "127.0.0.1";
 server.listen(port, host, () => {
   logger.info("BMMS Graphics ready", {
     editor: `http://localhost:${port}`,
-    overlay: `http://localhost:${port}/overlay/lower-third`
+    overlay: `http://localhost:${port}/overlay/lower-third`,
+    graphicsOutput: `http://localhost:${port}/overlay/graphics`
   });
 });

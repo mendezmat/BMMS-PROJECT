@@ -7,3 +7,5 @@ export {
   reorderElement
 } from "./document-model.js";
 export { DocumentHistory } from "./history.js";
+
+export { getByPath, resolveTemplate, resolveElement, resolveDocument, listBindingTokens } from "./data-binding.js";

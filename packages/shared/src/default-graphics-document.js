@@ -25,6 +25,8 @@ export const defaultGraphicsDocument = createGraphicsDocument({
       width: 920,
       height: 120,
       text: "BMMS VISUAL EDITOR",
+      contentMode: "manual",
+      bindingTemplate: "{scripture.reference}",
       fontSize: 72,
       fontWeight: 800
     }),
@@ -36,6 +38,8 @@ export const defaultGraphicsDocument = createGraphicsDocument({
       width: 860,
       height: 70,
       text: "Motor gráfico compartido para broadcast",
+      contentMode: "manual",
+      bindingTemplate: "{scripture.text}",
       fontSize: 34,
       fontWeight: 400,
       color: "#b9c0ca"
