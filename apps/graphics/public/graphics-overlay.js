@@ -10,7 +10,7 @@ async function load() {
 function render() {
   if (!state.document) return;
   const doc = state.document;
-  root.style.background = doc.background || "transparent";
+  root.style.background = doc.outputTransparent === true ? "transparent" : (doc.background || "transparent");
   root.innerHTML = "";
 
   doc.elements.forEach((element, index) => {

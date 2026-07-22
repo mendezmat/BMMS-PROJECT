@@ -64,3 +64,9 @@ scripts/              repository automation
 The next stage is product implementation, not repository creation. Development
 continues incrementally in this repository, starting with Foundation
 stabilization and the Lower Third vertical slice.
+
+
+## Broadcast components
+
+The Visual Editor includes initial Scripture and Lower Third component presets.
+Use **Alt + click** or **Alt + drag** to select and move a complete component.

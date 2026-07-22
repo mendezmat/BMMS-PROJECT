@@ -28,13 +28,18 @@ export function createElement(type, overrides = {}) {
     rotation: Number(overrides.rotation ?? 0),
     opacity: Number(overrides.opacity ?? 1),
     visible: overrides.visible ?? true,
-    locked: overrides.locked ?? false
+    locked: overrides.locked ?? false,
+    componentId: overrides.componentId,
+    componentType: overrides.componentType,
+    componentRole: overrides.componentRole
   };
 
   if (type === "text") {
     return normalizeElement({
       ...base,
       text: overrides.text || "Nuevo texto",
+      contentMode: overrides.contentMode || "manual",
+      bindingTemplate: overrides.bindingTemplate || "",
       fontFamily: overrides.fontFamily || "Inter",
       fontSize: Number(overrides.fontSize ?? 72),
       fontWeight: Number(overrides.fontWeight ?? 700),

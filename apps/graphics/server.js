@@ -12,7 +12,7 @@ import { OverlayRuntime } from "../../packages/overlay-runtime/src/index.js";
 import { defaultAppState } from "../../packages/shared/src/default-app-state.js";
 import { defaultGraphicsDocument } from "../../packages/shared/src/default-graphics-document.js";
 import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphics-data-context.js";
-import { resolveDocument } from "../../packages/graphics-engine/src/index.js";
+import { resolveDocument, createBroadcastComponent, listBroadcastComponents } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter } from "../../packages/integrations/src/propresenter/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -140,6 +140,29 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "GET" && url.pathname === "/overlay/lower-third") {
     return serveFile(response, "overlay.html", "text/html; charset=utf-8");
+  }
+
+
+  if (request.method === "GET" && url.pathname === "/api/editor/components") {
+    return json(response, 200, { components: listBroadcastComponents() });
+  }
+
+  if (request.method === "POST" && url.pathname.startsWith("/api/editor/components/")) {
+    try {
+      const componentType = url.pathname.split("/").pop();
+      const options = await readJson(request);
+      const elements = createBroadcastComponent(componentType, options || {});
+      graphicsDocument = {
+        ...graphicsDocument,
+        elements: [...graphicsDocument.elements, ...elements],
+        updatedAt: new Date().toISOString()
+      };
+      await saveState({ ...appState, graphicsDocument });
+      broadcast("graphics-document-updated", graphicsDocument);
+      return json(response, 201, { document: graphicsDocument, elements });
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
   }
 
   if (request.method === "GET" && url.pathname === "/api/editor/document") {

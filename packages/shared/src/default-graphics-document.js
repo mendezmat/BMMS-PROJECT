@@ -6,6 +6,7 @@ export const defaultGraphicsDocument = createGraphicsDocument({
   width: 1920,
   height: 1080,
   background: "#0d1015",
+  outputTransparent: false,
   elements: [
     createElement("shape", {
       id: "default-accent",

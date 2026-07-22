@@ -6,3 +6,103 @@
 .binding-preview{display:grid;gap:4px;padding:10px;border:1px solid #2b3440;background:#0d1117;border-radius:8px}
 .binding-preview span{font-size:10px;color:#75808d;text-transform:uppercase;letter-spacing:.08em}
 .binding-preview strong{font-size:12px;line-height:1.4;color:#eef3fa;white-space:pre-wrap}
+
+.components-panel{
+  position:fixed;
+  z-index:40;
+  left:74px;
+  top:58px;
+  width:310px;
+  height:calc(100vh - 58px);
+  background:#111419;
+  border-right:1px solid var(--line);
+  box-shadow:18px 0 45px rgba(0,0,0,.36);
+}
+.components-panel .panel-heading button{
+  border:0;
+  background:transparent;
+  font-size:20px;
+  padding:2px 7px;
+}
+.component-list{padding:12px;display:grid;gap:10px}
+.component-card{
+  display:grid;
+  gap:7px;
+  text-align:left;
+  padding:15px;
+  min-height:100px;
+  background:#171c23;
+  border-color:#303844;
+}
+.component-card:hover{background:#1d242d;border-color:#526071}
+.component-card strong{font-size:14px}
+.component-card span{font-size:11px;line-height:1.45;color:#8f99a6}
+.check-row{display:flex;align-items:center;gap:8px;margin-top:12px}
+.check-row input{width:auto}
+.editor-element.component-selected{outline:3px solid #8c5cff}
+.component-badge{
+  position:absolute;
+  top:-28px;
+  left:0;
+  padding:4px 7px;
+  border-radius:5px;
+  background:#8c5cff;
+  color:white;
+  font-size:10px;
+  font-weight:700;
+  pointer-events:none;
+}
+
+/* 0.7.2 canvas visibility and scaling hotfix */
+.canvas-area{background:#090c10;min-height:0;min-width:0}
+.stage-viewport{
+  min-width:0;
+  min-height:0;
+  position:relative;
+  align-items:center;
+  justify-items:center;
+}
+.stage-scaler{
+  position:relative;
+  flex:none;
+  transform:none!important;
+  transform-origin:top left;
+}
+.stage{
+  position:absolute;
+  left:0;
+  top:0;
+  transform-origin:top left;
+  outline:2px solid #566170;
+  background-color:#0d1015;
+  background-image:
+    linear-gradient(45deg,rgba(255,255,255,.025) 25%,transparent 25%),
+    linear-gradient(-45deg,rgba(255,255,255,.025) 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,rgba(255,255,255,.025) 75%),
+    linear-gradient(-45deg,transparent 75%,rgba(255,255,255,.025) 75%);
+  background-size:32px 32px;
+  background-position:0 0,0 16px,16px -16px,-16px 0;
+  box-shadow:0 0 0 1px #000,0 24px 80px rgba(0,0,0,.75);
+}
+
+/* 0.7.3: keep the complete canvas visible from the top of the workspace */
+.stage-viewport{
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:32px;
+  scroll-padding:32px;
+}
+.stage-scaler{
+  margin:0 auto;
+}
+.stage::before{
+  content:"LIENZO 1920 × 1080";
+  position:absolute;
+  left:0;
+  top:-25px;
+  color:#8d98a6;
+  font-size:11px;
+  letter-spacing:.06em;
+  pointer-events:none;
+}

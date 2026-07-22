@@ -1,5 +1,57 @@
 # Changelog
 
+## [0.7.4] - 2026-07-22
+
+### Fixed
+
+- Removed the invalid `#fitStage` control reference that stopped editor initialization.
+- Connected the existing zoom selector to fit and fixed zoom levels.
+- Restored all left toolbar, layers and properties-panel interactions.
+- Added visible runtime error reporting in the editor header.
+
+
+## [0.7.3] - 2026-07-22
+
+### Fixed
+
+- Positioned the canvas at the top-center of the workspace.
+- Recalculated fit zoom using the real available viewport.
+- Reset workspace scroll after fitting.
+- Preserved the transparency checker while editing transparent documents.
+- Added an explicit canvas label.
+
+
+## [0.7.2] - 2026-07-22
+
+### Fixed
+
+- Corrected the editor canvas scaling model.
+- Restored a visible 1920×1080 canvas frame.
+- Added an explicit canvas outline and workspace contrast.
+- Prevented the scaler footprint from being transformed twice.
+
+
+## [0.7.1] - 2026-07-22
+
+### Fixed
+
+- Restored the missing Components toolbar button.
+- Prevented editor startup failure when optional controls are unavailable.
+- Restored the workspace stage, safe-area overlays and smart-guide layers.
+- Corrected resize handle CSS class names.
+
+
+## [0.7.0] - 2026-07-22
+
+### Added
+
+- Broadcast component library.
+- Editable Scripture component.
+- Editable Lower Third component.
+- Component grouping metadata and group movement.
+- Transparent output setting.
+- Broadcast component API and automated tests.
+
 ## [0.6.0] - 2026-07-22
 
 ### Added
