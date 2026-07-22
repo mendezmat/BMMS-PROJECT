@@ -9,6 +9,7 @@ let clipboardElements = [];
 let scale = 0.5;
 let saveTimer;
 let pasteOffset = 0;
+let templates = [];
 
 const stage = $("#stage");
 const scaler = $("#stageScaler");
@@ -770,6 +771,167 @@ document.querySelectorAll("[data-distribute]").forEach(button =>
   button.addEventListener("click", () => distributeSelection(button.dataset.distribute))
 );
 
+
+async function loadTemplates() {
+  const response = await api("/api/templates");
+  templates = response.templates || [];
+  renderTemplates();
+  $("#saveIndicator").textContent = "Guardado";
+  $("#saveIndicator").title = "";
+}
+
+function renderTemplates() {
+  const list = $("#templateList");
+  if (!list) return;
+  const search = ($("#templateSearch")?.value || "").trim().toLowerCase();
+  const category = $("#templateCategoryFilter")?.value || "all";
+  const filtered = templates
+    .filter(template => category === "all" || template.category === category)
+    .filter(template => template.name.toLowerCase().includes(search))
+    .sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name));
+
+  list.innerHTML = "";
+  if (!filtered.length) {
+    list.innerHTML = '<div class="template-empty">No hay plantillas en esta categoría.</div>';
+    return;
+  }
+
+  filtered.forEach(template => {
+    const card = document.createElement("article");
+    card.className = "template-card";
+    card.innerHTML = `
+      <div class="template-preview"></div>
+      <div class="template-card-body">
+        <div class="template-card-title">
+          <strong>${escapeHtml(template.name)}</strong>
+          <span class="template-category">${escapeHtml(template.category)}</span>
+        </div>
+        <div class="template-card-actions">
+          <button data-action="load">Abrir</button>
+          <button data-action="duplicate">Duplicar</button>
+          <button data-action="favorite" class="${template.favorite ? "favorite-active" : ""}">★</button>
+          <button data-action="delete" class="danger">×</button>
+        </div>
+      </div>
+    `;
+    renderTemplatePreview(card.querySelector(".template-preview"), template.document);
+
+    card.querySelector('[data-action="load"]').onclick = () => loadTemplate(template.id);
+    card.querySelector('[data-action="duplicate"]').onclick = () => duplicateTemplateItem(template);
+    card.querySelector('[data-action="favorite"]').onclick = () =>
+      patchTemplate(template.id, { favorite: !template.favorite });
+    card.querySelector('[data-action="delete"]').onclick = () => deleteTemplateItem(template);
+    list.appendChild(card);
+  });
+}
+
+function renderTemplatePreview(container, graphicsDocument) {
+  const scaleX = 360 / 1920;
+  const scaleY = 112 / 1080;
+  container.style.background = graphicsDocument.outputTransparent
+    ? "#121720"
+    : (graphicsDocument.background || "#0d1015");
+
+  for (const element of graphicsDocument.elements || []) {
+    if (element.visible === false) continue;
+    const node = window.document.createElement("div");
+    node.className = "template-preview-layer";
+    Object.assign(node.style, {
+      left: `${element.x * scaleX}px`,
+      top: `${element.y * scaleY}px`,
+      width: `${element.width * scaleX}px`,
+      height: `${element.height * scaleY}px`,
+      opacity: element.opacity ?? 1,
+      transform: `rotate(${element.rotation || 0}deg)`
+    });
+    if (element.type === "shape") {
+      node.style.background = element.fill || "#fff";
+      node.style.borderRadius = `${(element.radius || 0) * scaleX}px`;
+    } else if (element.type === "text") {
+      node.textContent = element.contentMode === "binding"
+        ? resolveTemplate(element.bindingTemplate || element.text)
+        : element.text;
+      node.style.color = element.color || "#fff";
+      node.style.fontSize = `${Math.max(3, (element.fontSize || 48) * scaleY)}px`;
+      node.style.fontWeight = element.fontWeight || 400;
+      node.style.overflow = "hidden";
+    }
+    container.appendChild(node);
+  }
+}
+
+async function saveCurrentAsTemplate() {
+  const name = prompt("Nombre de la plantilla:", documentState.name || "Nueva plantilla");
+  if (!name?.trim()) return;
+
+  const labels = {
+    "1": "scripture",
+    "2": "lower-third",
+    "3": "flyer",
+    "4": "countdown",
+    "5": "qr",
+    "6": "custom"
+  };
+  const selectedCategory = prompt(
+    "Categoría:\n1 Scripture\n2 Lower Third\n3 Flyer\n4 Countdown\n5 QR\n6 Personalizada",
+    "6"
+  );
+  if (selectedCategory === null) return;
+
+  const category = labels[selectedCategory.trim()] || "custom";
+  await api("/api/templates", {
+    method: "POST",
+    body: JSON.stringify({ name: name.trim(), category })
+  });
+
+  $("#templateCategoryFilter").value = category;
+  await loadTemplates();
+}
+
+async function loadTemplate(id) {
+  documentState = await api(`/api/templates/${id}/load`, { method: "POST" });
+  selectedIds.clear();
+  historyPast = [];
+  historyFuture = [];
+  render();
+  $("#templatesPanel").classList.add("hidden");
+}
+
+async function duplicateTemplateItem(template) {
+  const name = prompt("Nombre de la copia:", `${template.name} copia`);
+  if (!name?.trim()) return;
+  await api(`/api/templates/${template.id}/duplicate`, {
+    method: "POST",
+    body: JSON.stringify({ name: name.trim() })
+  });
+  await loadTemplates();
+}
+
+async function patchTemplate(id, patch) {
+  await api(`/api/templates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch)
+  });
+  await loadTemplates();
+}
+
+async function deleteTemplateItem(template) {
+  if (!confirm(`¿Eliminar la plantilla "${template.name}"?`)) return;
+  await api(`/api/templates/${template.id}`, { method: "DELETE" });
+  await loadTemplates();
+}
+
+
+$("#openTemplates")?.addEventListener("click", async () => {
+  $("#templatesPanel").classList.toggle("hidden");
+  $("#componentsPanel").classList.add("hidden");
+  if (!$("#templatesPanel").classList.contains("hidden")) await loadTemplates();
+});
+$("#closeTemplates")?.addEventListener("click", () => $("#templatesPanel").classList.add("hidden"));
+$("#saveAsTemplate")?.addEventListener("click", saveCurrentAsTemplate);
+$("#templateSearch")?.addEventListener("input", renderTemplates);
+$("#templateCategoryFilter")?.addEventListener("change", renderTemplates);
+
 window.addEventListener("resize", fitStage);
 $("#stageViewport").addEventListener("wheel", event => {
   if (!event.ctrlKey) return;
@@ -810,6 +972,7 @@ window.addEventListener("keydown", event => {
   } else if (event.key === "Escape") {
     selectedIds.clear();
     $("#componentsPanel").classList.add("hidden");
+    $("#templatesPanel")?.classList.add("hidden");
     render();
   }
 });

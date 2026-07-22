@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.9.1] - 2026-07-22
+
+### Fixed
+
+- Fixed template preview rendering after saving.
+- Removed the `document` variable shadowing that caused `Error del editor`.
+- Automatically switches the library filter to the saved template category.
+- Replaced free-form category entry with controlled numbered choices.
+- Restores the editor status after successful template loading.
+
+
+## [0.9.0] - 2026-07-22
+
+### Added
+
+- Persistent template library.
+- Save, open, duplicate and delete template workflows.
+- Template categories, favorites, search and filtering.
+- Lightweight template previews.
+- Template API and automated tests.
+
 ## [0.8.0] - 2026-07-22
 
 ### Added

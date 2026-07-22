@@ -143,3 +143,25 @@
   color:#9fa9b5;
   font-size:9px;
 }
+
+.templates-panel{
+  position:fixed;z-index:42;left:74px;top:58px;width:360px;
+  height:calc(100vh - 58px);background:#111419;border-right:1px solid var(--line);
+  box-shadow:18px 0 45px rgba(0,0,0,.4);overflow:hidden;
+}
+.template-actions{padding:12px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+.template-list{padding:12px;display:grid;gap:10px;overflow-y:auto;max-height:calc(100vh - 220px)}
+.template-card{border:1px solid #303844;background:#171c23;border-radius:10px;overflow:hidden}
+.template-preview{
+  height:112px;position:relative;background:#0b0e13;overflow:hidden;
+  border-bottom:1px solid #303844
+}
+.template-preview-layer{position:absolute;transform-origin:top left}
+.template-card-body{padding:11px;display:grid;gap:8px}
+.template-card-title{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.template-card-title strong{font-size:13px}
+.template-category{font-size:9px;text-transform:uppercase;color:#8894a2;letter-spacing:.08em}
+.template-card-actions{display:grid;grid-template-columns:1fr 1fr 36px 36px;gap:6px}
+.template-card-actions button{padding:7px;font-size:10px}
+.template-empty{padding:20px;border:1px dashed #343b46;border-radius:9px;color:#7d8793;font-size:12px;text-align:center}
+.favorite-active{color:#ffd76a}

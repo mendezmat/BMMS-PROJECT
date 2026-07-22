@@ -12,7 +12,7 @@ import { OverlayRuntime } from "../../packages/overlay-runtime/src/index.js";
 import { defaultAppState } from "../../packages/shared/src/default-app-state.js";
 import { defaultGraphicsDocument } from "../../packages/shared/src/default-graphics-document.js";
 import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphics-data-context.js";
-import { resolveDocument, createBroadcastComponent, listBroadcastComponents } from "../../packages/graphics-engine/src/index.js";
+import { resolveDocument, createBroadcastComponent, listBroadcastComponents, createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter } from "../../packages/integrations/src/propresenter/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +44,7 @@ const proPresenter = services.register(
 
 let appState = persistedState;
 let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
+let templates = Array.isArray(persistedState.templates) ? persistedState.templates : [];
 const appClients = new Set();
 
 function broadcast(type, payload) {
@@ -142,6 +143,82 @@ const server = http.createServer(async (request, response) => {
     return serveFile(response, "overlay.html", "text/html; charset=utf-8");
   }
 
+
+
+  if (request.method === "GET" && url.pathname === "/api/templates") {
+    return json(response, 200, { templates });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/templates") {
+    try {
+      const incoming = await readJson(request);
+      const template = createTemplate(graphicsDocument, incoming);
+      templates = [...templates, template];
+      await saveState({ ...appState, graphicsDocument, templates });
+      broadcast("templates-updated", templates);
+      return json(response, 201, template);
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+
+  if (request.method === "POST" && /^\/api\/templates\/[^/]+\/load$/.test(url.pathname)) {
+    const templateId = url.pathname.split("/")[3];
+    const template = templates.find(item => item.id === templateId);
+    if (!template) return json(response, 404, { error: "Template not found." });
+
+    graphicsDocument = instantiateTemplate(template);
+    await saveState({ ...appState, graphicsDocument, templates });
+    broadcast("graphics-document-updated", graphicsDocument);
+    return json(response, 200, graphicsDocument);
+  }
+
+  if (request.method === "POST" && /^\/api\/templates\/[^/]+\/duplicate$/.test(url.pathname)) {
+    try {
+      const templateId = url.pathname.split("/")[3];
+      const source = templates.find(item => item.id === templateId);
+      if (!source) return json(response, 404, { error: "Template not found." });
+      const incoming = await readJson(request);
+      const duplicate = duplicateTemplate(source, incoming.name);
+      templates = [...templates, duplicate];
+      await saveState({ ...appState, graphicsDocument, templates });
+      broadcast("templates-updated", templates);
+      return json(response, 201, duplicate);
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+
+  if (request.method === "PATCH" && /^\/api\/templates\/[^/]+$/.test(url.pathname)) {
+    try {
+      const templateId = url.pathname.split("/")[3];
+      const incoming = await readJson(request);
+      let found = false;
+      templates = templates.map(template => {
+        if (template.id !== templateId) return template;
+        found = true;
+        return updateTemplateMetadata(template, incoming);
+      });
+      if (!found) return json(response, 404, { error: "Template not found." });
+      await saveState({ ...appState, graphicsDocument, templates });
+      broadcast("templates-updated", templates);
+      return json(response, 200, templates.find(item => item.id === templateId));
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+
+  if (request.method === "DELETE" && /^\/api\/templates\/[^/]+$/.test(url.pathname)) {
+    const templateId = url.pathname.split("/")[3];
+    const previousLength = templates.length;
+    templates = templates.filter(template => template.id !== templateId);
+    if (templates.length === previousLength) {
+      return json(response, 404, { error: "Template not found." });
+    }
+    await saveState({ ...appState, graphicsDocument, templates });
+    broadcast("templates-updated", templates);
+    return json(response, 200, { deleted: templateId });
+  }
 
   if (request.method === "GET" && url.pathname === "/api/editor/components") {
     return json(response, 200, { components: listBroadcastComponents() });
