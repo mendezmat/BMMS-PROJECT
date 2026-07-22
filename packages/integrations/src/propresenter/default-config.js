@@ -2,16 +2,20 @@ export const defaultProPresenterConfig = Object.freeze({
   enabled: false,
   host: "127.0.0.1",
   port: 1025,
-  protocol: "auto",
+  protocol: "tcp",
   autoConnect: false,
+  connectTimeoutMs: 3000,
+  requestTimeoutMs: 3000,
   reconnect: {
     enabled: true,
-    delayMs: 3000,
-    maxDelayMs: 30000
+    initialDelayMs: 1000,
+    maxDelayMs: 30000,
+    multiplier: 1.8
   },
   monitoring: {
     presentations: true,
     text: true,
-    media: true
+    media: true,
+    subscriptions: []
   }
 });

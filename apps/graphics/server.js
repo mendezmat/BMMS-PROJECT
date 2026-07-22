@@ -13,7 +13,8 @@ import { defaultAppState } from "../../packages/shared/src/default-app-state.js"
 import { defaultGraphicsDocument } from "../../packages/shared/src/default-graphics-document.js";
 import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphics-data-context.js";
 import { resolveDocument, createBroadcastComponent, listBroadcastComponents, createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata } from "../../packages/graphics-engine/src/index.js";
-import { ProPresenterAdapter } from "../../packages/integrations/src/propresenter/index.js";
+import { ProPresenterAdapter, ProPresenterLiveScriptureService } from "../../packages/integrations/src/propresenter/index.js";
+import { ScriptureController } from "../../packages/scripture-core/src/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -42,7 +43,45 @@ const proPresenter = services.register(
   })
 );
 
+const scriptureController = services.register(
+  "scriptureController",
+  new ScriptureController({
+    events,
+    logger,
+    autoTake: Boolean(persistedState.scripture?.autoTake?.enabled),
+    autoTakeDelayMs: persistedState.scripture?.autoTake?.delayMs ?? 400
+  })
+);
+const liveScripture = services.register(
+  "liveScripture",
+  new ProPresenterLiveScriptureService({
+    adapter: proPresenter,
+    events,
+    logger,
+    intervalMs: persistedState.scripture?.live?.intervalMs ?? 350
+  })
+);
+
+
+if (proPresenter.getConfig().enabled && proPresenter.getConfig().autoConnect) {
+  proPresenter.connect()
+    .then(status => {
+      if (status.connected) liveScripture.start();
+    })
+    .catch(error => {
+      logger.error("Initial ProPresenter connection failed", {
+        error: error.message
+      });
+    });
+}
+
 let appState = persistedState;
+let scriptureBroadcast = {
+  preview: persistedState.scripture?.broadcast?.preview || persistedState.scripture?.currentVerse || null,
+  program: persistedState.scripture?.broadcast?.program || null,
+  visible: Boolean(persistedState.scripture?.broadcast?.visible),
+  autoTake: Boolean(persistedState.scripture?.autoTake?.enabled)
+};
 let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
 let templates = Array.isArray(persistedState.templates) ? persistedState.templates : [];
 const appClients = new Set();
@@ -66,6 +105,43 @@ events.subscribe("graphics.lower-third.updated", async event => {
 
 events.subscribe("integration.propresenter.status.changed", event => {
   broadcast("propresenter-status", event.payload);
+});
+
+events.subscribe("propresenter.scripture.status.changed", event => {
+  broadcast("scripture-live-status", event.payload);
+});
+
+events.subscribe("propresenter.scripture.changed", async event => {
+  const verse = scriptureController.receiveVerse(event.payload.verse);
+  scriptureBroadcast.preview = verse;
+
+  if (scriptureBroadcast.autoTake) {
+    scriptureBroadcast.program = verse;
+    scriptureBroadcast.visible = true;
+  }
+
+  const scripture = {
+    ...appState.scripture,
+    source: "propresenter",
+    currentVerse: verse,
+    autoTake: {
+      ...(appState.scripture?.autoTake || {}),
+      enabled: scriptureBroadcast.autoTake
+    },
+    broadcast: scriptureBroadcast,
+    propresenter: {
+      reference: verse.reference,
+      version: verse.version,
+      text: verse.text,
+      presentation: verse.presentationId,
+      slideIndex: verse.slideIndex,
+      receivedAt: verse.receivedAt
+    }
+  };
+
+  await saveState({ ...appState, scripture });
+  broadcast("scripture-updated", scriptureBroadcast);
+  broadcast("scripture-program", scriptureBroadcast);
 });
 
 events.subscribe("propresenter.text.changed", async event => {
@@ -124,6 +200,27 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/styles.css") {
     return serveFile(response, "styles.css", "text/css; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/overlay/scripture") {
+    return serveFile(response, "scripture-overlay.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture-overlay.js") {
+    return serveFile(response, "scripture-overlay.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture-overlay.css") {
+    return serveFile(response, "scripture-overlay.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture-balance.js") {
+    return serveFile(response, "scripture-balance.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture") {
+    return serveFile(response, "scripture.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture.js") {
+    return serveFile(response, "scripture.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture.css") {
+    return serveFile(response, "scripture.css", "text/css; charset=utf-8");
+  }
   if (request.method === "GET" && url.pathname === "/editor") {
     return serveFile(response, "editor.html", "text/html; charset=utf-8");
   }
@@ -144,6 +241,126 @@ const server = http.createServer(async (request, response) => {
   }
 
 
+
+  if (request.method === "GET" && url.pathname === "/api/integrations/propresenter/status") {
+    return json(response, 200, proPresenter.getStatus());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/integrations/propresenter/test") {
+    try {
+      const result = await proPresenter.testConnection();
+      return json(response, 200, result);
+    } catch (error) {
+      return json(response, 503, {
+        ok: false,
+        error: error.message,
+        status: proPresenter.getStatus()
+      });
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/integrations/propresenter/connect") {
+    const status = await proPresenter.connect();
+    return json(response, status.connected ? 200 : 503, status);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/integrations/propresenter/disconnect") {
+    return json(response, 200, await proPresenter.disconnect());
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scripture/program") {
+    return json(response, 200, scriptureBroadcast);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/take") {
+    if (!scriptureBroadcast.preview) {
+      return json(response, 409, { error: "No hay contenido en Preview." });
+    }
+    scriptureBroadcast.program = scriptureBroadcast.preview;
+    scriptureBroadcast.visible = true;
+    const scripture = {
+      ...appState.scripture,
+      broadcast: scriptureBroadcast
+    };
+    await saveState({ ...appState, scripture });
+    broadcast("scripture-program", scriptureBroadcast);
+    return json(response, 200, scriptureBroadcast);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/clear") {
+    scriptureBroadcast.visible = false;
+    const scripture = {
+      ...appState.scripture,
+      broadcast: scriptureBroadcast
+    };
+    await saveState({ ...appState, scripture });
+    broadcast("scripture-program", scriptureBroadcast);
+    return json(response, 200, scriptureBroadcast);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/auto") {
+    const incoming = await readJson(request);
+    scriptureBroadcast.autoTake = Boolean(incoming.enabled);
+    scriptureController.setAutoTake(scriptureBroadcast.autoTake);
+
+    if (scriptureBroadcast.autoTake && scriptureBroadcast.preview) {
+      scriptureBroadcast.program = scriptureBroadcast.preview;
+      scriptureBroadcast.visible = true;
+    }
+
+    const scripture = {
+      ...appState.scripture,
+      autoTake: {
+        ...(appState.scripture?.autoTake || {}),
+        enabled: scriptureBroadcast.autoTake
+      },
+      broadcast: scriptureBroadcast
+    };
+    await saveState({ ...appState, scripture });
+    broadcast("scripture-program", scriptureBroadcast);
+    return json(response, 200, scriptureBroadcast);
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scripture/current") {
+    return json(response, 200, {
+      ...scriptureController.getState(),
+      persisted: appState.scripture
+    });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scripture/live/status") {
+    return json(response, 200, liveScripture.getStatus());
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scripture/live/snapshot") {
+    return json(response, 200, {
+      snapshot: liveScripture.getSnapshot()
+    });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/live/start") {
+    const connection = await proPresenter.connect();
+    if (!connection.connected) {
+      return json(response, 503, {
+        error: connection.lastError?.message || "ProPresenter is not connected.",
+        connection
+      });
+    }
+    liveScripture.start();
+    return json(response, 200, liveScripture.getStatus());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/live/stop") {
+    return json(response, 200, liveScripture.stop());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/live/sync") {
+    const verse = await liveScripture.syncNow();
+    return json(response, verse ? 200 : 202, {
+      verse,
+      status: liveScripture.getStatus()
+    });
+  }
 
   if (request.method === "GET" && url.pathname === "/api/templates") {
     return json(response, 200, { templates });

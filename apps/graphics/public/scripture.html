@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BMMS Scripture Broadcast</title>
+  <link rel="stylesheet" href="/scripture.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="brand">BY MMS · BROADCAST</p>
+        <h1>Scripture</h1>
+      </div>
+      <div id="connectionBadge" class="badge badge-offline">Desconectado</div>
+    </header>
+
+    <section class="status-strip">
+      <span id="connectionDetail">Sin conexión</span>
+      <span id="syncDetail">Live detenido</span>
+      <span id="lastReceived">Sin datos</span>
+      <a href="/overlay/scripture" target="_blank">Abrir salida</a>
+    </section>
+
+    <section class="bus-grid">
+      <article class="bus program">
+        <div class="bus-title"><span>PROGRAM</span><strong id="onAir">OFF AIR</strong></div>
+        <p id="programReference" class="reference">Sin contenido</p>
+        <p id="programVerse" class="verse">El contenido al aire aparecerá aquí.</p>
+        <p id="programVersion" class="version"></p>
+      </article>
+
+      <article class="bus preview">
+        <div class="bus-title"><span>PREVIEW</span><strong>READY</strong></div>
+        <p id="previewReference" class="reference">Esperando ProPresenter</p>
+        <p id="previewVerse" class="verse">Cambie a un versículo para cargarlo en Preview.</p>
+        <p id="previewVersion" class="version"></p>
+      </article>
+    </section>
+
+    <section class="controls">
+      <button id="takeButton" class="take">TAKE</button>
+      <button id="clearButton" class="clear">CLEAR</button>
+      <button id="autoButton">AUTO: OFF</button>
+      <button id="connectButton">Conectar</button>
+      <button id="startButton">Iniciar Live</button>
+      <button id="syncButton">Sincronizar</button>
+    </section>
+
+    <details class="diagnostics">
+      <summary>Diagnóstico</summary>
+      <pre id="diagnostics">Cargando…</pre>
+    </details>
+  </main>
+  <script type="module" src="/scripture.js"></script>
+</body>
+</html>

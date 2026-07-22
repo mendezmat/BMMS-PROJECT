@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.2.0-beta.1] - 2026-07-22
+
+### Added
+
+- Scripture Preview and Program workflow.
+- Manual Take, Clear and persistent Auto Take.
+- Transparent Scripture browser source.
+- Smart Balance 2.0 with measured text and automatic font scaling.
+- Broadcast-focused Scripture operator interface.
+- Persistent output recovery after browser-source reload.
+
+
+## [1.1.0-alpha.2] - 2026-07-22
+
+### Added
+
+- Live Scripture synchronization using official ProPresenter endpoints.
+- Current slide, active presentation and slide-index normalization.
+- Dedicated Scripture operator page at `/scripture`.
+- Raw API snapshot and live synchronization diagnostics.
+- Manual synchronization and Live start/stop API controls.
+- Duplicate verse event suppression.
+
+
+## [1.1.0-alpha.1] - 2026-07-22
+
+### Added
+
+- Real ProPresenter TCP/IP transport with CRLF-delimited JSON.
+- Standard and chunked request support.
+- Connection health test using the documented system-time endpoint.
+- Exponential reconnect policy and connection diagnostics.
+- Integration API endpoints for status, test, connect and disconnect.
+- Automated TCP socket and reconnect tests.
+
+
+## [1.1.0-alpha.0] - 2026-07-22
+
+### Added
+
+- BMMS 1.1 Scripture Core product specification.
+- Normalized Scripture verse model and stable identifiers.
+- Scripture reference and slide text parser.
+- Scripture controller with Take In, Take Out and Auto Take state.
+- ProPresenter-to-Scripture normalization boundary.
+- Scripture-first architecture decision.
+- Automated domain and integration tests.
+
+
 ## [1.0.0-alpha.2] - 2026-07-22
 
 ### Fixed
