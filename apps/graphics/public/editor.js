@@ -2,24 +2,25 @@ const $ = selector => document.querySelector(selector);
 
 let documentState;
 let dataContext = {};
-let selectedId = null;
-let selectedComponentId = null;
+let selectedIds = new Set();
 let historyPast = [];
 let historyFuture = [];
+let clipboardElements = [];
 let scale = 0.5;
 let saveTimer;
-
-window.addEventListener("error", event => {
-  console.error("BMMS Editor runtime error:", event.error || event.message);
-  const indicator = document.querySelector("#saveIndicator");
-  if (indicator) {
-    indicator.textContent = "Error del editor";
-    indicator.title = String(event.error?.message || event.message || "Error desconocido");
-  }
-});
+let pasteOffset = 0;
 
 const stage = $("#stage");
 const scaler = $("#stageScaler");
+
+window.addEventListener("error", event => {
+  console.error("BMMS Editor runtime error:", event.error || event.message);
+  const indicator = $("#saveIndicator");
+  if (indicator) {
+    indicator.textContent = "Error del editor";
+    indicator.title = String(event.error?.message || event.message || "");
+  }
+});
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -31,16 +32,13 @@ async function api(path, options = {}) {
   return body;
 }
 
-function clone(value) {
-  return structuredClone(value);
-}
+const clone = value => structuredClone(value);
 
 function resolveTemplate(template, context = dataContext) {
   return String(template ?? "").replace(
     /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}|\{\s*([a-zA-Z0-9_.-]+)\s*\}/g,
     (_, doublePath, singlePath) => {
-      const path = doublePath || singlePath;
-      const value = path
+      const value = (doublePath || singlePath)
         .split(".")
         .reduce((current, key) => current != null ? current[key] : undefined, context);
       return value == null ? "" : String(value);
@@ -50,9 +48,10 @@ function resolveTemplate(template, context = dataContext) {
 
 function commit(next) {
   historyPast.push(clone(documentState));
-  if (historyPast.length > 50) historyPast.shift();
+  if (historyPast.length > 80) historyPast.shift();
   documentState = clone(next);
   historyFuture = [];
+  validateSelection();
   render();
   scheduleSave();
 }
@@ -91,25 +90,42 @@ function redo() {
 }
 
 function validateSelection() {
-  if (!documentState.elements.some(element => element.id === selectedId)) selectedId = null;
-  if (!documentState.elements.some(element => element.componentId === selectedComponentId)) {
-    selectedComponentId = null;
-  }
+  const ids = new Set(documentState.elements.map(element => element.id));
+  selectedIds = new Set([...selectedIds].filter(id => ids.has(id)));
 }
 
-function selectedElement() {
-  return documentState.elements.find(element => element.id === selectedId) || null;
+function selectedElements() {
+  return documentState.elements.filter(element => selectedIds.has(element.id));
 }
 
-function selectedComponentElements() {
-  if (!selectedComponentId) return [];
-  return documentState.elements.filter(element => element.componentId === selectedComponentId);
+function primarySelected() {
+  const id = [...selectedIds][selectedIds.size - 1];
+  return documentState.elements.find(element => element.id === id) || null;
+}
+
+function selectOnly(id) {
+  selectedIds = id ? new Set([id]) : new Set();
+  render();
+}
+
+function toggleSelection(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  render();
+}
+
+function selectGroup(groupId) {
+  selectedIds = new Set(
+    documentState.elements
+      .filter(element => element.groupId === groupId || element.componentId === groupId)
+      .map(element => element.id)
+  );
+  render();
 }
 
 function createElement(type) {
-  const id = crypto.randomUUID();
   const base = {
-    id,
+    id: crypto.randomUUID(),
     type,
     name: type === "text" ? "Texto" : "Forma",
     x: 480,
@@ -121,51 +137,35 @@ function createElement(type) {
     visible: true,
     locked: false
   };
-
-  if (type === "text") {
-    return {
-      ...base,
-      text: "Nuevo texto",
-      contentMode: "manual",
-      bindingTemplate: "{scripture.text}",
-      fontFamily: "Inter",
-      fontSize: 72,
-      fontWeight: 700,
-      lineHeight: 1.1,
-      color: "#ffffff",
-      align: "left"
-    };
-  }
-
-  return { ...base, fill: "#2c73ff", radius: 24 };
+  return type === "text"
+    ? {
+        ...base,
+        text: "Nuevo texto",
+        contentMode: "manual",
+        bindingTemplate: "{scripture.text}",
+        fontFamily: "Inter",
+        fontSize: 72,
+        fontWeight: 700,
+        lineHeight: 1.1,
+        color: "#ffffff",
+        align: "left"
+      }
+    : { ...base, fill: "#2c73ff", radius: 24 };
 }
 
-function updateSelected(patch, useHistory = true) {
-  if (!selectedId) return;
+function updateSelection(patch, useHistory = true) {
+  if (!selectedIds.size) return;
   const next = {
     ...documentState,
     elements: documentState.elements.map(element =>
-      element.id === selectedId ? { ...element, ...patch } : element
+      selectedIds.has(element.id) ? { ...element, ...patch } : element
     )
   };
-
   if (useHistory) commit(next);
   else {
     documentState = next;
     render();
   }
-}
-
-function updateComponentPosition(componentId, dx, dy) {
-  documentState = {
-    ...documentState,
-    elements: documentState.elements.map(element =>
-      element.componentId === componentId
-        ? { ...element, x: element.x + dx, y: element.y + dy }
-        : element
-    )
-  };
-  render();
 }
 
 function render() {
@@ -176,32 +176,26 @@ function render() {
     documentState.outputTransparent === true
       ? "transparent"
       : (documentState.background || "#0d1015");
+
   stage.innerHTML = `
     <div id="safeArea" class="safe-area ${$("#toggleSafe")?.checked ? "" : "hidden"}">
-      <div class="action-safe"></div>
-      <div class="title-safe"></div>
+      <div class="action-safe"></div><div class="title-safe"></div>
     </div>
-    <div id="guideX" class="smart-guide vertical hidden"></div>
-    <div id="guideY" class="smart-guide horizontal hidden"></div>
   `;
 
   documentState.elements.forEach((element, index) => {
     if (element.visible === false) return;
-
     const node = document.createElement("div");
-    const isSelected = element.id === selectedId;
-    const isComponentSelected =
-      selectedComponentId && element.componentId === selectedComponentId;
-
+    const selected = selectedIds.has(element.id);
     node.className = [
       "editor-element",
       `${element.type}-element`,
-      isSelected ? "selected" : "",
-      isComponentSelected ? "component-selected" : "",
+      selected && selectedIds.size === 1 ? "selected" : "",
+      selected && selectedIds.size > 1 ? "multi-selected" : "",
       element.locked ? "locked" : ""
     ].filter(Boolean).join(" ");
-
     node.dataset.id = element.id;
+
     Object.assign(node.style, {
       left: `${element.x}px`,
       top: `${element.y}px`,
@@ -222,51 +216,38 @@ function render() {
         fontSize: `${element.fontSize || 48}px`,
         fontWeight: element.fontWeight || 400,
         lineHeight: element.lineHeight || 1.1,
-        color: element.color || "#ffffff",
+        color: element.color || "#fff",
         textAlign: element.align || "left",
         justifyContent:
-          element.align === "center"
-            ? "center"
-            : element.align === "right"
-              ? "flex-end"
-              : "flex-start"
+          element.align === "center" ? "center" :
+          element.align === "right" ? "flex-end" : "flex-start"
       });
     } else {
-      node.style.background = element.fill || "#ffffff";
+      node.style.background = element.fill || "#fff";
       node.style.borderRadius = `${element.radius || 0}px`;
     }
 
-    if (isSelected && !element.locked) {
-      addResizeHandles(node);
-    }
-
-    if (
-      isComponentSelected &&
-      element.componentId &&
-      element === selectedComponentElements()[0]
-    ) {
-      const badge = document.createElement("div");
-      badge.className = "component-badge";
-      badge.textContent = element.componentType === "scripture" ? "VERSÍCULO" : "LOWER THIRD";
-      node.appendChild(badge);
-    }
-
-    node.addEventListener("pointerdown", event => beginDrag(event, element.id));
+    if (selected && selectedIds.size === 1 && !element.locked) addResizeHandles(node);
+    node.addEventListener("pointerdown", event => beginElementDrag(event, element.id));
     stage.appendChild(node);
   });
 
+  stage.addEventListener("pointerdown", beginMarqueeSelection);
   renderLayers();
   renderProperties();
+
   $("#undo").disabled = historyPast.length === 0;
   $("#redo").disabled = historyFuture.length === 0;
   $("#elementCount").textContent = documentState.elements.length;
+  $("#duplicateSelection").disabled = selectedIds.size === 0;
+  $("#groupSelection").disabled = selectedIds.size < 2;
+  $("#ungroupSelection").disabled = !selectedElements().some(element => element.groupId);
 }
 
 function addResizeHandles(node) {
   for (const position of ["nw", "n", "ne", "e", "se", "s", "sw", "w"]) {
     const handle = document.createElement("div");
     handle.className = `resize-handle h-${position}`;
-    handle.dataset.position = position;
     handle.addEventListener("pointerdown", event =>
       beginResize(event, node.dataset.id, position)
     );
@@ -278,26 +259,71 @@ function renderLayers() {
   const container = $("#layers");
   container.innerHTML = "";
 
-  documentState.elements.forEach(element => {
+  [...documentState.elements].reverse().forEach(element => {
     const row = document.createElement("div");
-    row.className = `layer${element.id === selectedId ? " selected" : ""}`;
+    row.className = [
+      "layer",
+      selectedIds.has(element.id) ? "selected" : "",
+      selectedIds.has(element.id) && selectedIds.size > 1 ? "multi-selected" : ""
+    ].filter(Boolean).join(" ");
+    row.draggable = true;
+    row.dataset.id = element.id;
+
     row.innerHTML = `
-      <span class="layer-icon">${element.type === "text" ? "T" : "▰"}</span>
-      <span>${escapeHtml(element.name)}</span>
-      <button class="layer-lock">${element.locked ? "●" : "○"}</button>
+      <button class="layer-visibility" title="Mostrar/Ocultar">${element.visible === false ? "○" : "●"}</button>
+      <span class="group-badge">${element.groupId || element.componentId ? "G" : element.type === "text" ? "T" : "▰"}</span>
+      <span class="layer-name" title="Doble clic para renombrar">${escapeHtml(element.name)}</span>
+      <button class="layer-lock" title="Bloquear">${element.locked ? "●" : "○"}</button>
+      <span class="layer-icon">⋮⋮</span>
     `;
 
     row.addEventListener("click", event => {
-      selectedId = element.id;
-      selectedComponentId = event.altKey ? element.componentId || null : null;
-      render();
+      if (event.target.closest("button")) return;
+      if (event.shiftKey || event.ctrlKey || event.metaKey) toggleSelection(element.id);
+      else if (event.altKey && (element.groupId || element.componentId)) {
+        selectGroup(element.groupId || element.componentId);
+      } else selectOnly(element.id);
+    });
+
+    row.querySelector(".layer-visibility").addEventListener("click", event => {
+      event.stopPropagation();
+      selectedIds = new Set([element.id]);
+      updateSelection({ visible: element.visible === false });
     });
 
     row.querySelector(".layer-lock").addEventListener("click", event => {
       event.stopPropagation();
-      selectedId = element.id;
-      selectedComponentId = null;
-      updateSelected({ locked: !element.locked });
+      selectedIds = new Set([element.id]);
+      updateSelection({ locked: !element.locked });
+    });
+
+    row.querySelector(".layer-name").addEventListener("dblclick", event => {
+      event.stopPropagation();
+      const input = document.createElement("input");
+      input.className = "layer-name-input";
+      input.value = element.name;
+      event.target.replaceWith(input);
+      input.focus();
+      input.select();
+      const finish = () => {
+        selectedIds = new Set([element.id]);
+        updateSelection({ name: input.value.trim() || element.name });
+      };
+      input.addEventListener("blur", finish, { once: true });
+      input.addEventListener("keydown", keyEvent => {
+        if (keyEvent.key === "Enter") input.blur();
+        if (keyEvent.key === "Escape") renderLayers();
+      });
+    });
+
+    row.addEventListener("dragstart", event => {
+      event.dataTransfer.setData("text/plain", element.id);
+      event.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragover", event => event.preventDefault());
+    row.addEventListener("drop", event => {
+      event.preventDefault();
+      reorderByDrop(event.dataTransfer.getData("text/plain"), element.id);
     });
 
     container.appendChild(row);
@@ -305,84 +331,86 @@ function renderLayers() {
 }
 
 function renderProperties() {
-  const element = selectedElement();
-  $("#emptyProperties").classList.toggle("hidden", Boolean(element));
-  $("#elementProperties").classList.toggle("hidden", !element);
-  $("#deleteElement").disabled = !element;
-  if (!element) return;
+  const count = selectedIds.size;
+  const primary = primarySelected();
+
+  $("#emptyProperties").classList.toggle("hidden", count > 0);
+  $("#elementProperties").classList.toggle("hidden", count !== 1);
+  $("#multiProperties").classList.toggle("hidden", count < 2);
+  $("#deleteElement").disabled = count === 0;
+
+  if (count >= 2) {
+    $("#selectionCount").textContent = `${count} elementos`;
+    return;
+  }
+  if (!primary) return;
 
   const values = {
-    propName: element.name,
-    propX: Math.round(element.x),
-    propY: Math.round(element.y),
-    propWidth: Math.round(element.width),
-    propHeight: Math.round(element.height),
-    propRotation: element.rotation || 0,
-    propOpacity: Math.round((element.opacity ?? 1) * 100)
+    propName: primary.name,
+    propX: Math.round(primary.x),
+    propY: Math.round(primary.y),
+    propWidth: Math.round(primary.width),
+    propHeight: Math.round(primary.height),
+    propRotation: primary.rotation || 0,
+    propOpacity: Math.round((primary.opacity ?? 1) * 100)
   };
   for (const [id, value] of Object.entries(values)) $(`#${id}`).value = value;
 
-  $("#textProperties").classList.toggle("hidden", element.type !== "text");
-  $("#shapeProperties").classList.toggle("hidden", element.type !== "shape");
-  $("#bindingProperties").classList.toggle("hidden", element.type !== "text");
+  $("#textProperties").classList.toggle("hidden", primary.type !== "text");
+  $("#shapeProperties").classList.toggle("hidden", primary.type !== "shape");
+  $("#bindingProperties").classList.toggle("hidden", primary.type !== "text");
 
-  if (element.type === "text") {
-    $("#propText").value = element.text || "";
-    $("#propFontFamily").value = element.fontFamily || "Inter";
-    $("#propFontSize").value = element.fontSize || 48;
-    $("#propFontWeight").value = element.fontWeight || 400;
-    $("#propAlign").value = element.align || "left";
-    $("#propColor").value = element.color || "#ffffff";
-    $("#propLineHeight").value = element.lineHeight || 1.1;
-    $("#propContentMode").value = element.contentMode || "manual";
-    $("#propBindingTemplate").value =
-      element.bindingTemplate || "{scripture.text}";
-    $("#bindingEditor").classList.toggle(
-      "hidden",
-      (element.contentMode || "manual") !== "binding"
-    );
-    $("#bindingPreview").textContent = resolveTemplate(
-      element.bindingTemplate || element.text
-    );
-  }
-
-  if (element.type === "shape") {
-    $("#propFill").value = element.fill || "#ffffff";
-    $("#propRadius").value = element.radius || 0;
+  if (primary.type === "text") {
+    $("#propText").value = primary.text || "";
+    $("#propFontFamily").value = primary.fontFamily || "Inter";
+    $("#propFontSize").value = primary.fontSize || 48;
+    $("#propFontWeight").value = primary.fontWeight || 400;
+    $("#propAlign").value = primary.align || "left";
+    $("#propColor").value = primary.color || "#ffffff";
+    $("#propLineHeight").value = primary.lineHeight || 1.1;
+    $("#propContentMode").value = primary.contentMode || "manual";
+    $("#propBindingTemplate").value = primary.bindingTemplate || "{scripture.text}";
+    $("#bindingEditor").classList.toggle("hidden", (primary.contentMode || "manual") !== "binding");
+    $("#bindingPreview").textContent = resolveTemplate(primary.bindingTemplate || primary.text);
+  } else {
+    $("#propFill").value = primary.fill || "#ffffff";
+    $("#propRadius").value = primary.radius || 0;
   }
 }
 
-function beginDrag(event, id) {
+function beginElementDrag(event, id) {
   if (event.target.classList.contains("resize-handle")) return;
-
-  const element = documentState.elements.find(item => item.id === id);
-  if (!element || element.locked) return;
+  const clicked = documentState.elements.find(element => element.id === id);
+  if (!clicked || clicked.locked) return;
 
   event.preventDefault();
-  selectedId = id;
-  selectedComponentId = event.altKey ? element.componentId || null : null;
+  event.stopPropagation();
 
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    if (!selectedIds.has(id)) selectedIds.add(id);
+  } else if (event.altKey && (clicked.groupId || clicked.componentId)) {
+    selectGroup(clicked.groupId || clicked.componentId);
+  } else if (!selectedIds.has(id)) {
+    selectedIds = new Set([id]);
+  }
+
+  const movable = selectedElements().filter(element => !element.locked);
   const origin = clone(documentState);
-  const start = {
-    pointerX: event.clientX,
-    pointerY: event.clientY,
-    elementX: element.x,
-    elementY: element.y
-  };
+  const startPositions = new Map(movable.map(element => [element.id, { x: element.x, y: element.y }]));
+  const startX = event.clientX;
+  const startY = event.clientY;
 
   function move(moveEvent) {
-    const dx = Math.round((moveEvent.clientX - start.pointerX) / scale);
-    const dy = Math.round((moveEvent.clientY - start.pointerY) / scale);
-
-    if (selectedComponentId) {
-      documentState = clone(origin);
-      updateComponentPosition(selectedComponentId, dx, dy);
-    } else {
-      updateSelected(
-        { x: start.elementX + dx, y: start.elementY + dy },
-        false
-      );
-    }
+    const dx = Math.round((moveEvent.clientX - startX) / scale);
+    const dy = Math.round((moveEvent.clientY - startY) / scale);
+    documentState = {
+      ...origin,
+      elements: origin.elements.map(element => {
+        const start = startPositions.get(element.id);
+        return start ? { ...element, x: start.x + dx, y: start.y + dy } : element;
+      })
+    };
+    render();
   }
 
   function end() {
@@ -401,42 +429,32 @@ function beginDrag(event, id) {
 function beginResize(event, id, position) {
   event.preventDefault();
   event.stopPropagation();
-
   const element = documentState.elements.find(item => item.id === id);
   if (!element || element.locked) return;
 
-  selectedId = id;
-  selectedComponentId = null;
+  selectedIds = new Set([id]);
   const origin = clone(documentState);
   const start = {
-    pointerX: event.clientX,
-    pointerY: event.clientY,
-    x: element.x,
-    y: element.y,
-    width: element.width,
-    height: element.height
+    pointerX: event.clientX, pointerY: event.clientY,
+    x: element.x, y: element.y, width: element.width, height: element.height
   };
 
   function move(moveEvent) {
     const dx = (moveEvent.clientX - start.pointerX) / scale;
     const dy = (moveEvent.clientY - start.pointerY) / scale;
     const patch = {};
-
     if (position.includes("e")) patch.width = Math.max(30, start.width + dx);
     if (position.includes("s")) patch.height = Math.max(30, start.height + dy);
     if (position.includes("w")) {
       patch.width = Math.max(30, start.width - dx);
-      patch.x = start.x + (start.width - patch.width);
+      patch.x = start.x + start.width - patch.width;
     }
     if (position.includes("n")) {
       patch.height = Math.max(30, start.height - dy);
-      patch.y = start.y + (start.height - patch.height);
+      patch.y = start.y + start.height - patch.height;
     }
-
-    updateSelected(
-      Object.fromEntries(
-        Object.entries(patch).map(([key, value]) => [key, Math.round(value)])
-      ),
+    updateSelection(
+      Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, Math.round(value)])),
       false
     );
   }
@@ -448,21 +466,228 @@ function beginResize(event, id, position) {
     historyFuture = [];
     scheduleSave();
   }
-
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", end);
 }
 
+function beginMarqueeSelection(event) {
+  if (event.target !== stage) return;
+  event.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const startX = (event.clientX - rect.left) / scale;
+  const startY = (event.clientY - rect.top) / scale;
+  const marquee = document.createElement("div");
+  marquee.className = "selection-marquee";
+  stage.appendChild(marquee);
+
+  function move(moveEvent) {
+    const currentX = (moveEvent.clientX - rect.left) / scale;
+    const currentY = (moveEvent.clientY - rect.top) / scale;
+    const left = Math.min(startX, currentX);
+    const top = Math.min(startY, currentY);
+    const width = Math.abs(currentX - startX);
+    const height = Math.abs(currentY - startY);
+    Object.assign(marquee.style, {
+      left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px`
+    });
+
+    const next = new Set();
+    for (const element of documentState.elements) {
+      const intersects =
+        element.x < left + width &&
+        element.x + element.width > left &&
+        element.y < top + height &&
+        element.y + element.height > top;
+      if (intersects) next.add(element.id);
+    }
+    selectedIds = next;
+    renderLayers();
+    renderProperties();
+  }
+
+  function end() {
+    marquee.remove();
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", end);
+    render();
+  }
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", end);
+}
+
+function addElement(type) {
+  const element = createElement(type);
+  selectedIds = new Set([element.id]);
+  commit({ ...documentState, elements: [...documentState.elements, element] });
+}
+
+async function addBroadcastComponent(type) {
+  const origin = clone(documentState);
+  const response = await api(`/api/editor/components/${type}`, {
+    method: "POST",
+    body: JSON.stringify({ x: type === "scripture" ? 150 : 140, y: type === "scripture" ? 650 : 785 })
+  });
+  documentState = response.document;
+  selectedIds = new Set((response.elements || []).map(element => element.id));
+  historyPast.push(origin);
+  historyFuture = [];
+  render();
+  $("#componentsPanel").classList.add("hidden");
+}
+
+function copySelection() {
+  clipboardElements = clone(selectedElements());
+  pasteOffset = 0;
+}
+
+function pasteSelection() {
+  if (!clipboardElements.length) return;
+  pasteOffset += 30;
+  const groupMap = new Map();
+  const componentMap = new Map();
+  const pasted = clipboardElements.map(element => {
+    if (element.groupId && !groupMap.has(element.groupId)) groupMap.set(element.groupId, crypto.randomUUID());
+    if (element.componentId && !componentMap.has(element.componentId)) componentMap.set(element.componentId, crypto.randomUUID());
+    return {
+      ...clone(element),
+      id: crypto.randomUUID(),
+      name: `${element.name} copia`,
+      x: element.x + pasteOffset,
+      y: element.y + pasteOffset,
+      groupId: element.groupId ? groupMap.get(element.groupId) : undefined,
+      componentId: element.componentId ? componentMap.get(element.componentId) : undefined
+    };
+  });
+  selectedIds = new Set(pasted.map(element => element.id));
+  commit({ ...documentState, elements: [...documentState.elements, ...pasted] });
+}
+
+function duplicateSelection() {
+  copySelection();
+  pasteSelection();
+}
+
+function deleteSelection() {
+  if (!selectedIds.size) return;
+  commit({
+    ...documentState,
+    elements: documentState.elements.filter(element => !selectedIds.has(element.id))
+  });
+  selectedIds.clear();
+  render();
+}
+
+function groupSelection() {
+  if (selectedIds.size < 2) return;
+  const groupId = crypto.randomUUID();
+  updateSelection({ groupId });
+}
+
+function ungroupSelection() {
+  if (!selectedIds.size) return;
+  updateSelection({ groupId: undefined });
+}
+
+function alignSelection(mode) {
+  const elements = selectedElements();
+  if (elements.length < 2) return;
+  const bounds = selectionBounds(elements);
+  const next = {
+    ...documentState,
+    elements: documentState.elements.map(element => {
+      if (!selectedIds.has(element.id)) return element;
+      if (mode === "left") return { ...element, x: bounds.left };
+      if (mode === "right") return { ...element, x: bounds.right - element.width };
+      if (mode === "top") return { ...element, y: bounds.top };
+      if (mode === "bottom") return { ...element, y: bounds.bottom - element.height };
+      if (mode === "centerX") return { ...element, x: bounds.left + (bounds.width - element.width) / 2 };
+      if (mode === "centerY") return { ...element, y: bounds.top + (bounds.height - element.height) / 2 };
+      return element;
+    })
+  };
+  commit(next);
+}
+
+function distributeSelection(axis) {
+  const elements = selectedElements();
+  if (elements.length < 3) return;
+  const sorted = [...elements].sort((a, b) => axis === "horizontal" ? a.x - b.x : a.y - b.y);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const totalSize = sorted.reduce((sum, element) => sum + (axis === "horizontal" ? element.width : element.height), 0);
+  const span = axis === "horizontal"
+    ? last.x + last.width - first.x
+    : last.y + last.height - first.y;
+  const gap = (span - totalSize) / (sorted.length - 1);
+  let cursor = axis === "horizontal" ? first.x : first.y;
+  const positions = new Map();
+  for (const element of sorted) {
+    positions.set(element.id, cursor);
+    cursor += (axis === "horizontal" ? element.width : element.height) + gap;
+  }
+  commit({
+    ...documentState,
+    elements: documentState.elements.map(element =>
+      positions.has(element.id)
+        ? { ...element, [axis === "horizontal" ? "x" : "y"]: positions.get(element.id) }
+        : element
+    )
+  });
+}
+
+function selectionBounds(elements) {
+  const left = Math.min(...elements.map(element => element.x));
+  const top = Math.min(...elements.map(element => element.y));
+  const right = Math.max(...elements.map(element => element.x + element.width));
+  const bottom = Math.max(...elements.map(element => element.y + element.height));
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
+function reorderByDrop(draggedId, targetId) {
+  if (!draggedId || draggedId === targetId) return;
+  const elements = [...documentState.elements];
+  const from = elements.findIndex(element => element.id === draggedId);
+  const to = elements.findIndex(element => element.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [moved] = elements.splice(from, 1);
+  elements.splice(to, 0, moved);
+  commit({ ...documentState, elements });
+}
+
+function reorder(direction) {
+  if (selectedIds.size !== 1) return;
+  const id = [...selectedIds][0];
+  const elements = [...documentState.elements];
+  const index = elements.findIndex(element => element.id === id);
+  const target = direction === "up" ? index + 1 : index - 1;
+  if (target < 0 || target >= elements.length) return;
+  [elements[index], elements[target]] = [elements[target], elements[index]];
+  commit({ ...documentState, elements });
+}
+
+function nudge(dx, dy) {
+  if (!selectedIds.size) return;
+  const origin = clone(documentState);
+  documentState = {
+    ...documentState,
+    elements: documentState.elements.map(element =>
+      selectedIds.has(element.id) && !element.locked
+        ? { ...element, x: element.x + dx, y: element.y + dy }
+        : element
+    )
+  };
+  historyPast.push(origin);
+  historyFuture = [];
+  render();
+  scheduleSave();
+}
+
 function fitStage() {
   const viewport = $("#stageViewport");
-  const horizontalPadding = 64;
-  const verticalPadding = 64;
-  const availableWidth = Math.max(320, viewport.clientWidth - horizontalPadding);
-  const availableHeight = Math.max(180, viewport.clientHeight - verticalPadding);
-  scale = Math.min(availableWidth / 1920, availableHeight / 1080, 1);
-  setScale(scale);
+  const availableWidth = Math.max(320, viewport.clientWidth - 64);
+  const availableHeight = Math.max(180, viewport.clientHeight - 64);
+  setScale(Math.min(availableWidth / 1920, availableHeight / 1080, 1));
   viewport.scrollTop = 0;
-  viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
 }
 
 function setScale(nextScale) {
@@ -475,194 +700,124 @@ function setScale(nextScale) {
   $("#zoomLabel").textContent = `${Math.round(scale * 100)}%`;
 }
 
-function addElement(type) {
-  const element = createElement(type);
-  selectedId = element.id;
-  selectedComponentId = null;
-  commit({ ...documentState, elements: [...documentState.elements, element] });
-}
-
-async function addBroadcastComponent(type) {
-  const origin = clone(documentState);
-  const response = await api(`/api/editor/components/${type}`, {
-    method: "POST",
-    body: JSON.stringify({
-      x: type === "scripture" ? 150 : 140,
-      y: type === "scripture" ? 650 : 785
-    })
-  });
-  const added = response.elements || [];
-  documentState = response.document;
-  selectedId = added.find(element => element.type === "text")?.id || added[0]?.id || null;
-  selectedComponentId = added[0]?.componentId || null;
-  historyPast.push(origin);
-  historyFuture = [];
-  render();
-  $("#componentsPanel").classList.add("hidden");
-}
-
-function reorder(direction) {
-  const elements = [...documentState.elements];
-  const index = elements.findIndex(element => element.id === selectedId);
-  const target = direction === "up" ? index + 1 : index - 1;
-  if (index < 0 || target < 0 || target >= elements.length) return;
-  [elements[index], elements[target]] = [elements[target], elements[index]];
-  commit({ ...documentState, elements });
-}
-
-function deleteSelection() {
-  if (selectedComponentId) {
-    commit({
-      ...documentState,
-      elements: documentState.elements.filter(
-        element => element.componentId !== selectedComponentId
-      )
-    });
-  } else if (selectedId) {
-    commit({
-      ...documentState,
-      elements: documentState.elements.filter(
-        element => element.id !== selectedId
-      )
-    });
-  }
-  selectedId = null;
-  selectedComponentId = null;
-  render();
-}
-
 const propertyBindings = {
   propName: ["name", String],
-  propX: ["x", Number],
-  propY: ["y", Number],
-  propWidth: ["width", Number],
-  propHeight: ["height", Number],
+  propX: ["x", Number], propY: ["y", Number],
+  propWidth: ["width", Number], propHeight: ["height", Number],
   propRotation: ["rotation", Number],
   propOpacity: ["opacity", value => Number(value) / 100],
-  propText: ["text", String],
-  propFontFamily: ["fontFamily", String],
-  propFontSize: ["fontSize", Number],
-  propFontWeight: ["fontWeight", Number],
-  propAlign: ["align", String],
-  propColor: ["color", String],
-  propLineHeight: ["lineHeight", Number],
-  propFill: ["fill", String],
-  propRadius: ["radius", Number],
-  propContentMode: ["contentMode", String],
+  propText: ["text", String], propFontFamily: ["fontFamily", String],
+  propFontSize: ["fontSize", Number], propFontWeight: ["fontWeight", Number],
+  propAlign: ["align", String], propColor: ["color", String],
+  propLineHeight: ["lineHeight", Number], propFill: ["fill", String],
+  propRadius: ["radius", Number], propContentMode: ["contentMode", String],
   propBindingTemplate: ["bindingTemplate", String]
 };
 
 for (const [id, [key, cast]] of Object.entries(propertyBindings)) {
-  $(`#${id}`).addEventListener("change", event =>
-    updateSelected({ [key]: cast(event.target.value) })
-  );
+  $(`#${id}`).addEventListener("change", event => updateSelection({ [key]: cast(event.target.value) }));
 }
 
 $("#addText").addEventListener("click", () => addElement("text"));
 $("#addShape").addEventListener("click", () => addElement("shape"));
 $("#deleteElement").addEventListener("click", deleteSelection);
+$("#duplicateSelection").addEventListener("click", duplicateSelection);
+$("#groupSelection").addEventListener("click", groupSelection);
+$("#ungroupSelection").addEventListener("click", ungroupSelection);
 $("#bringForward").addEventListener("click", () => reorder("up"));
 $("#sendBackward").addEventListener("click", () => reorder("down"));
 $("#undo").addEventListener("click", undo);
 $("#redo").addEventListener("click", redo);
-$("#zoomSelect")?.addEventListener("change", event => {
-  if (event.target.value === "fit") {
-    fitStage();
-  } else {
-    setScale(Number(event.target.value));
-  }
-});
 $("#saveDocument").addEventListener("click", save);
 
+$("#zoomSelect").addEventListener("change", event =>
+  event.target.value === "fit" ? fitStage() : setScale(Number(event.target.value))
+);
 $("#documentName").addEventListener("change", event =>
   commit({ ...documentState, name: event.target.value })
 );
 $("#documentBackground").addEventListener("change", event =>
   commit({ ...documentState, background: event.target.value })
 );
-$("#toggleSafe")?.addEventListener("change", () => render());
-$("#toggleGrid")?.addEventListener("change", event =>
-  $("#stageViewport")?.classList.toggle("no-grid", !event.target.checked)
-);
-
 $("#documentTransparent").addEventListener("change", event =>
   commit({ ...documentState, outputTransparent: event.target.checked })
 );
-
-$("#openComponents")?.addEventListener("click", () =>
-  $("#componentsPanel")?.classList.toggle("hidden")
+$("#toggleSafe").addEventListener("change", render);
+$("#toggleGrid").addEventListener("change", event =>
+  $("#stageViewport").classList.toggle("no-grid", !event.target.checked)
 );
-$("#closeComponents")?.addEventListener("click", () =>
-  $("#componentsPanel")?.classList.add("hidden")
-);
-document.querySelectorAll("[data-component]").forEach(button => {
-  button.addEventListener("click", () =>
-    addBroadcastComponent(button.dataset.component)
-  );
-});
+$("#openComponents").addEventListener("click", () => $("#componentsPanel").classList.toggle("hidden"));
+$("#closeComponents").addEventListener("click", () => $("#componentsPanel").classList.add("hidden"));
 
-document.querySelectorAll("[data-binding]").forEach(button => {
+document.querySelectorAll("[data-component]").forEach(button =>
+  button.addEventListener("click", () => addBroadcastComponent(button.dataset.component))
+);
+document.querySelectorAll("[data-binding]").forEach(button =>
   button.addEventListener("click", () => {
-    const element = selectedElement();
+    const element = primarySelected();
     if (!element || element.type !== "text") return;
     const token = button.dataset.binding;
     const current = $("#propBindingTemplate").value || "";
-    const next =
-      current && !current.endsWith(" ")
-        ? `${current} ${token}`
-        : `${current}${token}`;
+    const next = current && !current.endsWith(" ") ? `${current} ${token}` : `${current}${token}`;
     $("#propBindingTemplate").value = next;
-    updateSelected({ contentMode: "binding", bindingTemplate: next });
-  });
-});
-
-window.addEventListener("resize", fitStage);
-$("#stageViewport").addEventListener(
-  "wheel",
-  event => {
-    if (!event.ctrlKey) return;
-    event.preventDefault();
-    setScale(scale + (event.deltaY < 0 ? 0.1 : -0.1));
-  },
-  { passive: false }
+    updateSelection({ contentMode: "binding", bindingTemplate: next });
+  })
+);
+document.querySelectorAll("[data-align]").forEach(button =>
+  button.addEventListener("click", () => alignSelection(button.dataset.align))
+);
+document.querySelectorAll("[data-distribute]").forEach(button =>
+  button.addEventListener("click", () => distributeSelection(button.dataset.distribute))
 );
 
+window.addEventListener("resize", fitStage);
+$("#stageViewport").addEventListener("wheel", event => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  setScale(scale + (event.deltaY < 0 ? 0.1 : -0.1));
+}, { passive: false });
+
 window.addEventListener("keydown", event => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+  const editing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  const mod = event.ctrlKey || event.metaKey;
+
+  if (mod && event.key.toLowerCase() === "z") {
     event.preventDefault();
     event.shiftKey ? redo() : undo();
-  }
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+  } else if (mod && event.key.toLowerCase() === "s") {
+    event.preventDefault(); save();
+  } else if (mod && event.key.toLowerCase() === "c" && !editing) {
+    event.preventDefault(); copySelection();
+  } else if (mod && event.key.toLowerCase() === "v" && !editing) {
+    event.preventDefault(); pasteSelection();
+  } else if (mod && event.key.toLowerCase() === "d" && !editing) {
+    event.preventDefault(); duplicateSelection();
+  } else if (mod && event.key.toLowerCase() === "g" && !editing) {
+    event.preventDefault(); groupSelection();
+  } else if (mod && event.key.toLowerCase() === "a" && !editing) {
     event.preventDefault();
-    save();
-  }
-  if (
-    (event.key === "Delete" || event.key === "Backspace") &&
-    selectedId &&
-    !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)
-  ) {
+    selectedIds = new Set(documentState.elements.map(element => element.id));
+    render();
+  } else if (!editing && (event.key === "Delete" || event.key === "Backspace")) {
     deleteSelection();
-  }
-  if (event.key === "Escape") {
-    selectedId = null;
-    selectedComponentId = null;
+  } else if (!editing && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+    event.preventDefault();
+    const amount = event.shiftKey ? 10 : 1;
+    nudge(
+      event.key === "ArrowLeft" ? -amount : event.key === "ArrowRight" ? amount : 0,
+      event.key === "ArrowUp" ? -amount : event.key === "ArrowDown" ? amount : 0
+    );
+  } else if (event.key === "Escape") {
+    selectedIds.clear();
     $("#componentsPanel").classList.add("hidden");
     render();
   }
 });
 
 function escapeHtml(text) {
-  return String(text).replace(
-    /[&<>"']/g,
-    char =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;"
-      })[char]
-  );
+  return String(text).replace(/[&<>"']/g, char => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[char]);
 }
 
 const outputState = await api("/api/graphics/output");
@@ -680,5 +835,5 @@ for (const eventName of ["scripture-updated", "lower-third-updated"]) {
 render();
 requestAnimationFrame(() => {
   fitStage();
-  if ($("#zoomSelect")) $("#zoomSelect").value = "fit";
+  $("#zoomSelect").value = "fit";
 });

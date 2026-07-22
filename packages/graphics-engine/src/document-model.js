@@ -31,7 +31,8 @@ export function createElement(type, overrides = {}) {
     locked: overrides.locked ?? false,
     componentId: overrides.componentId,
     componentType: overrides.componentType,
-    componentRole: overrides.componentRole
+    componentRole: overrides.componentRole,
+    groupId: overrides.groupId
   };
 
   if (type === "text") {

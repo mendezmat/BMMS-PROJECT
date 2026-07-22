@@ -106,3 +106,40 @@
   letter-spacing:.06em;
   pointer-events:none;
 }
+
+/* BMMS 0.8.0 Editor Experience */
+.editor-element.multi-selected{outline:3px solid #8c5cff}
+.selection-marquee{
+  position:absolute;
+  border:2px solid #2c73ff;
+  background:rgba(44,115,255,.12);
+  pointer-events:none;
+  z-index:9999;
+}
+.selection-summary{
+  display:grid;
+  gap:4px;
+  padding:12px;
+  border:1px solid #303844;
+  border-radius:8px;
+  background:#171c23;
+}
+.selection-summary span{font-size:11px;color:#8f99a6}
+.align-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.align-grid button{font-size:11px;padding:8px 5px}
+.layer{grid-template-columns:22px 22px 1fr 22px 22px}
+.layer.multi-selected{background:#30264a;color:#fff}
+.layer-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer-name-input{padding:4px 6px;font-size:12px}
+.layer-visibility,.layer-lock{font-size:12px}
+.group-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:18px;
+  height:18px;
+  border-radius:4px;
+  background:#2a313b;
+  color:#9fa9b5;
+  font-size:9px;
+}

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0] - 2026-07-22
+
+### Added
+
+- Multi-selection and marquee selection.
+- Copy, paste and duplicate.
+- Group and ungroup.
+- Alignment and distribution tools.
+- Keyboard nudging and select all.
+- Layer visibility, locking and inline renaming.
+- Drag-and-drop layer ordering.
+- Multi-selection property panel.
+
 ## [0.7.4] - 2026-07-22
 
 ### Fixed
