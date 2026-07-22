@@ -8,75 +8,249 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
+    <div class="brand">
       <strong>BMMS Graphics</strong>
-      <span class="version">Prototype v0.1</span>
+      <span class="version">v0.3.0</span>
     </div>
-    <a href="/overlay/lower-third" target="_blank">Abrir overlay</a>
+    <div class="top-actions">
+      <span id="saveState" class="save-state">Guardado</span>
+      <a href="/overlay/lower-third" target="_blank">Abrir overlay</a>
+    </div>
   </header>
 
   <main class="layout">
     <aside class="sidebar">
-      <button class="nav active">Lower Third</button>
-      <button class="nav" disabled>Scripture</button>
-      <button class="nav" disabled>Smart Flyer</button>
-      <button class="nav" disabled>Countdown</button>
+      <div class="nav-group-label">GRÁFICOS</div>
+      <button class="nav active" data-view="lower-third">Lower Third</button>
+      <button class="nav" data-view="scripture">Scripture</button>
+      <button class="nav" disabled>Smart Flyer <span>Próximo</span></button>
+      <button class="nav" disabled>Countdown <span>Próximo</span></button>
+      <div class="nav-spacer"></div>
+      <div class="nav-group-label">SISTEMA</div>
+      <button class="nav" data-view="integrations">Integraciones</button>
     </aside>
 
     <section class="workspace">
-      <div class="section-title">
-        <div>
-          <h1>Lower Third</h1>
-          <p>Primer vertical slice funcional de BMMS.</p>
+      <section class="view active" id="view-lower-third">
+        <div class="section-title">
+          <div><h1>Lower Third</h1><p>Vertical slice funcional de BMMS.</p></div>
+          <span id="statusBadge" class="badge preview">PREVIEW</span>
         </div>
-        <span id="statusBadge" class="badge preview">PREVIEW</span>
-      </div>
+        <div class="preview-frame">
+          <iframe id="preview" src="/overlay/lower-third" title="Preview"></iframe>
+        </div>
+        <div class="transport">
+          <button id="takeIn" class="primary">TAKE IN</button>
+          <button id="takeOut">TAKE OUT</button>
+        </div>
+      </section>
 
-      <div class="preview-frame">
-        <iframe id="preview" src="/overlay/lower-third" title="Preview"></iframe>
-      </div>
+      <section class="view" id="view-scripture">
+        <div class="section-title">
+          <div><h1>Scripture</h1><p>Contenido bíblico manual o conectado a ProPresenter.</p></div>
+          <span id="scriptureSourceBadge" class="badge preview">MANUAL</span>
+        </div>
 
-      <div class="transport">
-        <button id="takeIn" class="primary">TAKE IN</button>
-        <button id="takeOut">TAKE OUT</button>
-      </div>
+        <div class="source-switch">
+          <button class="source-option active" data-source="manual">
+            <strong>Manual</strong><small>Escribir y controlar el contenido en BMMS</small>
+          </button>
+          <button class="source-option" data-source="propresenter">
+            <strong>ProPresenter</strong><small>Escuchar el contenido proyectado</small>
+          </button>
+        </div>
+
+        <div class="scripture-grid">
+          <div class="settings-stack">
+            <details class="panel" open>
+              <summary>Contenido</summary>
+              <div class="panel-body">
+                <div id="manualContent" class="source-panel">
+                  <div class="form-grid two">
+                    <label>Referencia<input id="scriptureReference"></label>
+                    <label>Versión<input id="scriptureVersion"></label>
+                  </div>
+                  <label>Texto<textarea id="scriptureText" rows="7"></textarea></label>
+                </div>
+
+                <div id="propresenterContent" class="source-panel hidden">
+                  <div class="connection-card">
+                    <span id="scriptureConnectionDot" class="dot"></span>
+                    <div>
+                      <strong id="scriptureConnectionTitle">ProPresenter desconectado</strong>
+                      <p id="scriptureConnectionDetail">Configure la integración para recibir contenido.</p>
+                    </div>
+                    <button data-open-integrations>Configurar</button>
+                  </div>
+                  <div class="incoming-card">
+                    <span class="eyebrow">CONTENIDO RECIBIDO</span>
+                    <h3 id="incomingReference">Sin contenido</h3>
+                    <p id="incomingText">Cuando llegue un cambio desde ProPresenter aparecerá aquí.</p>
+                    <small id="incomingMeta"></small>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="panel">
+              <summary>Composición</summary>
+              <div class="panel-body form-grid two">
+                <label>Distribución
+                  <select id="layoutMode">
+                    <option value="automatic">Automática</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+                <label>Columnas
+                  <select id="columns"><option value="1">1</option><option value="2">2</option></select>
+                </label>
+                <label>Alineación
+                  <select id="scriptureAlign">
+                    <option value="left">Izquierda</option>
+                    <option value="center">Centro</option>
+                  </select>
+                </label>
+                <label>Máximo de líneas<input id="maxLines" type="number" min="2" max="14"></label>
+                <label class="check-row full"><input id="balanceText" type="checkbox"> Balancear texto automáticamente</label>
+              </div>
+            </details>
+
+            <details class="panel">
+              <summary>Apariencia</summary>
+              <div class="panel-body">
+                <label>Editar elemento
+                  <select id="selectedElement">
+                    <option value="text">Texto bíblico</option>
+                    <option value="reference">Referencia</option>
+                    <option value="both">Ambos</option>
+                  </select>
+                </label>
+                <div class="form-grid two">
+                  <label>Tipografía<input id="fontFamily"></label>
+                  <label>Tamaño<input id="fontSize" type="number" min="18" max="160"></label>
+                  <label>Peso
+                    <select id="fontWeight">
+                      <option value="400">Regular</option>
+                      <option value="600">Semibold</option>
+                      <option value="700">Bold</option>
+                      <option value="800">Extra Bold</option>
+                    </select>
+                  </label>
+                  <label>Interlineado<input id="lineHeight" type="number" min="0.8" max="2" step="0.05"></label>
+                  <label>Color texto<input id="textColor" type="color"></label>
+                  <label>Color fondo<input id="backgroundColor" type="color"></label>
+                </div>
+              </div>
+            </details>
+
+            <details class="panel">
+              <summary>Animación</summary>
+              <div class="panel-body form-grid two">
+                <label>Entrada
+                  <select id="animationIn">
+                    <option value="fade-up">Fade Up</option>
+                    <option value="fade">Fade</option>
+                    <option value="slide-left">Slide Left</option>
+                  </select>
+                </label>
+                <label>Salida
+                  <select id="animationOut">
+                    <option value="fade-down">Fade Down</option>
+                    <option value="fade">Fade</option>
+                    <option value="slide-right">Slide Right</option>
+                  </select>
+                </label>
+                <label class="full">Duración<input id="scriptureAnimationMs" type="range" min="100" max="1600" step="50"><output id="scriptureAnimationValue"></output></label>
+              </div>
+            </details>
+          </div>
+
+          <aside class="scripture-preview-panel">
+            <span class="eyebrow">PREVIEW DE COMPOSICIÓN</span>
+            <div id="scripturePreview" class="scripture-preview">
+              <div id="previewScriptureText"></div>
+              <div id="previewScriptureReference"></div>
+            </div>
+            <div class="transport">
+              <button id="scriptureTakeIn" class="primary">TAKE IN</button>
+              <button id="scriptureTakeOut">TAKE OUT</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="view-integrations">
+        <div class="section-title">
+          <div><h1>Integraciones</h1><p>Conexiones globales utilizadas por los módulos BMMS.</p></div>
+        </div>
+
+        <div class="integration-card">
+          <div class="integration-heading">
+            <div>
+              <span class="eyebrow">INTEGRACIÓN GLOBAL</span>
+              <h2>ProPresenter</h2>
+              <p>Una sola conexión compartida por Scripture, Smart Flyer y futuros módulos.</p>
+            </div>
+            <span id="integrationStatus" class="connection-pill disconnected">Desactivado</span>
+          </div>
+
+          <label class="enable-row">
+            <span><strong>Activar integración</strong><small>Permite que BMMS intente comunicarse con ProPresenter.</small></span>
+            <input id="ppEnabled" type="checkbox">
+          </label>
+
+          <div class="form-grid two integration-form">
+            <label>IP o nombre del equipo<input id="ppHost" placeholder="192.168.1.50"></label>
+            <label>Puerto<input id="ppPort" type="number" min="1" max="65535"></label>
+            <label>Protocolo
+              <select id="ppProtocol">
+                <option value="auto">Automático</option>
+                <option value="websocket">WebSocket</option>
+                <option value="http">HTTP</option>
+              </select>
+            </label>
+            <label class="check-row"><input id="ppAutoConnect" type="checkbox"> Conectar automáticamente</label>
+            <label class="check-row"><input id="ppReconnect" type="checkbox"> Reconexión automática</label>
+            <label class="check-row"><input id="ppMonitorText" type="checkbox"> Escuchar texto y Scripture</label>
+            <label class="check-row"><input id="ppMonitorMedia" type="checkbox"> Escuchar imágenes y flyers</label>
+          </div>
+
+          <div id="integrationMessage" class="message neutral">
+            El transporte real se conectará en la siguiente etapa. Esta pantalla ya guarda y valida la configuración.
+          </div>
+
+          <div class="button-row">
+            <button id="testProPresenter">Probar conexión</button>
+            <button id="saveProPresenter" class="primary">Guardar configuración</button>
+          </div>
+        </div>
+
+        <div class="integration-card simulator">
+          <div>
+            <span class="eyebrow">HERRAMIENTA DE DESARROLLO</span>
+            <h2>Simulador de Scripture</h2>
+            <p>Simula un cambio de texto proveniente de ProPresenter para validar el flujo completo.</p>
+          </div>
+          <div class="form-grid two">
+            <label>Referencia<input id="simReference" value="Salmos 23:1"></label>
+            <label>Versión<input id="simVersion" value="RVR1960"></label>
+            <label class="full">Texto<textarea id="simText" rows="3">Jehová es mi pastor; nada me faltará.</textarea></label>
+          </div>
+          <button id="simulateScripture">Enviar evento simulado</button>
+        </div>
+      </section>
     </section>
 
-    <aside class="inspector">
+    <aside class="inspector" id="lowerThirdInspector">
       <h2>Propiedades</h2>
-
-      <label>
-        Línea principal
-        <input id="primary" maxlength="80">
+      <label>Línea principal<input id="primary" maxlength="80"></label>
+      <label>Línea secundaria<input id="secondary" maxlength="100"></label>
+      <label>Etiqueta<input id="accent" maxlength="30"></label>
+      <label>Alineación
+        <select id="align"><option value="left">Izquierda</option><option value="center">Centro</option></select>
       </label>
-
-      <label>
-        Línea secundaria
-        <input id="secondary" maxlength="100">
-      </label>
-
-      <label>
-        Etiqueta
-        <input id="accent" maxlength="30">
-      </label>
-
-      <label>
-        Alineación
-        <select id="align">
-          <option value="left">Izquierda</option>
-          <option value="center">Centro</option>
-        </select>
-      </label>
-
-      <label>
-        Animación
-        <input id="animationMs" type="range" min="100" max="1200" step="20">
-        <output id="animationValue"></output>
-      </label>
-
-      <div class="info">
-        Los cambios se guardan automáticamente y aparecen en el overlay en tiempo real.
-      </div>
+      <label>Animación<input id="animationMs" type="range" min="100" max="1200" step="20"><output id="animationValue"></output></label>
+      <div class="info">Los cambios se guardan automáticamente y aparecen en el overlay en tiempo real.</div>
     </aside>
   </main>
 

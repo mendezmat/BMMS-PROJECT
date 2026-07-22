@@ -17,3 +17,9 @@ is not production-ready.
 
 Product implementation, beginning with Foundation stabilization and the Lower
 Third vertical slice.
+
+## Milestone 0.3.0
+
+The ProPresenter integration and Scripture source architecture are now visible
+and operable in the UI. The next implementation milestone is the real
+ProPresenter transport and validation against a supported ProPresenter version.

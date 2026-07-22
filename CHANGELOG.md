@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] - 2026-07-22
+
+### Added
+
+- Visible global ProPresenter settings interface.
+- Scripture Manual/ProPresenter source selector.
+- Organized Scripture Content, Composition, Appearance and Animation controls.
+- Scripture composition preview.
+- Persistent BMMS application state.
+- ProPresenter Scripture simulator.
+- Application Server-Sent Events.
+- Integration tests for default application state.
+
 ## [0.2.0] - 2026-07-22
 
 ### Added
