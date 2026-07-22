@@ -10,6 +10,7 @@ import {
 } from "../../packages/foundation/src/index.js";
 import { OverlayRuntime } from "../../packages/overlay-runtime/src/index.js";
 import { defaultAppState } from "../../packages/shared/src/default-app-state.js";
+import { defaultGraphicsDocument } from "../../packages/shared/src/default-graphics-document.js";
 import { ProPresenterAdapter } from "../../packages/integrations/src/propresenter/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,7 @@ const proPresenter = services.register(
 );
 
 let appState = persistedState;
+let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
 const appClients = new Set();
 
 function broadcast(type, payload) {
@@ -118,8 +120,40 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/styles.css") {
     return serveFile(response, "styles.css", "text/css; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/editor") {
+    return serveFile(response, "editor.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/editor.js") {
+    return serveFile(response, "editor.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/editor.css") {
+    return serveFile(response, "editor.css", "text/css; charset=utf-8");
+  }
   if (request.method === "GET" && url.pathname === "/overlay/lower-third") {
     return serveFile(response, "overlay.html", "text/html; charset=utf-8");
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/editor/document") {
+    return json(response, 200, graphicsDocument);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/editor/document") {
+    try {
+      const incoming = await readJson(request);
+      if (!incoming || !Array.isArray(incoming.elements)) {
+        return json(response, 400, { error: "Invalid graphics document." });
+      }
+      graphicsDocument = {
+        ...incoming,
+        width: 1920,
+        height: 1080,
+        updatedAt: new Date().toISOString()
+      };
+      await saveState({ ...appState, graphicsDocument });
+      return json(response, 200, graphicsDocument);
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
   }
 
   if (request.method === "GET" && url.pathname === "/api/app-state") {

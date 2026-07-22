@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] - 2026-07-22
+
+### Added
+
+- Shared graphics document model.
+- BMMS Visual Editor route and interface.
+- Text and shape tools.
+- Direct element dragging and resizing.
+- Layer selection and ordering.
+- Contextual property inspector.
+- Undo/redo and persistent document storage.
+- Graphics engine automated tests.
+
 ## [0.3.0] - 2026-07-22
 
 ### Added
