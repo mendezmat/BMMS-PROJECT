@@ -529,3 +529,175 @@ body.scripture-preview-large .scripture-live-preview .scripture-output-frame {
   width: min(100%, 1920px);
   margin: 0 auto;
 }
+
+
+/* Update 027 — horizontal Preview toolbar and visual editor */
+.preview-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.preview-title {
+  display: grid;
+  gap: 2px;
+}
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin: 10px 0 12px;
+  border: 1px solid rgba(148,163,184,.18);
+  border-radius: 12px;
+  background: rgba(15,23,42,.72);
+}
+.preview-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.preview-toolbar-group + .preview-toolbar-group {
+  padding-left: 10px;
+  border-left: 1px solid rgba(148,163,184,.18);
+}
+.preview-toolbar button,
+.preview-toolbar select {
+  min-height: 34px;
+}
+.preview-toolbar button {
+  white-space: nowrap;
+}
+.preview-toolbar button.is-active {
+  border-color: rgba(96,165,250,.72);
+  background: rgba(37,99,235,.18);
+  box-shadow: inset 0 0 0 1px rgba(96,165,250,.12);
+}
+.toolbar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted, #94a3b8);
+}
+.toolbar-field.compact select {
+  min-width: 78px;
+}
+.scripture-output-frame {
+  position: relative;
+}
+.visual-editor-layer {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 12;
+  width: calc(1920px * var(--editor-scale, .5));
+  height: calc(1080px * var(--editor-scale, .5));
+  pointer-events: none;
+  overflow: hidden;
+}
+.editor-safe-area {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 5%;
+  bottom: 5%;
+  border: 1px dashed rgba(255,255,255,.42);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.28);
+}
+.editor-safe-area::after {
+  content: "SAFE AREA";
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(0,0,0,.55);
+  color: rgba(255,255,255,.72);
+  font: 600 10px/1 system-ui,sans-serif;
+  letter-spacing: .08em;
+}
+.editor-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px);
+  background-size: var(--grid-size, 16px) var(--grid-size, 16px);
+}
+.editor-center-guide {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(96,165,250,.72);
+}
+.visual-editor-layer:has(.composition-selection.is-editing) .editor-center-guide {
+  opacity: .55;
+}
+.editor-center-guide.vertical {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+.editor-center-guide.horizontal {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+}
+.composition-selection {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  border: 1px solid rgba(96,165,250,.95);
+  background: rgba(37,99,235,.035);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.08);
+  touch-action: none;
+}
+.composition-selection.is-editing {
+  background: rgba(37,99,235,.08);
+  border-color: #93c5fd;
+}
+.selection-label {
+  position: absolute;
+  left: -1px;
+  top: -25px;
+  padding: 5px 8px;
+  border-radius: 6px 6px 0 0;
+  background: rgba(37,99,235,.95);
+  color: white;
+  font: 700 10px/1 system-ui,sans-serif;
+  letter-spacing: .05em;
+}
+.resize-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 2px solid rgba(15,23,42,.95);
+  border-radius: 3px;
+  background: #bfdbfe;
+}
+.handle-left { left: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+.handle-right { right: -6px; top: calc(50% - 6px); cursor: ew-resize; }
+.handle-top { top: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+.handle-bottom { bottom: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+.handle-corner { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.is-hidden { display: none !important; }
+
+@media (max-width: 1180px) {
+  .preview-toolbar {
+    align-items: stretch;
+  }
+  .preview-toolbar-group {
+    width: 100%;
+  }
+  .preview-toolbar-group + .preview-toolbar-group {
+    padding-left: 0;
+    padding-top: 8px;
+    border-left: 0;
+    border-top: 1px solid rgba(148,163,184,.18);
+  }
+}

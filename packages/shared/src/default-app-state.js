@@ -2,6 +2,8 @@ import { defaultLowerThird } from "./default-lower-third.js";
 import { defaultProjectSettings } from "./default-project-settings.js";
 
 export const defaultAppState = Object.freeze({
+  activeSceneId: null,
+  scenes: [],
   lowerThird: defaultLowerThird,
   settings: defaultProjectSettings,
   scripture: {
@@ -28,10 +30,17 @@ export const defaultAppState = Object.freeze({
       maxLines: 4,
       balance: true,
       bottom: 28,
+      offsetX: 0,
       width: 1660,
       scaleX: 1,
       scaleY: 1,
-      horizontalPadding: 72
+      horizontalPadding: 72,
+      editor: {
+        safeArea: true,
+        grid: false,
+        snap: true,
+        gridSize: 32
+      }
     },
     appearance: {
       selectedElement: "both",

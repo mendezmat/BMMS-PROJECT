@@ -207,7 +207,50 @@ function queueScriptureSave(patch, delay = 90) {
   }, delay);
 }
 
-function updateScripture(patch, { render = true, immediate = false } = {}) {
+
+const scriptureHistory = {
+  undo: [],
+  redo: [],
+  restoring: false,
+  max: 60
+};
+
+function cloneScriptureState(value = appState.scripture) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function updateHistoryButtons() {
+  const undo = $("#scriptureUndo");
+  const redo = $("#scriptureRedo");
+  if (undo) undo.disabled = scriptureHistory.undo.length === 0;
+  if (redo) redo.disabled = scriptureHistory.redo.length === 0;
+}
+
+function pushScriptureHistory() {
+  if (scriptureHistory.restoring) return;
+  scriptureHistory.undo.push(cloneScriptureState());
+  if (scriptureHistory.undo.length > scriptureHistory.max) {
+    scriptureHistory.undo.shift();
+  }
+  scriptureHistory.redo = [];
+  updateHistoryButtons();
+}
+
+async function restoreScriptureSnapshot(snapshot) {
+  scriptureHistory.restoring = true;
+  appState.scripture = cloneScriptureState(snapshot);
+  renderScripture();
+  await api("/api/scripture", {
+    method: "POST",
+    body: JSON.stringify(appState.scripture)
+  });
+  scriptureHistory.restoring = false;
+  updateVisualEditorGeometry();
+  updateHistoryButtons();
+}
+
+function updateScripture(patch, { render = true, immediate = false, history = true } = {}) {
+  if (history) pushScriptureHistory();
   appState.scripture = mergeScripturePatch(appState.scripture, patch);
   markSaving();
   if (render) renderScripture();
@@ -262,6 +305,186 @@ const scripturePreviewFrame = $("#scriptureOutputPreview");
 const scripturePreviewViewport = scripturePreviewFrame?.closest(".scripture-output-frame");
 const scripturePreviewStatus = $("#scripturePreviewStatus");
 
+const scriptureEditorLayer = $("#scriptureEditorLayer");
+const scriptureCompositionSelection = $("#scriptureCompositionSelection");
+const scriptureSafeArea = $("#scriptureSafeArea");
+const scriptureGrid = $("#scriptureGrid");
+
+const scriptureEditorState = {
+  scale: 1,
+  safeArea: true,
+  grid: false,
+  snap: true,
+  gridSize: 32,
+  interaction: null
+};
+
+function editorSettings() {
+  return appState.scripture?.composition?.editor || {};
+}
+
+function setToolbarToggle(id, active) {
+  const button = $(id);
+  if (!button) return;
+  button.classList.toggle("is-active", active);
+  button.setAttribute("aria-pressed", String(active));
+}
+
+function hydrateEditorSettings() {
+  const settings = editorSettings();
+  scriptureEditorState.safeArea = settings.safeArea !== false;
+  scriptureEditorState.grid = settings.grid === true;
+  scriptureEditorState.snap = settings.snap !== false;
+  scriptureEditorState.gridSize = Number(settings.gridSize || 32);
+  setToolbarToggle("#toggleSafeArea", scriptureEditorState.safeArea);
+  setToolbarToggle("#toggleGrid", scriptureEditorState.grid);
+  setToolbarToggle("#toggleSnap", scriptureEditorState.snap);
+  if ($("#scriptureGridSize")) {
+    $("#scriptureGridSize").value = String(scriptureEditorState.gridSize);
+  }
+}
+
+function persistEditorSettings(patch) {
+  const current = editorSettings();
+  updateScripture({
+    composition: {
+      editor: { ...current, ...patch }
+    }
+  }, { render: false, history: false });
+}
+
+function snapValue(value, points = []) {
+  if (!scriptureEditorState.snap) return value;
+  const grid = scriptureEditorState.gridSize || 32;
+  const candidates = [
+    Math.round(value / grid) * grid,
+    ...points
+  ];
+  let best = value;
+  let distance = 12;
+  for (const candidate of candidates) {
+    const currentDistance = Math.abs(value - candidate);
+    if (currentDistance < distance) {
+      best = candidate;
+      distance = currentDistance;
+    }
+  }
+  return best;
+}
+
+function updateVisualEditorGeometry() {
+  if (!scriptureCompositionSelection || !scriptureEditorLayer) return;
+  const c = appState.scripture?.composition || {};
+  const g = appState.scripture?.gradient || {};
+  const scale = scriptureEditorState.scale || 1;
+  const width = Math.max(240, Math.min(1920, Number(c.width ?? 1660)));
+  const height = Math.max(100, Math.min(1080, Number(g.height ?? 430)));
+  const offsetX = Number(c.offsetX ?? 0);
+  const bottom = Number(c.bottom ?? 28);
+  const x = ((1920 - width) / 2) + offsetX;
+  const y = 1080 - bottom - height;
+
+  scriptureCompositionSelection.style.left = `${x * scale}px`;
+  scriptureCompositionSelection.style.top = `${Math.max(0, y) * scale}px`;
+  scriptureCompositionSelection.style.width = `${width * scale}px`;
+  scriptureCompositionSelection.style.height = `${Math.min(height, 1080) * scale}px`;
+  scriptureEditorLayer.style.setProperty("--editor-scale", String(scale));
+
+  scriptureSafeArea?.classList.toggle("is-hidden", !scriptureEditorState.safeArea);
+  scriptureGrid?.classList.toggle("is-hidden", !scriptureEditorState.grid);
+  if (scriptureGrid) {
+    scriptureGrid.style.setProperty(
+      "--grid-size",
+      `${scriptureEditorState.gridSize * scale}px`
+    );
+  }
+}
+
+function beginVisualInteraction(event, handle = "move") {
+  if (!scriptureCompositionSelection) return;
+  event.preventDefault();
+  const c = appState.scripture?.composition || {};
+  const g = appState.scripture?.gradient || {};
+  pushScriptureHistory();
+  scriptureEditorState.interaction = {
+    handle,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    width: Number(c.width ?? 1660),
+    height: Number(g.height ?? 430),
+    bottom: Number(c.bottom ?? 28),
+    offsetX: Number(c.offsetX ?? 0)
+  };
+  scriptureCompositionSelection.setPointerCapture(event.pointerId);
+  scriptureCompositionSelection.classList.add("is-editing");
+}
+
+function moveVisualInteraction(event) {
+  const interaction = scriptureEditorState.interaction;
+  if (!interaction) return;
+  const scale = scriptureEditorState.scale || 1;
+  const dx = (event.clientX - interaction.startX) / scale;
+  const dy = (event.clientY - interaction.startY) / scale;
+  let width = interaction.width;
+  let height = interaction.height;
+  let bottom = interaction.bottom;
+  let offsetX = interaction.offsetX;
+
+  if (interaction.handle === "move") {
+    offsetX = snapValue(interaction.offsetX + dx, [0]);
+    bottom = snapValue(interaction.bottom - dy, [0, 54, 108]);
+  } else {
+    if (["left", "right", "corner"].includes(interaction.handle)) {
+      width = snapValue(
+        Math.max(240, Math.min(1920, interaction.width + (
+          interaction.handle === "left" ? -2 * dx : 2 * dx
+        ))),
+        [1280, 1440, 1660, 1728, 1920]
+      );
+    }
+    if (interaction.handle === "top") {
+      height = snapValue(
+        Math.max(100, Math.min(1080, interaction.height - dy)),
+        [240, 320, 430, 540, 1080]
+      );
+    }
+    if (["bottom", "corner"].includes(interaction.handle)) {
+      height = snapValue(
+        Math.max(100, Math.min(1080, interaction.height + dy)),
+        [240, 320, 430, 540, 1080]
+      );
+      bottom = snapValue(
+        Math.max(-200, Math.min(1080, interaction.bottom - dy)),
+        [0, 28, 54, 108]
+      );
+    }
+  }
+
+  appState.scripture = mergeScripturePatch(appState.scripture, {
+    composition: { width, bottom, offsetX },
+    gradient: { height }
+  });
+  renderScripture();
+  updateVisualEditorGeometry();
+  queueScriptureSave({
+    composition: { width, bottom, offsetX },
+    gradient: { height }
+  }, 25);
+}
+
+function endVisualInteraction(event) {
+  if (!scriptureEditorState.interaction) return;
+  try {
+    scriptureCompositionSelection.releasePointerCapture(event.pointerId);
+  } catch {}
+  scriptureEditorState.interaction = null;
+  scriptureCompositionSelection.classList.remove("is-editing");
+  updateHistoryButtons();
+}
+
+
+
 function resizeScripturePreview() {
   if (!scripturePreviewFrame || !scripturePreviewViewport) return;
 
@@ -273,6 +496,7 @@ function resizeScripturePreview() {
     ? Math.max(0.1, fitScale)
     : Math.max(0.1, Number(zoomValue));
 
+  scriptureEditorState.scale = scale;
   scripturePreviewFrame.style.setProperty(
     "--scripture-preview-scale",
     String(scale)
@@ -280,6 +504,7 @@ function resizeScripturePreview() {
   scripturePreviewViewport.style.height = `${1080 * scale}px`;
   scripturePreviewViewport.style.overflow =
     scale > availableWidth / 1920 ? "auto" : "hidden";
+  updateVisualEditorGeometry();
 }
 
 if (scripturePreviewFrame && scripturePreviewViewport) {
@@ -325,6 +550,99 @@ $("#fullscreenScripturePreview")?.addEventListener("click", async () => {
 document.addEventListener("fullscreenchange", () => {
   requestAnimationFrame(resizeScripturePreview);
 });
+
+
+$("#toggleSafeArea")?.addEventListener("click", () => {
+  scriptureEditorState.safeArea = !scriptureEditorState.safeArea;
+  setToolbarToggle("#toggleSafeArea", scriptureEditorState.safeArea);
+  persistEditorSettings({ safeArea: scriptureEditorState.safeArea });
+  updateVisualEditorGeometry();
+});
+
+$("#toggleGrid")?.addEventListener("click", () => {
+  scriptureEditorState.grid = !scriptureEditorState.grid;
+  setToolbarToggle("#toggleGrid", scriptureEditorState.grid);
+  persistEditorSettings({ grid: scriptureEditorState.grid });
+  updateVisualEditorGeometry();
+});
+
+$("#toggleSnap")?.addEventListener("click", () => {
+  scriptureEditorState.snap = !scriptureEditorState.snap;
+  setToolbarToggle("#toggleSnap", scriptureEditorState.snap);
+  persistEditorSettings({ snap: scriptureEditorState.snap });
+});
+
+$("#scriptureGridSize")?.addEventListener("change", event => {
+  scriptureEditorState.gridSize = Number(event.target.value || 32);
+  persistEditorSettings({ gridSize: scriptureEditorState.gridSize });
+  updateVisualEditorGeometry();
+});
+
+$("#scriptureUndo")?.addEventListener("click", async () => {
+  const snapshot = scriptureHistory.undo.pop();
+  if (!snapshot) return;
+  scriptureHistory.redo.push(cloneScriptureState());
+  await restoreScriptureSnapshot(snapshot);
+});
+
+$("#scriptureRedo")?.addEventListener("click", async () => {
+  const snapshot = scriptureHistory.redo.pop();
+  if (!snapshot) return;
+  scriptureHistory.undo.push(cloneScriptureState());
+  await restoreScriptureSnapshot(snapshot);
+});
+
+window.addEventListener("keydown", event => {
+  const modifier = event.ctrlKey || event.metaKey;
+  if (!modifier || event.altKey) return;
+  if (event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    if (event.shiftKey) $("#scriptureRedo")?.click();
+    else $("#scriptureUndo")?.click();
+  }
+  if (event.key.toLowerCase() === "y") {
+    event.preventDefault();
+    $("#scriptureRedo")?.click();
+  }
+});
+
+const scripturePresets = {
+  lower: {
+    format: "lower",
+    composition: { width: 1660, bottom: 28, offsetX: 0, scaleX: 1, scaleY: 1 },
+    gradient: { height: 430, topOffset: 0, bottomExtension: 0, extendToBottom: true }
+  },
+  wide: {
+    format: "lower",
+    composition: { width: 1820, bottom: 20, offsetX: 0, scaleX: 1, scaleY: 1 },
+    gradient: { height: 500, topOffset: 0, bottomExtension: 0, extendToBottom: true }
+  },
+  compact: {
+    format: "minimal",
+    composition: { width: 1480, bottom: 54, offsetX: 0, scaleX: .92, scaleY: .82 },
+    gradient: { height: 300, topOffset: 0, bottomExtension: 0, extendToBottom: false }
+  },
+  fullscreen: {
+    format: "fullscreen",
+    composition: { width: 1620, bottom: 150, offsetX: 0, scaleX: 1, scaleY: 1 },
+    gradient: { height: 780, topOffset: 100, bottomExtension: 0, extendToBottom: false }
+  }
+};
+
+$("#applyScripturePreset")?.addEventListener("click", () => {
+  const preset = scripturePresets[$("#scriptureCompositionPreset")?.value];
+  if (!preset) return;
+  updateScripture(preset, { immediate: true });
+  updateVisualEditorGeometry();
+});
+
+scriptureCompositionSelection?.addEventListener("pointerdown", event => {
+  const handle = event.target?.dataset?.handle || "move";
+  beginVisualInteraction(event, handle);
+});
+scriptureCompositionSelection?.addEventListener("pointermove", moveVisualInteraction);
+scriptureCompositionSelection?.addEventListener("pointerup", endVisualInteraction);
+scriptureCompositionSelection?.addEventListener("pointercancel", endVisualInteraction);
 
 $("#refreshScripturePreview")?.addEventListener("click", () => {
   if (!scripturePreviewFrame) return;
@@ -535,3 +853,11 @@ events.onerror = () => {
 
 loadNetworkInfo();
 loadState();
+
+
+/* Update 027 bootstrap */
+window.addEventListener("load", () => {
+  hydrateEditorSettings();
+  updateVisualEditorGeometry();
+  updateHistoryButtons();
+});

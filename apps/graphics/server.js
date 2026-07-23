@@ -16,6 +16,12 @@ import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphi
 import { resolveDocument, createBroadcastComponent, listBroadcastComponents, createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter, ProPresenterLiveScriptureService } from "../../packages/integrations/src/propresenter/index.js";
 import { ScriptureController } from "../../packages/scripture-core/src/index.js";
+import {
+  createScriptureScene,
+  synchronizeScriptureScene,
+  normalizeScene,
+  duplicateScene
+} from "../../packages/scene-engine/src/index.js";
 
 
 function getLanAddresses() {
@@ -105,7 +111,9 @@ function hydrateAppState(saved = {}) {
     scripture: mergeScriptureDefaults(
       defaultAppState.scripture,
       saved.scripture || {}
-    )
+    ),
+    scenes: Array.isArray(saved.scenes) ? saved.scenes : [],
+    activeSceneId: saved.activeSceneId || null
   };
 }
 
@@ -124,6 +132,14 @@ const persistedState = hydrateAppState({
     }
   }
 });
+if (!persistedState.scenes.some(scene => scene.kind === "scripture")) {
+  const migratedScene = createScriptureScene(persistedState.scripture, {
+    name: "Scripture principal"
+  });
+  persistedState.scenes = [...persistedState.scenes, migratedScene];
+  persistedState.activeSceneId = persistedState.activeSceneId || migratedScene.id;
+}
+
 const overlays = services.register(
   "overlays",
   new OverlayRuntime(persistedState.lowerThird)
@@ -169,7 +185,8 @@ if (proPresenter.getConfig().enabled && proPresenter.getConfig().autoConnect) {
     });
 }
 
-let appState = persistedState;
+let appState = synchronizeScenes(persistedState);
+await config.save(appState);
 let scriptureBroadcast = {
   preview: persistedState.scripture?.broadcast?.preview || persistedState.scripture?.currentVerse || null,
   program:
@@ -191,8 +208,36 @@ function broadcast(type, payload) {
   for (const client of appClients) client.write(message);
 }
 
+function synchronizeScenes(nextState) {
+  const scenes = Array.isArray(nextState.scenes) ? [...nextState.scenes] : [];
+  const scriptureIndex = scenes.findIndex(scene => scene.kind === "scripture");
+
+  if (scriptureIndex < 0) {
+    const scene = createScriptureScene(nextState.scripture, {
+      name: "Scripture principal"
+    });
+    scenes.push(scene);
+    return {
+      ...nextState,
+      scenes,
+      activeSceneId: nextState.activeSceneId || scene.id
+    };
+  }
+
+  scenes[scriptureIndex] = synchronizeScriptureScene(
+    scenes[scriptureIndex],
+    nextState.scripture
+  );
+
+  return {
+    ...nextState,
+    scenes,
+    activeSceneId: nextState.activeSceneId || scenes[scriptureIndex].id
+  };
+}
+
 async function saveState(nextState) {
-  appState = nextState;
+  appState = synchronizeScenes(nextState);
   await config.save(appState);
   return appState;
 }
@@ -635,6 +680,87 @@ const server = http.createServer(async (request, response) => {
     });
   }
 
+
+  if (request.method === "GET" && url.pathname === "/api/scenes") {
+    return json(response, 200, {
+      activeSceneId: appState.activeSceneId,
+      scenes: appState.scenes
+    });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scenes/active") {
+    const scene = appState.scenes.find(item => item.id === appState.activeSceneId);
+    return scene
+      ? json(response, 200, scene)
+      : json(response, 404, { error: "Active scene not found." });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scenes") {
+    try {
+      const incoming = await readJson(request);
+      const scene = normalizeScene(incoming);
+      if (appState.scenes.some(item => item.id === scene.id)) {
+        return json(response, 409, { error: "Scene id already exists." });
+      }
+
+      await saveState({
+        ...appState,
+        scenes: [...appState.scenes, scene],
+        activeSceneId: incoming.activate === false
+          ? appState.activeSceneId
+          : scene.id
+      });
+      broadcast("scenes-updated", {
+        activeSceneId: appState.activeSceneId,
+        scenes: appState.scenes
+      });
+      return json(response, 201, scene);
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+
+  if (request.method === "POST" && /^\/api\/scenes\/[^/]+\/activate$/.test(url.pathname)) {
+    const sceneId = url.pathname.split("/")[3];
+    const scene = appState.scenes.find(item => item.id === sceneId);
+    if (!scene) return json(response, 404, { error: "Scene not found." });
+
+    await saveState({ ...appState, activeSceneId: sceneId });
+    broadcast("scene-activated", scene);
+    return json(response, 200, scene);
+  }
+
+  if (request.method === "POST" && /^\/api\/scenes\/[^/]+\/duplicate$/.test(url.pathname)) {
+    try {
+      const sceneId = url.pathname.split("/")[3];
+      const source = appState.scenes.find(item => item.id === sceneId);
+      if (!source) return json(response, 404, { error: "Scene not found." });
+
+      const incoming = await readJson(request);
+      const scene = duplicateScene(source, incoming.name);
+      await saveState({
+        ...appState,
+        scenes: [...appState.scenes, scene],
+        activeSceneId: scene.id
+      });
+      broadcast("scenes-updated", {
+        activeSceneId: appState.activeSceneId,
+        scenes: appState.scenes
+      });
+      return json(response, 201, scene);
+    } catch (error) {
+      return json(response, 400, { error: error.message });
+    }
+  }
+
+  if (request.method === "GET" && /^\/api\/scenes\/[^/]+$/.test(url.pathname)) {
+    const sceneId = url.pathname.split("/")[3];
+    const scene = appState.scenes.find(item => item.id === sceneId);
+    return scene
+      ? json(response, 200, scene)
+      : json(response, 404, { error: "Scene not found." });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/scripture/diagnostics") {
     return json(response, 200, {
       ok: true,
@@ -642,6 +768,13 @@ const server = http.createServer(async (request, response) => {
       source: appState.scripture?.source,
       design: appState.scripture?.design,
       format: appState.scripture?.format,
+      sceneEngine: {
+        enabled: true,
+        schema: "bmms.scene",
+        activeSceneId: appState.activeSceneId,
+        sceneCount: appState.scenes.length,
+        scriptureScene: appState.scenes.some(scene => scene.kind === "scripture")
+      },
       browserOutput: {
         html: true,
         javascript: true,

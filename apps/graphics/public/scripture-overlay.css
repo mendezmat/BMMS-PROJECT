@@ -1,5 +1,5 @@
 :root{
-  --bottom:28px;--width:1660px;--padding-x:72px;--geometry-scale-x:1;--geometry-scale-y:1;
+  --bottom:28px;--offset-x:0px;--width:1660px;--padding-x:72px;--geometry-scale-x:1;--geometry-scale-y:1;
   --title-font:"Montserrat",Arial,sans-serif;--body-font:"Montserrat",Arial,sans-serif;
   --title-size:44px;--body-size:36px;--title-weight:800;--body-weight:500;
   --line-height:1.16;--title-color:#fff;--text-color:#fff;
@@ -808,4 +808,98 @@ body.preview-output #stage {
 #bibleBanner.style-broadcast .gradient,
 #bibleBanner.style-tv .gradient {
   display: none;
+}
+
+
+/* Update 027 — composition positioning remains geometry-only. */
+#bibleBanner {
+  margin-left: var(--offset-x);
+  margin-right: calc(var(--offset-x) * -1);
+}
+
+
+/* Update 028 — visual styles override legacy format backgrounds. */
+#bibleBanner.style-classic .gradient,
+#bibleBanner.style-worship .gradient {
+  display: block !important;
+}
+
+#bibleBanner.style-classic .content {
+  box-shadow: none !important;
+}
+
+#bibleBanner.style-editorial .gradient,
+#bibleBanner.style-broadcast .gradient,
+#bibleBanner.style-glass .gradient,
+#bibleBanner.style-kinetic .gradient,
+#bibleBanner.style-tv .gradient {
+  display: none !important;
+}
+
+#bibleBanner.style-editorial .content {
+  box-shadow:
+    0 calc(18px * var(--geometry-scale-y))
+      calc(62px * var(--geometry-scale-y)) rgba(0,0,0,.48),
+    0 calc(4px * var(--geometry-scale-y))
+      calc(18px * var(--geometry-scale-y)) rgba(0,0,0,.34) !important;
+}
+
+#bibleBanner.style-broadcast .content {
+  box-shadow:
+    0 calc(16px * var(--geometry-scale-y))
+      calc(48px * var(--geometry-scale-y)) rgba(0,0,0,.52),
+    0 calc(3px * var(--geometry-scale-y))
+      calc(12px * var(--geometry-scale-y)) rgba(0,0,0,.32) !important;
+}
+
+#bibleBanner.style-glass .content {
+  box-shadow:
+    0 calc(24px * var(--geometry-scale-y))
+      calc(78px * var(--geometry-scale-y)) rgba(0,0,0,.52),
+    inset 0 1px rgba(255,255,255,.12) !important;
+}
+
+#bibleBanner.style-kinetic .content,
+#bibleBanner.style-tv .content {
+  box-shadow:
+    0 calc(18px * var(--geometry-scale-y))
+      calc(58px * var(--geometry-scale-y)) rgba(0,0,0,.54),
+    0 calc(3px * var(--geometry-scale-y))
+      calc(14px * var(--geometry-scale-y)) rgba(0,0,0,.36) !important;
+}
+
+#bibleBanner.format-left-column.style-editorial .content,
+#bibleBanner.format-right-column.style-editorial .content,
+#bibleBanner.format-left-column.style-glass .content,
+#bibleBanner.format-right-column.style-glass .content,
+#bibleBanner.format-left-column.style-kinetic .content,
+#bibleBanner.format-right-column.style-kinetic .content,
+#bibleBanner.format-left-column.style-tv .content,
+#bibleBanner.format-right-column.style-tv .content {
+  box-shadow:
+    0 calc(20px * var(--geometry-scale-y))
+      calc(68px * var(--geometry-scale-y)) rgba(0,0,0,.56),
+    0 calc(4px * var(--geometry-scale-y))
+      calc(16px * var(--geometry-scale-y)) rgba(0,0,0,.36) !important;
+}
+
+#bibleBanner.format-fullscreen.style-editorial .content,
+#bibleBanner.format-fullscreen.style-glass .content,
+#bibleBanner.format-fullscreen.style-kinetic .content,
+#bibleBanner.format-fullscreen.style-tv .content {
+  box-shadow:
+    0 calc(26px * var(--geometry-scale-y))
+      calc(88px * var(--geometry-scale-y)) rgba(0,0,0,.58),
+    0 calc(5px * var(--geometry-scale-y))
+      calc(20px * var(--geometry-scale-y)) rgba(0,0,0,.38) !important;
+}
+
+#bibleBanner.format-minimal.style-editorial .content,
+#bibleBanner.format-minimal.style-broadcast .content,
+#bibleBanner.format-minimal.style-glass .content,
+#bibleBanner.format-minimal.style-kinetic .content,
+#bibleBanner.format-minimal.style-tv .content {
+  box-shadow:
+    0 calc(12px * var(--geometry-scale-y))
+      calc(38px * var(--geometry-scale-y)) rgba(0,0,0,.48) !important;
 }

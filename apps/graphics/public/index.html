@@ -374,24 +374,76 @@
             <div>
               <div class="scripture-live-preview panel">
                 <div class="preview-panel-head">
-                  <div>
+                  <div class="preview-title">
                     <span class="eyebrow">PREVIEW DEL OUTPUT</span>
-                    <strong>Vista exacta 1920 × 1080</strong><small id="scripturePreviewStatus">Conectando…</small>
+                    <strong>Vista exacta 1920 × 1080</strong>
+                    <small id="scripturePreviewStatus">Conectando…</small>
                   </div>
-                  <div class="preview-actions">
-                    <select id="scripturePreviewZoom" aria-label="Zoom del Preview">
-                      <option value="fit">Ajustar</option>
-                      <option value="0.5">50%</option>
-                      <option value="0.75">75%</option>
-                      <option value="1">100%</option>
-                    </select>
+                </div>
+
+                <div class="preview-toolbar" aria-label="Herramientas del editor visual">
+                  <div class="preview-toolbar-group">
+                    <label class="toolbar-field">Zoom
+                      <select id="scripturePreviewZoom" aria-label="Zoom del Preview">
+                        <option value="fit">Ajustar</option>
+                        <option value="0.5">50%</option>
+                        <option value="0.75">75%</option>
+                        <option value="1">100%</option>
+                      </select>
+                    </label>
                     <button id="toggleLargeScripturePreview">Ampliar</button>
                     <button id="fullscreenScripturePreview">Pantalla completa</button>
                     <button id="refreshScripturePreview">Recargar</button>
                   </div>
+
+                  <div class="preview-toolbar-group editor-toggles">
+                    <button id="toggleSafeArea" class="is-active" aria-pressed="true">Área segura</button>
+                    <button id="toggleGrid" aria-pressed="false">Cuadrícula</button>
+                    <button id="toggleSnap" class="is-active" aria-pressed="true">Snap</button>
+                    <label class="toolbar-field compact">Grid
+                      <select id="scriptureGridSize">
+                        <option value="16">16 px</option>
+                        <option value="32" selected>32 px</option>
+                        <option value="64">64 px</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="preview-toolbar-group history-actions">
+                    <button id="scriptureUndo" disabled>Deshacer</button>
+                    <button id="scriptureRedo" disabled>Rehacer</button>
+                  </div>
+
+                  <div class="preview-toolbar-group preset-actions">
+                    <label class="toolbar-field">Preset
+                      <select id="scriptureCompositionPreset">
+                        <option value="">Seleccionar…</option>
+                        <option value="lower">Inferior TV</option>
+                        <option value="wide">Inferior ancho</option>
+                        <option value="compact">Compacto</option>
+                        <option value="fullscreen">Lectura amplia</option>
+                      </select>
+                    </label>
+                    <button id="applyScripturePreset">Aplicar</button>
+                  </div>
                 </div>
-                <div class="scripture-output-frame">
+
+                <div class="scripture-output-frame" id="scriptureVisualEditor">
                   <iframe id="scriptureOutputPreview" src="/overlay/scripture?preview=1" title="Preview del Browser Output"></iframe>
+                  <div class="visual-editor-layer" id="scriptureEditorLayer">
+                    <div class="editor-safe-area" id="scriptureSafeArea"></div>
+                    <div class="editor-grid" id="scriptureGrid"></div>
+                    <div class="editor-center-guide vertical"></div>
+                    <div class="editor-center-guide horizontal"></div>
+                    <div class="composition-selection" id="scriptureCompositionSelection" tabindex="0">
+                      <span class="selection-label">Composición</span>
+                      <span class="resize-handle handle-left" data-handle="left"></span>
+                      <span class="resize-handle handle-right" data-handle="right"></span>
+                      <span class="resize-handle handle-top" data-handle="top"></span>
+                      <span class="resize-handle handle-bottom" data-handle="bottom"></span>
+                      <span class="resize-handle handle-corner" data-handle="corner"></span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

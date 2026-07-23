@@ -67,6 +67,7 @@ function applyConfig(nextScripture) {
   const gradient = scripture.gradient || {};
 
   root.setProperty("--bottom", `${composition.bottom ?? 28}px`);
+  root.setProperty("--offset-x", `${composition.offsetX ?? 0}px`);
   root.setProperty("--width", `${composition.width ?? 1660}px`);
   root.setProperty("--geometry-scale-x", composition.scaleX ?? 1);
   root.setProperty("--geometry-scale-y", composition.scaleY ?? 1);
@@ -115,6 +116,11 @@ function applyConfig(nextScripture) {
     `format-${scripture.format || "lower"}`,
     `style-${scripture.design || "classic"}`
   );
+
+  bible.dataset.visualBackground =
+    ["classic", "worship"].includes(scripture.design || "classic")
+      ? "gradient"
+      : "panel-shadow";
 
   bible.classList.toggle("edge-fade", gradient.edgeFadeEnabled !== false);
   bible.classList.toggle("extend-to-bottom", gradient.extendToBottom !== false);
