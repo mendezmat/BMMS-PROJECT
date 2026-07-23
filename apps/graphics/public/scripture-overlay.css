@@ -1,5 +1,5 @@
 :root{
-  --bottom:28px;--width:1660px;--padding-x:72px;
+  --bottom:28px;--width:1660px;--padding-x:72px;--geometry-scale-x:1;--geometry-scale-y:1;
   --title-font:"Montserrat",Arial,sans-serif;--body-font:"Montserrat",Arial,sans-serif;
   --title-size:44px;--body-size:36px;--title-weight:800;--body-weight:500;
   --line-height:1.16;--title-color:#fff;--text-color:#fff;
@@ -14,17 +14,17 @@ body.debug #status{display:block}
 .graphic.active{display:block}
 
 /* Biblia */
-#bibleBanner{position:absolute;left:50%;bottom:var(--bottom);width:var(--width);min-height:250px;transform:translate(-50%,18px);opacity:0;pointer-events:none}
+#bibleBanner{position:absolute;left:50%;bottom:var(--bottom);width:calc(var(--width) * var(--geometry-scale-x));min-height:calc(250px * var(--geometry-scale-y));transform:translate(-50%,18px);opacity:0;pointer-events:none}
 #bibleBanner.visible{opacity:1;transform:translate(-50%,0);transition:opacity .36s ease,transform .36s cubic-bezier(.22,.8,.28,1)}
 #bibleBanner.soft-out{opacity:.78;transform:translate(-50%,4px)}
 #bibleBanner.chapter-out{opacity:0;transform:translate(-50%,20px);transition:.22s ease}
 #bibleBanner.book-out{opacity:0;transform:translate(-50%,28px) scale(.985);transition:.26s ease}
-.gradient{position:absolute;left:calc(-1 * var(--edge-fade));right:calc(-1 * var(--edge-fade));bottom:calc(-1 * var(--bottom));height:var(--gradient-height);background:linear-gradient(to bottom,rgba(var(--gradient-color),0) 0%,rgba(var(--gradient-color),.08) calc(var(--gradient-softness) * .30),rgba(var(--gradient-color),.48) var(--gradient-softness),rgba(var(--gradient-color),var(--gradient-strength)) 100%);opacity:0;transform:translateY(12px);pointer-events:none}
+.gradient{position:absolute;left:calc(-1 * var(--edge-fade));right:calc(-1 * var(--edge-fade));bottom:calc(-1 * var(--bottom));height:calc(var(--gradient-height) * var(--geometry-scale-y));background:linear-gradient(to bottom,rgba(var(--gradient-color),0) 0%,rgba(var(--gradient-color),.08) calc(var(--gradient-softness) * .30),rgba(var(--gradient-color),.48) var(--gradient-softness),rgba(var(--gradient-color),var(--gradient-strength)) 100%);opacity:0;transform:translateY(12px);pointer-events:none}
 #bibleBanner.visible .gradient{opacity:1;transform:translateY(0);transition:.34s ease}
-.content{position:relative;z-index:2;width:100%;padding:26px var(--padding-x) 34px;text-align:center;text-shadow:0 2px 10px #000b}
+.content{position:relative;z-index:2;width:100%;padding:calc(26px * var(--geometry-scale-y)) calc(var(--padding-x) * var(--geometry-scale-x)) calc(34px * var(--geometry-scale-y));text-align:center;text-shadow:0 2px 10px #000b}
 #reference{margin:0 auto 13px;color:var(--title-color);font-family:var(--title-font);font-size:var(--title-size);font-weight:var(--title-weight);line-height:1;letter-spacing:.035em;text-transform:uppercase}
 .divider{width:min(650px,58%);height:2px;margin:0 auto 16px;background:var(--line-color)}
-#verse{max-width:1500px;margin:0 auto;color:var(--text-color);font-family:var(--body-font);font-size:var(--body-size);font-weight:var(--body-weight);line-height:var(--line-height);letter-spacing:-.01em;overflow:hidden}.verse-line{display:block;white-space:nowrap}.bible-graphic:not(.edge-fade) .gradient{left:calc((var(--width) - 1920px)/2);right:calc((var(--width) - 1920px)/2)}
+#verse{max-width:1500px;margin:0 auto;color:var(--text-color);font-family:var(--body-font);font-size:var(--body-size);font-weight:var(--body-weight);line-height:var(--line-height);letter-spacing:-.01em;overflow:visible}.verse-line{display:block;white-space:nowrap}.bible-graphic:not(.edge-fade) .gradient{left:calc((var(--width) - 1920px)/2);right:calc((var(--width) - 1920px)/2)}
 .bible-graphic.edge-fade .gradient{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--edge-fade),#000 calc(100% - var(--edge-fade)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 var(--edge-fade),#000 calc(100% - var(--edge-fade)),transparent 100%)}
 #bibleBanner.no-reference #reference,#bibleBanner.no-reference .divider{display:none}
 
@@ -416,39 +416,39 @@ body.debug #status{display:block}
 
 
 /* Scripture S11: composiciones de overlay */
-#bibleBanner.format-center-lower{width:min(var(--width),1320px);min-height:300px}
-#bibleBanner.format-center-lower .content{padding-left:58px;padding-right:58px}
-#bibleBanner.format-center-lower #verse{max-width:1160px}
+#bibleBanner.format-center-lower{width:min(calc(var(--width) * var(--geometry-scale-x)),calc(1320px * var(--geometry-scale-x)));min-height:calc(300px * var(--geometry-scale-y))}
+#bibleBanner.format-center-lower .content{padding-left:calc(58px * var(--geometry-scale-x));padding-right:calc(58px * var(--geometry-scale-x))}
+#bibleBanner.format-center-lower #verse{max-width:calc(1160px * var(--geometry-scale-x))}
 
-#bibleBanner.format-left-column,#bibleBanner.format-right-column{bottom:90px;width:min(var(--width),820px);height:760px;min-height:0;display:flex;align-items:flex-end}
+#bibleBanner.format-left-column,#bibleBanner.format-right-column{bottom:90px;width:min(calc(var(--width) * var(--geometry-scale-x)),calc(820px * var(--geometry-scale-x)));height:calc(760px * var(--geometry-scale-y));min-height:0;display:flex;align-items:flex-end}
 #bibleBanner.format-left-column{left:80px;transform:translateY(18px)}
 #bibleBanner.format-right-column{left:auto;right:80px;transform:translateY(18px)}
 #bibleBanner.format-left-column.visible,#bibleBanner.format-right-column.visible{transform:none}
 #bibleBanner.format-left-column.soft-out,#bibleBanner.format-right-column.soft-out{transform:translateY(4px)}
 #bibleBanner.format-left-column.chapter-out,#bibleBanner.format-right-column.chapter-out{transform:translateY(20px)}
 #bibleBanner.format-left-column.book-out,#bibleBanner.format-right-column.book-out{transform:translateY(28px) scale(.985)}
-#bibleBanner.format-left-column .content,#bibleBanner.format-right-column .content{text-align:left;padding:44px 52px 48px}
+#bibleBanner.format-left-column .content,#bibleBanner.format-right-column .content{text-align:left;padding:calc(44px * var(--geometry-scale-y)) calc(52px * var(--geometry-scale-x)) calc(48px * var(--geometry-scale-y))}
 #bibleBanner.format-left-column #reference,#bibleBanner.format-right-column #reference{margin-left:0;margin-right:0}
 #bibleBanner.format-left-column .divider,#bibleBanner.format-right-column .divider{margin-left:0;width:72%}
-#bibleBanner.format-left-column #verse,#bibleBanner.format-right-column #verse{margin-left:0;max-width:710px}
-#bibleBanner.format-left-column .gradient,#bibleBanner.format-right-column .gradient{inset:auto -40px -90px -40px;height:720px;background:linear-gradient(to top,rgba(var(--gradient-color),var(--gradient-strength)) 0%,rgba(var(--gradient-color),.76) 38%,rgba(var(--gradient-color),.15) 78%,rgba(var(--gradient-color),0) 100%)}
+#bibleBanner.format-left-column #verse,#bibleBanner.format-right-column #verse{margin-left:0;max-width:calc(710px * var(--geometry-scale-x))}
+#bibleBanner.format-left-column .gradient,#bibleBanner.format-right-column .gradient{inset:auto -40px -90px -40px;height:calc(720px * var(--geometry-scale-y));background:linear-gradient(to top,rgba(var(--gradient-color),var(--gradient-strength)) 0%,rgba(var(--gradient-color),.76) 38%,rgba(var(--gradient-color),.15) 78%,rgba(var(--gradient-color),0) 100%)}
 #bibleBanner.format-left-column.edge-fade .gradient,#bibleBanner.format-right-column.edge-fade .gradient{-webkit-mask-image:none;mask-image:none}
 
-#bibleBanner.format-fullscreen{left:150px;right:150px;bottom:150px;width:auto;height:780px;min-height:0;transform:translateY(18px);display:flex;align-items:center}
+#bibleBanner.format-fullscreen{left:calc(150px / var(--geometry-scale-x));right:calc(150px / var(--geometry-scale-x));bottom:150px;width:auto;height:calc(780px * var(--geometry-scale-y));min-height:0;transform:translateY(18px);display:flex;align-items:center}
 #bibleBanner.format-fullscreen.visible{transform:none}
 #bibleBanner.format-fullscreen.soft-out{transform:translateY(4px)}
 #bibleBanner.format-fullscreen.chapter-out{transform:translateY(20px)}
 #bibleBanner.format-fullscreen.book-out{transform:translateY(28px) scale(.985)}
-#bibleBanner.format-fullscreen .content{padding:90px 130px;text-align:center}
+#bibleBanner.format-fullscreen .content{padding:calc(90px * var(--geometry-scale-y)) calc(130px * var(--geometry-scale-x));text-align:center}
 #bibleBanner.format-fullscreen #reference{font-size:calc(var(--title-size) * 1.15)}
 #bibleBanner.format-fullscreen #verse{max-width:1420px;font-size:calc(var(--body-size) * 1.12)}
 #bibleBanner.format-fullscreen .gradient{inset:-80px -150px -150px;height:auto;background:radial-gradient(ellipse at center,rgba(var(--gradient-color),calc(var(--gradient-strength) * .86)) 0%,rgba(var(--gradient-color),calc(var(--gradient-strength) * .62)) 48%,rgba(var(--gradient-color),0) 82%)}
 #bibleBanner.format-fullscreen.edge-fade .gradient{-webkit-mask-image:none;mask-image:none}
 
-#bibleBanner.format-minimal{min-height:210px}
+#bibleBanner.format-minimal{min-height:calc(210px * var(--geometry-scale-y))}
 #bibleBanner.format-minimal .divider{display:none}
 #bibleBanner.format-minimal #reference{font-size:calc(var(--title-size) * .72);margin-bottom:10px;letter-spacing:.08em}
-#bibleBanner.format-minimal .content{padding-top:18px;padding-bottom:24px;text-shadow:0 3px 18px #000e}
+#bibleBanner.format-minimal .content{padding-top:calc(18px * var(--geometry-scale-y));padding-bottom:calc(24px * var(--geometry-scale-y));text-shadow:0 3px 18px #000e}
 #bibleBanner.format-minimal .gradient{height:min(var(--gradient-height),330px);background:linear-gradient(to bottom,rgba(var(--gradient-color),0),rgba(var(--gradient-color),calc(var(--gradient-strength) * .72)) 100%)}
 
 
@@ -463,8 +463,8 @@ body.debug #status{display:block}
 /* Editorial Frame — structured, magazine-like hierarchy. */
 #bibleBanner.style-editorial .content{
   background:linear-gradient(115deg,rgba(8,10,16,.94),rgba(17,20,30,.84));
-  border:1px solid rgba(255,255,255,.18);border-left:6px solid var(--line-color);
-  border-radius:18px;padding-top:34px;padding-bottom:38px;
+  border:1px solid rgba(255,255,255,.18);border-left:calc(6px * var(--geometry-scale-x)) solid var(--line-color);
+  border-radius:calc(18px * var(--geometry-scale-y));padding-top:calc(34px * var(--geometry-scale-y));padding-bottom:calc(38px * var(--geometry-scale-y));
   box-shadow:0 24px 70px rgba(0,0,0,.42);text-align:left;text-shadow:none
 }
 #bibleBanner.style-editorial #reference{display:inline-flex;width:max-content;margin:0 0 18px;padding:9px 14px;border-radius:999px;background:var(--line-color);color:#0b0d12;font-size:calc(var(--title-size)*.62);letter-spacing:.12em}
@@ -473,7 +473,7 @@ body.debug #status{display:block}
 #bibleBanner.style-editorial .gradient{opacity:.58}
 
 /* Worship Glow — soft light, generous air, contemplative tone. */
-#bibleBanner.style-worship .content{padding-top:42px;padding-bottom:46px;text-shadow:0 3px 24px rgba(0,0,0,.86)}
+#bibleBanner.style-worship .content{padding-top:calc(42px * var(--geometry-scale-y));padding-bottom:calc(46px * var(--geometry-scale-y));text-shadow:0 3px 24px rgba(0,0,0,.86)}
 #bibleBanner.style-worship .gradient{background:radial-gradient(ellipse at 50% 100%,rgba(var(--gradient-color),var(--gradient-strength)) 0%,rgba(var(--gradient-color),.62) 42%,rgba(var(--gradient-color),.16) 72%,rgba(var(--gradient-color),0) 100%)}
 #bibleBanner.style-worship #reference{font-size:calc(var(--title-size)*.72);font-weight:600;letter-spacing:.22em;opacity:.92}
 #bibleBanner.style-worship .divider{width:86px;height:3px;border-radius:999px;background:linear-gradient(90deg,transparent,var(--line-color),transparent)}
@@ -481,8 +481,8 @@ body.debug #status{display:block}
 
 /* Broadcast Clean — compact TV-safe panel and crisp information hierarchy. */
 #bibleBanner.style-broadcast .content{
-  background:rgba(7,10,16,.94);border-top:3px solid var(--line-color);border-radius:12px;
-  padding-top:24px;padding-bottom:28px;box-shadow:0 18px 48px rgba(0,0,0,.48);text-align:left;text-shadow:none
+  background:rgba(7,10,16,.94);border-top:calc(3px * var(--geometry-scale-y)) solid var(--line-color);border-radius:calc(12px * var(--geometry-scale-y));
+  padding-top:calc(24px * var(--geometry-scale-y));padding-bottom:calc(28px * var(--geometry-scale-y));box-shadow:0 18px 48px rgba(0,0,0,.48);text-align:left;text-shadow:none
 }
 #bibleBanner.style-broadcast #reference{margin:0 0 10px;font-size:calc(var(--title-size)*.68);letter-spacing:.08em}
 #bibleBanner.style-broadcast .divider{width:100%;height:1px;margin:0 0 14px;background:rgba(255,255,255,.24)}
@@ -492,9 +492,9 @@ body.debug #status{display:block}
 /* Glass Scripture — true frosted card, not merely a relocated gradient. */
 #bibleBanner.style-glass .content{
   background:linear-gradient(135deg,rgba(18,22,34,.72),rgba(8,11,18,.54));
-  border:1px solid rgba(255,255,255,.22);border-radius:28px;
+  border:1px solid rgba(255,255,255,.22);border-radius:calc(28px * var(--geometry-scale-y));
   box-shadow:0 28px 90px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.12);
-  backdrop-filter:blur(22px) saturate(1.15);padding-top:38px;padding-bottom:42px
+  backdrop-filter:blur(22px) saturate(1.15);padding-top:calc(38px * var(--geometry-scale-y));padding-bottom:calc(42px * var(--geometry-scale-y))
 }
 #bibleBanner.style-glass #reference{font-size:calc(var(--title-size)*.82);letter-spacing:.12em}
 #bibleBanner.style-glass .divider{height:1px;width:min(760px,68%);background:linear-gradient(90deg,transparent,var(--line-color),transparent)}
@@ -504,10 +504,10 @@ body.debug #status{display:block}
 /* Kinetic Accent — angular, youthful and intentionally high-impact. */
 #bibleBanner.style-kinetic .content{
   background:linear-gradient(110deg,rgba(5,7,12,.96) 0 62%,rgba(14,18,28,.82));
-  border-radius:8px;padding-top:30px;padding-bottom:34px;padding-left:calc(var(--padding-x) + 32px);
+  border-radius:calc(8px * var(--geometry-scale-y));padding-top:calc(30px * var(--geometry-scale-y));padding-bottom:calc(34px * var(--geometry-scale-y));padding-left:calc((var(--padding-x) + 32px) * var(--geometry-scale-x));
   box-shadow:0 22px 64px rgba(0,0,0,.5);text-align:left;text-shadow:none;overflow:hidden
 }
-#bibleBanner.style-kinetic .content:before{content:"";position:absolute;left:0;top:0;bottom:0;width:18px;background:linear-gradient(180deg,var(--line-color),rgba(255,255,255,.15));transform:skewX(-8deg);transform-origin:top}
+#bibleBanner.style-kinetic .content:before{content:"";position:absolute;left:0;top:0;bottom:0;width:calc(18px * var(--geometry-scale-x));background:linear-gradient(180deg,var(--line-color),rgba(255,255,255,.15));transform:skewX(-8deg);transform-origin:top}
 #bibleBanner.style-kinetic #reference{display:inline-block;margin:0 0 16px;padding:8px 13px;background:var(--line-color);color:#080a0f;font-size:calc(var(--title-size)*.64);letter-spacing:.1em;transform:skewX(-6deg)}
 #bibleBanner.style-kinetic .divider{display:none}
 #bibleBanner.style-kinetic #verse{max-width:none;margin:0;text-align:left;font-weight:700;letter-spacing:-.025em}
@@ -522,12 +522,12 @@ body.debug #status{display:block}
 #bibleBanner.format-fullscreen.style-editorial #verse,#bibleBanner.format-fullscreen.style-broadcast #verse,#bibleBanner.format-fullscreen.style-kinetic #verse{text-align:center}
 #bibleBanner.format-minimal.style-editorial .content,#bibleBanner.format-minimal.style-broadcast .content,#bibleBanner.format-minimal.style-glass .content,#bibleBanner.format-minimal.style-kinetic .content{padding-top:24px;padding-bottom:28px}
 
-#version{margin-top:12px;color:var(--text-color);font-family:var(--body-font);font-size:18px;font-weight:600;opacity:.62}#bibleBanner.no-version #version{display:none}}
+#version{margin-top:12px;color:var(--text-color);font-family:var(--body-font);font-size:18px;font-weight:600;opacity:.62}#bibleBanner.no-version #version{display:none}
 
 
 /* Scripture TV Broadcast CG — final television-style design. */
 #bibleBanner.style-tv {
-  --tv-panel-height: 188px;
+  --tv-panel-height: calc(188px * var(--geometry-scale-y));
   min-height: var(--tv-panel-height);
 }
 #bibleBanner.style-tv .gradient {
@@ -536,8 +536,8 @@ body.debug #status{display:block}
 #bibleBanner.style-tv .content {
   position: relative;
   min-height: var(--tv-panel-height);
-  padding: 25px 56px 24px 122px;
-  overflow: hidden;
+  padding: calc(25px * var(--geometry-scale-y)) calc(56px * var(--geometry-scale-x)) calc(24px * var(--geometry-scale-y)) calc(122px * var(--geometry-scale-x));
+  overflow: visible;
   border: 1px solid rgba(255,255,255,.16);
   border-radius: 10px;
   background:
@@ -636,4 +636,145 @@ body.preview-output #stage {
   height: 1080px;
   transform: scale(var(--preview-scale, 1));
   transform-origin: top left;
+}
+
+
+/* Update 018.1 — the lateral-space control is authoritative everywhere. */
+#bibleBanner .content {
+  padding-left: var(--padding-x);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.format-center-lower .content {
+  padding-left: var(--padding-x);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.format-left-column .content,
+#bibleBanner.format-right-column .content {
+  padding-left: var(--padding-x);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.format-fullscreen .content {
+  padding-left: var(--padding-x);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.style-kinetic .content {
+  padding-left: calc(var(--padding-x) + 32px);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.style-tv .content {
+  padding-left: calc(var(--padding-x) + 50px);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.format-left-column.style-tv .content,
+#bibleBanner.format-right-column.style-tv .content {
+  padding-left: calc(var(--padding-x) + 34px);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.format-fullscreen.style-tv .content {
+  padding-left: calc(var(--padding-x) + 62px);
+  padding-right: var(--padding-x);
+}
+
+/* Never clip the verse itself. The fitting engine remains responsible for
+   fitting it inside the available panel width. */
+#verse {
+  overflow: visible;
+  min-width: 0;
+}
+
+.verse-line {
+  max-width: 100%;
+}
+
+
+/* Update 019: preview and output use the identical 1920 × 1080 document. */
+body.preview-output #stage {
+  position: relative;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform: none;
+}
+
+/* The content box—not a legacy 1500px cap—defines available verse width. */
+#verse,
+#bibleBanner.style-tv #verse,
+#bibleBanner.style-broadcast #verse,
+#bibleBanner.style-editorial #verse,
+#bibleBanner.style-worship #verse,
+#bibleBanner.style-glass #verse,
+#bibleBanner.style-kinetic #verse {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* "Espacio lateral" is the final authority after all legacy template rules. */
+#bibleBanner .content,
+#bibleBanner.format-lower .content,
+#bibleBanner.format-center-lower .content,
+#bibleBanner.format-left-column .content,
+#bibleBanner.format-right-column .content,
+#bibleBanner.format-fullscreen .content,
+#bibleBanner.format-minimal .content {
+  padding-left: var(--padding-x);
+  padding-right: var(--padding-x);
+}
+
+#bibleBanner.style-tv .content {
+  padding-left: calc(var(--padding-x) + 50px);
+  padding-right: var(--padding-x);
+}
+#bibleBanner.style-kinetic .content {
+  padding-left: calc(var(--padding-x) + 32px);
+  padding-right: var(--padding-x);
+}
+
+.verse-line {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+
+/* Hotfix 023 — authoritative verse size. */
+#bibleBanner #verse {
+  font-size: var(--body-size);
+  overflow: visible;
+}
+#bibleBanner.style-tv {
+  height: auto;
+}
+#bibleBanner.style-tv .content {
+  height: auto;
+  max-height: none;
+}
+#bibleBanner.style-tv #verse {
+  max-height: none;
+  overflow: visible;
+}
+
+
+
+
+
+/* Update 025 — geometry-only composition scaling.
+   Text is never transformed or proportionally distorted. */
+#bibleBanner #reference,
+#bibleBanner #verse,
+#bibleBanner #version {
+  transform: none;
+}
+#bibleBanner .verse-line {
+  transform: none;
 }

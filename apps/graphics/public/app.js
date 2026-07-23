@@ -15,7 +15,7 @@ const lowerThirdFields = {
 const scriptureControls = {
   reference: $("#scriptureReference"), version: $("#scriptureVersion"), text: $("#scriptureText"),
   format: $("#scriptureFormat"), alignment: $("#scriptureAlign"), maxLines: $("#maxLines"), balance: $("#balanceText"),
-  bottom: $("#scriptureBottom"), width: $("#scriptureWidth"), horizontalPadding: $("#scripturePadding"),
+  bottom: $("#scriptureBottom"), width: $("#scriptureWidth"), horizontalPadding: $("#scripturePadding"), scaleX: $("#compositionScaleX"), scaleY: $("#compositionScaleY"),
   gradientMode: $("#gradientMode"), gradientColor: $("#gradientColor"), gradientOpacity: $("#gradientOpacity"),
   gradientHeight: $("#gradientHeight"), gradientSoftness: $("#gradientSoftness"), edgeFadeEnabled: $("#edgeFadeEnabled"), edgeFade: $("#edgeFade"),
   titleFont: $("#titleFont"), bodyFont: $("#bodyFont"), titleSize: $("#titleSize"), bodySize: $("#bodySize"),
@@ -118,7 +118,7 @@ function renderBroadcastState() {
   renderVerseBus("Program", scriptureBroadcast.program, "El contenido al aire aparecerá aquí.");
   renderVerseBus("Preview", scriptureBroadcast.preview, "La siguiente Escritura aparecerá aquí.");
   $("#integratedOnAir").textContent = scriptureBroadcast.visible ? "ON AIR" : "OFF AIR";
-  $("#integratedAutoButton").textContent = `AUTO: ${scriptureBroadcast.autoTake ? "ON" : "OFF"}`;
+  $("#integratedAutoButton").textContent = `AUTO: ${scriptureBroadcast.autoTake ? "ENCENDIDO" : "APAGADO"}`;
   $("#integratedAutoButton").classList.toggle("active", scriptureBroadcast.autoTake);
 }
 
@@ -151,9 +151,11 @@ function renderScripture() {
   $("#scriptureFormat").value=s.format||"lower"; $("#scriptureAlign").value=c.alignment||"center"; $("#maxLines").value=String(c.maxLines||4); $("#balanceText").checked=c.balance!==false;
   $("#scriptureBottom").value=c.bottom??28; $("#scriptureWidth").value=c.width??1660; $("#scripturePadding").value=c.horizontalPadding??72;
   $("#scriptureBottomValue").value=`${c.bottom??28}px`; $("#scriptureWidthValue").value=`${c.width??1660}px`; $("#scripturePaddingValue").value=`${c.horizontalPadding??72}px`;
+  $("#compositionScaleX").value=c.scaleX??1; $("#compositionScaleY").value=c.scaleY??1;
+  $("#compositionScaleXValue").value=`${Math.round((c.scaleX??1)*100)}%`; $("#compositionScaleYValue").value=`${Math.round((c.scaleY??1)*100)}%`;
   $("#gradientMode").value=g.mode||"adaptive"; $("#gradientColor").value=g.color||"#000000"; $("#gradientOpacity").value=g.opacity??.96; $("#gradientHeight").value=g.height??430; $("#gradientSoftness").value=g.softness??58; $("#edgeFadeEnabled").checked=g.edgeFadeEnabled!==false; $("#edgeFade").value=g.edgeFade??150;
   $("#gradientOpacityValue").value=`${Math.round((g.opacity??.96)*100)}%`; $("#gradientHeightValue").value=`${g.height??430}px`; $("#gradientSoftnessValue").value=`${g.softness??58}%`; $("#edgeFadeValue").value=`${g.edgeFade??150}px`;
-  $("#titleFont").value=a.titleFont||"Montserrat"; $("#bodyFont").value=a.bodyFont||"Montserrat"; $("#titleSize").value=a.titleSize??44; $("#bodySize").value=a.bodySize??36; $("#titleWeight").value=String(a.titleWeight??800); $("#bodyWeight").value=String(a.bodyWeight??500); $("#lineHeight").value=a.lineHeight??1.16; $("#letterSpacing").value=a.letterSpacing??-.01; $("#titleColor").value=a.titleColor||"#ffffff"; $("#textColor").value=a.textColor||"#ffffff"; $("#lineColor").value=rgbaToHex(a.lineColor||"rgba(255,255,255,.90)");
+  $("#titleFont").value=a.titleFont||"Montserrat"; $("#bodyFont").value=a.bodyFont||"Montserrat"; $("#titleSize").value=a.titleSize??44; $("#bodySize").value=a.bodySize??72; $("#titleWeight").value=String(a.titleWeight??800); $("#bodyWeight").value=String(a.bodyWeight??500); $("#lineHeight").value=a.lineHeight??1.16; $("#letterSpacing").value=a.letterSpacing??-.01; $("#titleColor").value=a.titleColor||"#ffffff"; $("#textColor").value=a.textColor||"#ffffff"; $("#lineColor").value=rgbaToHex(a.lineColor||"rgba(255,255,255,.90)");
   $("#wordCascade").checked=an.wordCascade!==false; $("#wordCascadeStep").value=an.wordCascadeStepMs??18; $("#sameChapterOutMs").value=an.sameChapterOutMs??100; $("#sameChapterInMs").value=an.sameChapterInMs??170; $("#chapterChangeMs").value=an.chapterChangeMs??320; $("#bookChangeMs").value=an.bookChangeMs??420;
   $("#wordCascadeStepValue").value=`${an.wordCascadeStepMs??18} ms/palabra`; $("#sameChapterOutValue").value=`${an.sameChapterOutMs??100} ms`; $("#sameChapterInValue").value=`${an.sameChapterInMs??170} ms`; $("#chapterChangeValue").value=`${an.chapterChangeMs??320} ms`; $("#bookChangeValue").value=`${an.bookChangeMs??420} ms`;
   $$(".source-option").forEach(o=>o.classList.toggle("active",o.dataset.source===s.source)); $("#manualContent").classList.toggle("hidden",s.source!=="manual"); $("#propresenterContent").classList.toggle("hidden",s.source!=="propresenter"); $("#scriptureSourceBadge").textContent=s.source==="manual"?"MANUAL":"PROPRESENTER";
@@ -231,18 +233,78 @@ $$(".source-option").forEach(option => {
 });
 
 const scriptureBindings = [
- ["format",null,"format"],["alignment","composition","alignment"],["maxLines","composition","maxLines",Number],["bottom","composition","bottom",Number],["width","composition","width",Number],["horizontalPadding","composition","horizontalPadding",Number],
+ ["format",null,"format"],["alignment","composition","alignment"],["maxLines","composition","maxLines",Number],["bottom","composition","bottom",Number],["width","composition","width",Number],["horizontalPadding","composition","horizontalPadding",Number],["scaleX","composition","scaleX",Number],["scaleY","composition","scaleY",Number],
  ["gradientMode","gradient","mode"],["gradientColor","gradient","color"],["gradientOpacity","gradient","opacity",Number],["gradientHeight","gradient","height",Number],["gradientSoftness","gradient","softness",Number],["edgeFade","gradient","edgeFade",Number],
  ["titleFont","appearance","titleFont"],["bodyFont","appearance","bodyFont"],["titleSize","appearance","titleSize",Number],["bodySize","appearance","bodySize",Number],["titleWeight","appearance","titleWeight",Number],["bodyWeight","appearance","bodyWeight",Number],["lineHeight","appearance","lineHeight",Number],["letterSpacing","appearance","letterSpacing",Number],["titleColor","appearance","titleColor"],["textColor","appearance","textColor"],["lineColor","appearance","lineColor"],
  ["wordCascadeStepMs","animation","wordCascadeStepMs",Number],["sameChapterOutMs","animation","sameChapterOutMs",Number],["sameChapterInMs","animation","sameChapterInMs",Number],["chapterChangeMs","animation","chapterChangeMs",Number],["bookChangeMs","animation","bookChangeMs",Number]
 ];
-for(const [controlKey,group,key,cast=(v=>v)] of scriptureBindings){scriptureControls[controlKey].addEventListener("input",()=>{const value=cast(scriptureControls[controlKey].value);updateScripture(group?{[group]:{[key]:value}}:{[key]:value});});}
+for (const [controlKey, group, key, cast = value => value] of scriptureBindings) {
+  const control = scriptureControls[controlKey];
+  if (!control) {
+    console.warn(`Scripture control missing: ${controlKey}`);
+    continue;
+  }
+
+  control.addEventListener("input", () => {
+    const value = cast(control.value);
+    updateScripture(
+      group ? { [group]: { [key]: value } } : { [key]: value }
+    );
+  });
+}
 scriptureControls.balance.addEventListener("change",()=>updateScripture({composition:{balance:scriptureControls.balance.checked}}));
 scriptureControls.edgeFadeEnabled.addEventListener("change",()=>updateScripture({gradient:{edgeFadeEnabled:scriptureControls.edgeFadeEnabled.checked}}));
 scriptureControls.wordCascade.addEventListener("change",()=>updateScripture({animation:{wordCascade:scriptureControls.wordCascade.checked}}));
 
 $("#testScriptureAnimation").addEventListener("click", async () => { await api("/api/scripture/replay",{method:"POST"}); $("#scriptureOutputPreview").contentWindow?.postMessage({type:"bmms-scripture-replay"},"*"); });
-$("#refreshScripturePreview").addEventListener("click",()=>{const f=$("#scriptureOutputPreview");f.src=`/overlay/scripture?preview=1&t=${Date.now()}`;});
+const scripturePreviewFrame = $("#scriptureOutputPreview");
+const scripturePreviewViewport = scripturePreviewFrame?.closest(".scripture-output-frame");
+const scripturePreviewStatus = $("#scripturePreviewStatus");
+
+function resizeScripturePreview() {
+  if (!scripturePreviewFrame || !scripturePreviewViewport) return;
+
+  const width = scripturePreviewViewport.clientWidth || 960;
+  const scale = Math.max(0.1, width / 1920);
+
+  scripturePreviewFrame.style.setProperty(
+    "--scripture-preview-scale",
+    String(scale)
+  );
+  scripturePreviewViewport.style.height = `${1080 * scale}px`;
+}
+
+if (scripturePreviewFrame && scripturePreviewViewport) {
+  if ("ResizeObserver" in window) {
+    const scripturePreviewObserver = new ResizeObserver(() => {
+      resizeScripturePreview();
+    });
+    scripturePreviewObserver.observe(scripturePreviewViewport);
+  } else {
+    window.addEventListener("resize", resizeScripturePreview);
+  }
+
+  scripturePreviewFrame.addEventListener("load", () => {
+    scripturePreviewFrame.classList.remove("preview-loading");
+    if (scripturePreviewStatus) {
+      scripturePreviewStatus.textContent = "Sincronizado";
+    }
+  });
+
+  resizeScripturePreview();
+}
+
+$("#refreshScripturePreview")?.addEventListener("click", () => {
+  if (!scripturePreviewFrame) return;
+
+  scripturePreviewFrame.classList.add("preview-loading");
+  if (scripturePreviewStatus) {
+    scripturePreviewStatus.textContent = "Recargando…";
+  }
+
+  scripturePreviewFrame.src =
+    `/overlay/scripture?preview=1&t=${Date.now()}`;
+});
 
 $("#integratedTakeButton").addEventListener("click", async () => {
   await api("/api/scripture/take", { method: "POST" });

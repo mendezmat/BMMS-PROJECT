@@ -1,5 +1,76 @@
 # Changelog
 
+## [1.6.7-beta.10] - 2026-07-22
+
+### Geometry-only composition scaling
+
+- Horizontal control now changes composition width, lateral spacing and solids.
+- Vertical control now changes panel height, vertical padding and background solids.
+- Verse, reference and version typography are never transformed or distorted.
+- Renamed controls to `Ancho de la composición` and `Altura de la composición`.
+- Preserved the working ProPresenter and Manual flows from Update 024.
+
+
+## [1.6.3-beta.10] - 2026-07-22
+
+### Scripture readability hotfix
+
+- Prevented verse text from collapsing to 3–8 px.
+- Added a readable 24 px fitting target and an 18 px emergency floor.
+- BMMS now adds lines automatically before reducing the verse excessively.
+- Added a stable width fallback during iframe and Browser Output initialization.
+- No changes to ProPresenter, Manual, Preview, Program, Take, Clear or Auto.
+
+
+## [1.6.1-beta.10] - 2026-07-22
+
+### Fixed
+
+- A preview initialization error can no longer stop the entire BMMS interface.
+- Added a fallback when `ResizeObserver` is unavailable.
+- Missing preview elements are now handled safely.
+- Missing optional Scripture controls no longer abort all application scripts.
+- Existing saved state is deeply merged with the current Scripture defaults.
+- Older or incomplete `app-state.json` files no longer remove newer controls.
+
+
+## [1.6.0-beta.9] - 2026-07-22
+
+### Fixed
+
+- Embedded preview now uses a real 1920 × 1080 iframe viewport, matching vMix/OBS.
+- Removed internal overlay scaling that caused preview-only font differences.
+- Removed the two-second polling loop that repeatedly replayed/re-rendered preview content.
+- Preview signatures no longer include volatile ProPresenter metadata.
+- Text fitting no longer uses horizontal compression and continues reducing font size until content fits.
+- Removed the legacy 1500 px verse-width cap.
+- `Espacio lateral` now directly defines the text content box in every format.
+
+### Audited
+
+- Preview, Program, Take, Clear, Auto, manual preview and ProPresenter controls.
+- Browser Output asset routes and Scripture state synchronization.
+- Template, format, gradient, typography and animation state bindings.
+- LAN Browser Output compatibility.
+
+### Added
+
+- `/api/scripture/diagnostics` endpoint for fast runtime checks.
+
+
+## [1.5.1-beta.8] - 2026-07-22
+
+### Fixed
+
+- Embedded Browser Output preview no longer remains black because of a message/load race.
+- Preview is always visible and uses the iframe load event for refresh feedback.
+- Scripture fitting now validates candidates against real rendered DOM dimensions.
+- Final words are protected from clipping with a last-resort horizontal fit.
+- Lower-third formats may grow vertically instead of incorrectly failing a fixed-height test.
+- `Espacio lateral` now controls all templates and all spatial formats.
+- Removed a stray CSS closing brace in the Scripture output stylesheet.
+
+
 ## [1.5.0-beta.7] - 2026-07-22
 
 ### Fixed

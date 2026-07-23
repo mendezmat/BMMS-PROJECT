@@ -50,7 +50,46 @@ const config = services.register(
   new ConfigurationService(configPath, defaultAppState)
 );
 
-const persistedState = await config.load();
+
+function mergeScriptureDefaults(defaults, saved = {}) {
+  return {
+    ...defaults,
+    ...saved,
+    manual: { ...defaults.manual, ...(saved.manual || {}) },
+    propresenter: { ...defaults.propresenter, ...(saved.propresenter || {}) },
+    composition: { ...defaults.composition, ...(saved.composition || {}) },
+    appearance: { ...defaults.appearance, ...(saved.appearance || {}) },
+    gradient: { ...defaults.gradient, ...(saved.gradient || {}) },
+    animation: { ...defaults.animation, ...(saved.animation || {}) },
+    broadcast: { ...defaults.broadcast, ...(saved.broadcast || {}) },
+    output: { ...defaults.output, ...(saved.output || {}) }
+  };
+}
+
+function hydrateAppState(saved = {}) {
+  return {
+    ...defaultAppState,
+    ...saved,
+    settings: {
+      ...defaultAppState.settings,
+      ...(saved.settings || {}),
+      integrations: {
+        ...defaultAppState.settings?.integrations,
+        ...(saved.settings?.integrations || {}),
+        propresenter: {
+          ...defaultAppState.settings?.integrations?.propresenter,
+          ...(saved.settings?.integrations?.propresenter || {})
+        }
+      }
+    },
+    scripture: mergeScriptureDefaults(
+      defaultAppState.scripture,
+      saved.scripture || {}
+    )
+  };
+}
+
+const persistedState = hydrateAppState(await config.load());
 const overlays = services.register(
   "overlays",
   new OverlayRuntime(persistedState.lowerThird)
@@ -559,6 +598,28 @@ const server = http.createServer(async (request, response) => {
     return json(response, 200, {
       document: resolveDocument(graphicsDocument, context),
       context
+    });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/scripture/diagnostics") {
+    return json(response, 200, {
+      ok: true,
+      version: appState.version || null,
+      source: appState.scripture?.source,
+      design: appState.scripture?.design,
+      format: appState.scripture?.format,
+      browserOutput: {
+        html: true,
+        javascript: true,
+        stylesheet: true,
+        layoutModule: true
+      },
+      broadcast: {
+        visible: Boolean(scriptureBroadcast.visible),
+        hasPreview: Boolean(scriptureBroadcast.preview?.text),
+        hasProgram: Boolean(scriptureBroadcast.program?.text),
+        autoTake: Boolean(scriptureBroadcast.autoTake)
+      }
     });
   }
 

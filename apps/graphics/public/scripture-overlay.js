@@ -1,4 +1,3 @@
-
 import { balanceLines } from "/scripture-layout.js";
 
 const $ = id => document.getElementById(id);
@@ -55,21 +54,8 @@ function rgb(hex) {
 }
 
 function updatePreviewScale() {
-  if (!previewMode) return;
-
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const scale = Math.min(width / 1920, height / 1080);
-
-  document.documentElement.style.setProperty("--preview-scale", String(scale));
-  document.documentElement.style.setProperty(
-    "--preview-offset-x",
-    `${Math.max(0, (width - 1920 * scale) / 2)}px`
-  );
-  document.documentElement.style.setProperty(
-    "--preview-offset-y",
-    `${Math.max(0, (height - 1080 * scale) / 2)}px`
-  );
+  // The parent application scales the 1920 × 1080 iframe.
+  // The overlay viewport remains identical to the real Browser Output.
 }
 
 function applyConfig(nextScripture) {
@@ -82,6 +68,8 @@ function applyConfig(nextScripture) {
 
   root.setProperty("--bottom", `${composition.bottom ?? 28}px`);
   root.setProperty("--width", `${composition.width ?? 1660}px`);
+  root.setProperty("--geometry-scale-x", composition.scaleX ?? 1);
+  root.setProperty("--geometry-scale-y", composition.scaleY ?? 1);
   root.setProperty("--padding-x", `${composition.horizontalPadding ?? 72}px`);
   root.setProperty("--title-font", `"${appearance.titleFont || "Montserrat"}",Arial,sans-serif`);
   root.setProperty("--body-font", `"${appearance.bodyFont || "Montserrat"}",Arial,sans-serif`);
@@ -203,65 +191,27 @@ function partitionWords(words, lineCount, maxWidth, size, context) {
   return lines;
 }
 
-function findBestLayout(text) {
-  const composition = scripture.composition || {};
-  const appearance = scripture.appearance || {};
+
+function getCandidateLines(text, lineCount, size, maxWidth, context) {
   const words = String(text || "").trim().split(/\s+/).filter(Boolean);
-  const maxLines = Math.max(1, Number(composition.maxLines) || 4);
-  const baseSize = Math.max(18, Number(appearance.bodySize) || 36);
-  const minimumSize = Math.max(17, Math.round(baseSize * 0.52));
-
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-
-  const containerWidth = Math.max(120, verseEl.clientWidth);
-  const safeWidth = Math.max(100, containerWidth - 48);
-
-  for (let size = baseSize; size >= minimumSize; size -= 1) {
-    for (let lineCount = 1; lineCount <= Math.min(maxLines, words.length); lineCount += 1) {
-      const lines = partitionWords(words, lineCount, safeWidth, size, context);
-      if (!lines) continue;
-
-      const lineHeight = size * (Number(appearance.lineHeight) || 1.16);
-      const availableHeight = Math.max(
-        lineHeight,
-        bible.classList.contains("style-tv")
-          ? 104
-          : bible.classList.contains("style-broadcast")
-            ? 150
-            : 320
-      );
-
-      if (lineCount * lineHeight <= availableHeight) {
-        return { lines, size };
-      }
-    }
-  }
-
-  // Last-resort mode: preserve every word and allow the smallest readable size.
-  const fallback = balanceLines(String(text || ""), maxLines)
-    .split("\n")
-    .filter(Boolean)
-    .slice(0, maxLines);
-
-  return { lines: fallback, size: minimumSize };
+  if (!words.length) return [""];
+  return partitionWords(words, Math.min(lineCount, words.length), maxWidth, size, context);
 }
 
 function renderLines(lines, size, animate = true) {
   const animation = scripture.animation || {};
-
   verseEl.innerHTML = "";
   verseEl.style.fontSize = `${size}px`;
+  verseEl.style.transform = "";
+  verseEl.style.width = "100%";
 
   let wordIndex = 0;
-
   for (const lineText of lines) {
     const line = document.createElement("span");
     line.className = "verse-line";
 
     for (const part of lineText.split(/(\s+)/)) {
       if (!part) continue;
-
       const span = document.createElement("span");
 
       if (/^\s+$/.test(part)) {
@@ -279,43 +229,141 @@ function renderLines(lines, size, animate = true) {
 
       line.appendChild(span);
     }
-
     verseEl.appendChild(line);
   }
 }
 
+function getAvailableTextHeight() {
+  // Kept as a compatibility hook for diagnostics. Scripture panels may grow
+  // vertically; width is the strict fitting constraint.
+  return Number.POSITIVE_INFINITY;
+}
+
+function measureRenderedCandidate(lines, size) {
+  renderLines(lines, size, false);
+  const safeWidth = Math.max(1, verseEl.clientWidth - 2);
+  const rendered = [...verseEl.querySelectorAll(".verse-line")];
+  const fitsWidth = rendered.every(line => line.scrollWidth <= safeWidth + .5);
+
+  return {
+    fitsWidth,
+    fitsHeight: verseEl.scrollHeight <= getAvailableTextHeight(),
+    safeWidth,
+    scaleX: 1
+  };
+}
+
+function candidateFits(lines, size) {
+  const measurement = measureRenderedCandidate(lines, size);
+  return measurement.fitsWidth && measurement.fitsHeight;
+}
+
+function findBestLayout(text) {
+  const composition = scripture.composition || {};
+  const appearance = scripture.appearance || {};
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+
+  // The operator-selected size is authoritative. Smart Balance distributes
+  // words across lines, but it may never replace the font size.
+  const size = Math.max(
+    18,
+    Math.min(180, Number(appearance.bodySize) || 72)
+  );
+
+  const configuredMaxLines = Math.max(
+    1,
+    Math.min(10, Number(composition.maxLines) || 4)
+  );
+  const balanceEnabled = composition.balance !== false;
+
+  const contentWidth =
+    bible.querySelector(".content")?.clientWidth ||
+    Number(composition.width) ||
+    1660;
+  const horizontalPadding =
+    Number(composition.horizontalPadding) || 72;
+  const measuredWidth = verseEl.clientWidth;
+  const maxWidth = Math.max(
+    180,
+    measuredWidth > 40
+      ? measuredWidth - 2
+      : contentWidth - horizontalPadding * 2
+  );
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (balanceEnabled) {
+    // Respect the selected maximum first. If it is physically impossible at
+    // the selected size, BMMS adds lines instead of shrinking the text.
+    const maximumCandidateLines = Math.min(
+      Math.max(configuredMaxLines, 10),
+      Math.max(1, words.length)
+    );
+
+    for (
+      let lineCount = 1;
+      lineCount <= maximumCandidateLines;
+      lineCount += 1
+    ) {
+      const lines = getCandidateLines(
+        text,
+        lineCount,
+        size,
+        maxWidth,
+        context
+      );
+
+      if (lines) {
+        return { lines, size };
+      }
+    }
+  }
+
+  return {
+    lines: [String(text || "").trim()],
+    size
+  };
+}
+
 function fitAndRenderText(text, animate = true) {
-  // The final width depends on the selected CG style, so fitting occurs
-  // after the DOM has applied the corresponding classes.
   const layout = findBestLayout(text);
+
+  verseEl.style.setProperty(
+    "font-size",
+    `${layout.size}px`,
+    "important"
+  );
+  verseEl.style.width = "100%";
+  verseEl.style.transform = "";
+  verseEl.innerHTML = "";
+
   renderLines(layout.lines, layout.size, animate);
 
-  // One final verification protects against browser/font metric differences.
-  const safeWidth = Math.max(100, verseEl.clientWidth - 40);
-  let size = layout.size;
-  const minimum = Math.max(17, Math.round((scripture.appearance?.bodySize || 36) * 0.48));
-  const lines = [...verseEl.querySelectorAll(".verse-line")];
-
-  while (
-    size > minimum &&
-    lines.some(line => line.scrollWidth > safeWidth)
-  ) {
-    size -= 1;
-    verseEl.style.fontSize = `${size}px`;
-  }
+  // Re-assert the selected size after spans are created.
+  verseEl.style.setProperty(
+    "font-size",
+    `${layout.size}px`,
+    "important"
+  );
 
   const gradient = scripture.gradient || {};
   if ((gradient.mode || "adaptive") === "adaptive") {
-    const contentHeight = bible.querySelector(".content")?.scrollHeight || 250;
+    const contentHeight =
+      bible.querySelector(".content")?.scrollHeight || 250;
     const height = Math.max(
       260,
       Math.min(
-        900,
-        contentHeight + (Number(scripture.composition?.bottom) || 0) + 150
+        1000,
+        contentHeight +
+          (Number(scripture.composition?.bottom) || 0) +
+          150
       )
     );
-
-    document.documentElement.style.setProperty("--gradient-height", `${height}px`);
+    document.documentElement.style.setProperty(
+      "--gradient-height",
+      `${height}px`
+    );
   }
 }
 
@@ -418,13 +466,16 @@ async function refresh({ replay = false } = {}) {
     const visible = previewMode || Boolean(broadcast.visible && verse);
 
     const signature = JSON.stringify({
-      verse,
+      reference: verse?.reference || "",
+      text: verse?.text || "",
+      version: verse?.version || "",
       design: scripture.design,
       format: scripture.format,
       composition: scripture.composition,
       appearance: scripture.appearance,
       gradient: scripture.gradient,
-      animation: scripture.animation
+      animation: scripture.animation,
+      visible
     });
 
     if (signature !== lastSignature || replay) {
@@ -471,8 +522,10 @@ window.addEventListener("resize", () => {
 updatePreviewScale();
 refresh();
 
-if (previewMode && window.parent !== window) {
-  window.parent.postMessage({ type: "bmms-scripture-preview-ready" }, "*");
-}
 
-setInterval(refresh, 2000);
+
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refresh();
+});
+window.addEventListener("focus", refresh);

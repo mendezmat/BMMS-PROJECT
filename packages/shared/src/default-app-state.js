@@ -29,6 +29,8 @@ export const defaultAppState = Object.freeze({
       balance: true,
       bottom: 28,
       width: 1660,
+      scaleX: 1,
+      scaleY: 1,
       horizontalPadding: 72
     },
     appearance: {
@@ -39,7 +41,7 @@ export const defaultAppState = Object.freeze({
       titleFont: "Montserrat",
       bodyFont: "Montserrat",
       titleSize: 44,
-      bodySize: 36,
+      bodySize: 72,
       titleWeight: 800,
       bodyWeight: 500,
       lineHeight: 1.16,

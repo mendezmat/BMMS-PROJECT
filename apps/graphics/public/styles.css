@@ -451,9 +451,44 @@ p { color: var(--muted); margin: 7px 0; line-height: 1.45; }
   font-weight:700;
 }
 #scriptureOutputPreview {
-  opacity:0;
-  transition:opacity .18s ease;
+  opacity: 1;
+  transition: opacity .18s ease;
 }
-#scriptureOutputPreview.ready {
-  opacity:1;
+
+
+.scripture-output-frame {
+  background:
+    linear-gradient(45deg, rgba(255,255,255,.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.035) 75%),
+    #080d15;
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+#scriptureOutputPreview.preview-loading {
+  opacity: .35;
+}
+
+
+/* Update 019: the iframe itself always renders at the same viewport as vMix. */
+.scripture-output-frame {
+  aspect-ratio: auto;
+  height: auto;
+  min-height: 180px;
+}
+.scripture-output-frame iframe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform: scale(var(--scripture-preview-scale, .5));
+  transform-origin: top left;
+}
+#scripturePreviewStatus {
+  color: #8392a9;
+  font-size: 11px;
+  font-weight: 500;
 }

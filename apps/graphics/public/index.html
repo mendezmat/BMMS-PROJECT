@@ -10,7 +10,7 @@
   <header class="topbar">
     <div class="brand">
       <strong>BMMS Graphics</strong>
-      <span class="version">v1.5.0 Beta 7</span>
+      <span class="version">v1.6.0 Beta 9</span>
     </div>
     <div class="top-actions">
       <a href="/editor">Abrir Visual Editor</a>
@@ -117,9 +117,9 @@
           <div class="scripture-advanced-grid">
             <div class="settings-stack">
               <details class="panel" open>
-                <summary>Plantillas originales</summary>
+                <summary>Plantillas</summary>
                 <div class="panel-body">
-                  <p class="muted compact-copy">Las seis plantillas visuales originales de Scripture. El formato espacial se configura por separado.</p>
+                  <p class="muted compact-copy">Seleccione una plantilla visual. El formato espacial se configura por separado.</p>
                   <div class="advanced-template-grid">
                     <button class="design-card design-classic active" data-scripture-design="classic">
                       <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
@@ -215,6 +215,14 @@
                       <input id="scripturePadding" type="range" min="20" max="180" step="1">
                       <output id="scripturePaddingValue"></output>
                     </label>
+                    <label>Ancho de la composición
+                      <input id="compositionScaleX" type="range" min="0.5" max="2" step="0.01">
+                      <output id="compositionScaleXValue">100%</output>
+                    </label>
+                    <label>Altura de la composición
+                      <input id="compositionScaleY" type="range" min="0.5" max="2" step="0.01">
+                      <output id="compositionScaleYValue">100%</output>
+                    </label>
                     <label>Alineación
                       <select id="scriptureAlign">
                         <option value="left">Izquierda</option>
@@ -285,7 +293,7 @@
                       </select>
                     </label>
                     <label>Tamaño referencia<input id="titleSize" type="number" min="18" max="160"></label>
-                    <label>Tamaño versículo<input id="bodySize" type="number" min="18" max="160"></label>
+                    <label>Tamaño del versículo<input id="bodySize" type="number" min="18" max="160"></label>
                     <label>Peso referencia
                       <select id="titleWeight">
                         <option value="400">Regular</option>
@@ -359,7 +367,7 @@
                 <div class="preview-panel-head">
                   <div>
                     <span class="eyebrow">PREVIEW DEL OUTPUT</span>
-                    <strong>Vista 1920 × 1080</strong>
+                    <strong>Vista exacta 1920 × 1080</strong><small id="scripturePreviewStatus">Conectando…</small>
                   </div>
                   <button id="refreshScripturePreview">Recargar</button>
                 </div>
@@ -385,9 +393,9 @@
               </div>
 
               <div class="scripture-transport">
-                <button id="integratedTakeButton" class="take">TAKE</button>
-                <button id="integratedClearButton" class="clear">CLEAR</button>
-                <button id="integratedAutoButton">AUTO: OFF</button>
+                <button id="integratedTakeButton" class="take">ENVIAR</button>
+                <button id="integratedClearButton" class="clear">LIMPIAR</button>
+                <button id="integratedAutoButton">AUTO: APAGADO</button>
               </div>
 
               <div class="output-card">
