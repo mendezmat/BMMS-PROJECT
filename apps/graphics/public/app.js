@@ -90,10 +90,97 @@ for (const [key, element] of Object.entries(lowerThirdFields)) {
 $("#takeIn").addEventListener("click", () => updateLowerThird({ visible: true }));
 $("#takeOut").addEventListener("click", () => updateLowerThird({ visible: false }));
 
+
 function getActiveScriptureContent() {
   return appState.scripture.source === "propresenter"
     ? appState.scripture.propresenter
     : appState.scripture.manual;
+}
+
+let scriptureUiMode = localStorage.getItem("bmms.scripture.mode") || "simple";
+let scriptureBroadcast = {
+  preview: null,
+  program: null,
+  visible: false,
+  autoTake: false
+};
+
+const scriptureDesigns = {
+  classic: {
+    appearance: {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: 68,
+      fontWeight: 800,
+      lineHeight: 1.08,
+      textColor: "#ffffff",
+      backgroundColor: "#101827"
+    },
+    composition: { alignment: "left", balance: true, maxLines: 5 },
+    animation: { in: "fade-up", out: "fade-down", durationMs: 380 }
+  },
+  clean: {
+    appearance: {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: 64,
+      fontWeight: 700,
+      lineHeight: 1.12,
+      textColor: "#111827",
+      backgroundColor: "#f4f6fa"
+    },
+    composition: { alignment: "left", balance: true, maxLines: 5 },
+    animation: { in: "fade", out: "fade", durationMs: 300 }
+  },
+  minimal: {
+    appearance: {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: 70,
+      fontWeight: 800,
+      lineHeight: 1.06,
+      textColor: "#ffffff",
+      backgroundColor: "#000000"
+    },
+    composition: { alignment: "center", balance: true, maxLines: 4 },
+    animation: { in: "fade-up", out: "fade", durationMs: 420 }
+  }
+};
+
+function setScriptureMode(mode) {
+  scriptureUiMode = mode;
+  localStorage.setItem("bmms.scripture.mode", mode);
+  $("#scriptureSimpleMode").classList.toggle("active", mode === "simple");
+  $("#scriptureAdvancedMode").classList.toggle("active", mode === "advanced");
+  $("#scriptureSimpleView").classList.toggle("hidden", mode !== "simple");
+  $("#scriptureAdvancedView").classList.toggle("hidden", mode !== "advanced");
+}
+
+function renderVerseBus(prefix, verse, fallback) {
+  $(`#integrated${prefix}Reference`).textContent = verse?.reference || "Sin contenido";
+  $(`#integrated${prefix}Text`).textContent = verse?.text || fallback;
+  $(`#integrated${prefix}Version`).textContent = verse?.version || "";
+}
+
+function renderBroadcastState() {
+  renderVerseBus("Program", scriptureBroadcast.program, "El contenido al aire aparecerá aquí.");
+  renderVerseBus("Preview", scriptureBroadcast.preview, "La siguiente Escritura aparecerá aquí.");
+  $("#integratedOnAir").textContent = scriptureBroadcast.visible ? "ON AIR" : "OFF AIR";
+  $("#integratedAutoButton").textContent = `AUTO: ${scriptureBroadcast.autoTake ? "ON" : "OFF"}`;
+  $("#integratedAutoButton").classList.toggle("active", scriptureBroadcast.autoTake);
+}
+
+async function refreshScriptureBroadcast() {
+  try {
+    const [state, live] = await Promise.all([
+      api("/api/scripture/program"),
+      api("/api/scripture/live/status")
+    ]);
+    scriptureBroadcast = state;
+    renderBroadcastState();
+    $("#integratedScriptureDiagnostics").textContent = JSON.stringify({ broadcast: state, live }, null, 2);
+    $("#integratedLiveButton").textContent = live.running ? "Detener Live" : "Iniciar Live";
+    $("#integratedLiveButton").dataset.running = String(Boolean(live.running));
+  } catch (error) {
+    $("#integratedScriptureDiagnostics").textContent = error.message;
+  }
 }
 
 function renderScripture() {
@@ -127,6 +214,11 @@ function renderScripture() {
   $("#propresenterContent").classList.toggle("hidden", scripture.source !== "propresenter");
   $("#scriptureSourceBadge").textContent = scripture.source === "manual" ? "MANUAL" : "PROPRESENTER";
 
+  const activeDesign = scripture.design || "classic";
+  $$("[data-scripture-design]").forEach(card => {
+    card.classList.toggle("active", card.dataset.scriptureDesign === activeDesign);
+  });
+
   const incoming = scripture.propresenter;
   $("#incomingReference").textContent = incoming.reference || "Sin contenido";
   $("#incomingText").textContent = incoming.text || "Cuando llegue un cambio desde ProPresenter aparecerá aquí.";
@@ -134,25 +226,9 @@ function renderScripture() {
     ? `${incoming.presentation || "Presentación"} · Slide ${incoming.slideIndex ?? "-"} · ${new Date(incoming.receivedAt).toLocaleTimeString()}`
     : "";
 
+  setScriptureMode(scriptureUiMode);
   renderConnection();
-  renderScripturePreview();
-}
-
-function renderScripturePreview() {
-  const scripture = appState.scripture;
-  const content = getActiveScriptureContent();
-  const preview = $("#scripturePreview");
-  preview.style.background = scripture.appearance.backgroundColor;
-  preview.style.textAlign = scripture.composition.alignment;
-  preview.style.fontFamily = scripture.appearance.fontFamily;
-  preview.style.color = scripture.appearance.textColor;
-  preview.style.setProperty("--scripture-size", `${scripture.appearance.fontSize}px`);
-  preview.style.setProperty("--scripture-weight", scripture.appearance.fontWeight);
-  preview.style.setProperty("--scripture-line-height", scripture.appearance.lineHeight);
-  preview.style.setProperty("--scripture-columns", scripture.composition.columns);
-  $("#previewScriptureText").textContent = content.text || "Sin texto";
-  $("#previewScriptureReference").textContent = [content.reference, content.version].filter(Boolean).join(" · ");
-  preview.classList.toggle("on-air", scripture.output.visible);
+  refreshScriptureBroadcast();
 }
 
 async function updateScripture(patch) {
@@ -163,6 +239,22 @@ async function updateScripture(patch) {
   markSaving();
   renderScripture();
 }
+
+$("#scriptureSimpleMode").addEventListener("click", () => setScriptureMode("simple"));
+$("#scriptureAdvancedMode").addEventListener("click", () => setScriptureMode("advanced"));
+
+$$("[data-scripture-design]").forEach(card => {
+  card.addEventListener("click", async () => {
+    const design = card.dataset.scriptureDesign;
+    const preset = scriptureDesigns[design];
+    await updateScripture({
+      design,
+      appearance: preset.appearance,
+      composition: preset.composition,
+      animation: preset.animation
+    });
+  });
+});
 
 $$(".source-option").forEach(option => {
   option.addEventListener("click", () => updateScripture({ source: option.dataset.source }));
@@ -199,8 +291,38 @@ for (const [controlKey, group, key, cast = value => value] of scriptureBindings)
 scriptureControls.balance.addEventListener("change", () => {
   updateScripture({ composition: { balance: scriptureControls.balance.checked } });
 });
-$("#scriptureTakeIn").addEventListener("click", () => updateScripture({ output: { visible: true } }));
-$("#scriptureTakeOut").addEventListener("click", () => updateScripture({ output: { visible: false } }));
+
+$("#integratedTakeButton").addEventListener("click", async () => {
+  await api("/api/scripture/take", { method: "POST" });
+  await refreshScriptureBroadcast();
+});
+$("#integratedClearButton").addEventListener("click", async () => {
+  await api("/api/scripture/clear", { method: "POST" });
+  await refreshScriptureBroadcast();
+});
+$("#integratedAutoButton").addEventListener("click", async () => {
+  await api("/api/scripture/auto", {
+    method: "POST",
+    body: JSON.stringify({ enabled: !scriptureBroadcast.autoTake })
+  });
+  await refreshScriptureBroadcast();
+});
+$("#loadManualPreview").addEventListener("click", async () => {
+  await api("/api/scripture/preview/manual", {
+    method: "POST",
+    body: JSON.stringify(appState.scripture.manual)
+  });
+  await refreshScriptureBroadcast();
+});
+$("#integratedConnectButton").addEventListener("click", async () => {
+  await api("/api/integrations/propresenter/connect", { method: "POST" });
+  await loadState();
+});
+$("#integratedLiveButton").addEventListener("click", async () => {
+  const running = $("#integratedLiveButton").dataset.running === "true";
+  await api(`/api/scripture/live/${running ? "stop" : "start"}`, { method: "POST" });
+  await refreshScriptureBroadcast();
+});
 
 function ppFormState() {
   return {
@@ -316,3 +438,6 @@ events.addEventListener("propresenter-status", event => {
 });
 
 loadState();
+
+const integratedEvents = new EventSource("/api/app-events");
+["scripture-program","scripture-live-status"].forEach(name => integratedEvents.addEventListener(name, refreshScriptureBroadcast));

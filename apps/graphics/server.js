@@ -78,8 +78,14 @@ if (proPresenter.getConfig().enabled && proPresenter.getConfig().autoConnect) {
 let appState = persistedState;
 let scriptureBroadcast = {
   preview: persistedState.scripture?.broadcast?.preview || persistedState.scripture?.currentVerse || null,
-  program: persistedState.scripture?.broadcast?.program || null,
-  visible: Boolean(persistedState.scripture?.broadcast?.visible),
+  program:
+    persistedState.scripture?.broadcast?.program ||
+    (persistedState.scripture?.output?.visible ? persistedState.scripture?.currentVerse : null) ||
+    null,
+  visible: Boolean(
+    persistedState.scripture?.broadcast?.visible ??
+    persistedState.scripture?.output?.visible
+  ),
   autoTake: Boolean(persistedState.scripture?.autoTake?.enabled)
 };
 let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
@@ -266,6 +272,39 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === "POST" && url.pathname === "/api/integrations/propresenter/disconnect") {
     return json(response, 200, await proPresenter.disconnect());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/preview/manual") {
+    const incoming = await readJson(request);
+    const verse = {
+      id: `manual-${Date.now()}`,
+      reference: String(incoming.reference || "").trim(),
+      version: String(incoming.version || "").trim(),
+      text: String(incoming.text || "").trim(),
+      source: "manual",
+      receivedAt: new Date().toISOString()
+    };
+
+    if (!verse.text) {
+      return json(response, 400, { error: "Ingrese un texto antes de cargar Preview." });
+    }
+
+    scriptureBroadcast.preview = verse;
+    if (scriptureBroadcast.autoTake) {
+      scriptureBroadcast.program = verse;
+      scriptureBroadcast.visible = true;
+    }
+
+    const scripture = {
+      ...appState.scripture,
+      source: "manual",
+      currentVerse: verse,
+      broadcast: scriptureBroadcast
+    };
+    await saveState({ ...appState, scripture });
+    broadcast("scripture-updated", scriptureBroadcast);
+    broadcast("scripture-program", scriptureBroadcast);
+    return json(response, 200, scriptureBroadcast);
   }
 
   if (request.method === "GET" && url.pathname === "/api/scripture/program") {

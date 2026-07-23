@@ -52,3 +52,43 @@ html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background:
   font-size: 19px;
   font-weight: 650;
 }
+
+
+.graphic[data-design="clean"] .accent {
+  background: linear-gradient(180deg,#3159ad,#6a8de1);
+}
+.graphic[data-design="clean"] .panel {
+  border-color: rgba(17,24,39,.12);
+  box-shadow: 0 22px 70px rgba(0,0,0,.2);
+}
+.graphic[data-design="clean"] .reference {
+  color: #3559a8;
+}
+.graphic[data-design="clean"] .version {
+  color: rgba(17,24,39,.58);
+}
+
+.graphic[data-design="minimal"] {
+  left: 9%;
+  right: 9%;
+  bottom: 8%;
+  justify-content: center;
+}
+.graphic[data-design="minimal"] .accent {
+  display: none;
+}
+.graphic[data-design="minimal"] .panel {
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  text-align: center;
+  text-shadow: 0 4px 20px rgba(0,0,0,.9);
+}
+.graphic[data-design="minimal"] .reference {
+  color: rgba(255,255,255,.82);
+}
+.graphic[data-design="minimal"] .version {
+  color: rgba(255,255,255,.62);
+}

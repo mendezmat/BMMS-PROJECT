@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0-beta.2] - 2026-07-22
+
+### Added
+
+- Scripture integrated directly into BMMS Graphics.
+- Simple mode focused exclusively on design selection.
+- Advanced mode with source, Preview, Program, Take, Clear and Auto.
+- Manual content loading into Preview.
+- Integrated ProPresenter connection and Live controls.
+- Three initial Scripture designs: Broadcast Classic, Clean Light and Minimal Transparent.
+- Browser Output diagnostics and direct access.
+
+### Fixed
+
+- Scripture Browser Output now refreshes from both persisted application state and broadcast state.
+- Output retries after SSE interruptions and periodically resynchronizes.
+- Existing on-air Scripture state is recovered after restarting BMMS.
+
+
 ## [1.2.0-beta.1] - 2026-07-22
 
 ### Added

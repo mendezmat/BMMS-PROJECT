@@ -10,7 +10,7 @@
   <header class="topbar">
     <div class="brand">
       <strong>BMMS Graphics</strong>
-      <span class="version">v0.3.0</span>
+      <span class="version">v1.3.0 Beta 2</span>
     </div>
     <div class="top-actions">
       <a href="/editor">Abrir Visual Editor</a>
@@ -46,138 +46,218 @@
         </div>
       </section>
 
+
       <section class="view" id="view-scripture">
         <div class="section-title">
-          <div><h1>Scripture</h1><p>Contenido bíblico manual o conectado a ProPresenter.</p></div>
-          <span id="scriptureSourceBadge" class="badge preview">MANUAL</span>
+          <div>
+            <h1>Scripture</h1>
+            <p>Diseño y operación de Escrituras dentro de BMMS Graphics.</p>
+          </div>
+          <div class="scripture-header-actions">
+            <span id="scriptureSourceBadge" class="badge preview">MANUAL</span>
+            <div class="mode-switch" aria-label="Modo de Scripture">
+              <button id="scriptureSimpleMode" class="active">Simple</button>
+              <button id="scriptureAdvancedMode">Avanzado</button>
+            </div>
+          </div>
         </div>
 
-        <div class="source-switch">
-          <button class="source-option active" data-source="manual">
-            <strong>Manual</strong><small>Escribir y controlar el contenido en BMMS</small>
-          </button>
-          <button class="source-option" data-source="propresenter">
-            <strong>ProPresenter</strong><small>Escuchar el contenido proyectado</small>
-          </button>
+        <div class="scripture-toolbar">
+          <div class="connection-summary">
+            <span id="scriptureConnectionDot" class="dot"></span>
+            <div>
+              <strong id="scriptureConnectionTitle">ProPresenter desconectado</strong>
+              <div id="scriptureConnectionDetail">Configure la integración para comenzar.</div>
+            </div>
+          </div>
+          <div class="grow"></div>
+          <button id="integratedConnectButton">Conectar</button>
+          <button id="integratedLiveButton">Iniciar Live</button>
+          <a href="/overlay/scripture" target="_blank">Abrir output</a>
         </div>
 
-        <div class="scripture-grid">
-          <div class="settings-stack">
-            <details class="panel" open>
-              <summary>Contenido</summary>
-              <div class="panel-body">
-                <div id="manualContent" class="source-panel">
-                  <div class="form-grid two">
-                    <label>Referencia<input id="scriptureReference"></label>
-                    <label>Versión<input id="scriptureVersion"></label>
+        <section class="simple-only" id="scriptureSimpleView">
+          <div class="panel">
+            <div class="panel-body">
+              <span class="eyebrow">DISEÑOS</span>
+              <h2>Seleccione el aspecto de la Escritura</h2>
+              <p class="muted">El modo simple mantiene ocultos los controles técnicos. El contenido continúa siguiendo a ProPresenter.</p>
+
+              <div class="design-library">
+                <button class="design-card design-classic active" data-scripture-design="classic">
+                  <div class="design-thumb">
+                    <span class="sample-ref">Juan 3:16</span>
+                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
                   </div>
-                  <label>Texto<textarea id="scriptureText" rows="7"></textarea></label>
-                </div>
+                  <footer><strong>Broadcast Classic</strong><small>Panel oscuro con acento azul</small></footer>
+                </button>
 
-                <div id="propresenterContent" class="source-panel hidden">
-                  <div class="connection-card">
-                    <span id="scriptureConnectionDot" class="dot"></span>
-                    <div>
-                      <strong id="scriptureConnectionTitle">ProPresenter desconectado</strong>
-                      <p id="scriptureConnectionDetail">Configure la integración para recibir contenido.</p>
+                <button class="design-card design-clean" data-scripture-design="clean">
+                  <div class="design-thumb">
+                    <span class="sample-ref">Juan 3:16</span>
+                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
+                  </div>
+                  <footer><strong>Clean Light</strong><small>Claro, limpio y contemporáneo</small></footer>
+                </button>
+
+                <button class="design-card design-minimal" data-scripture-design="minimal">
+                  <div class="design-thumb">
+                    <span class="sample-ref">Juan 3:16</span>
+                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
+                  </div>
+                  <footer><strong>Minimal Transparent</strong><small>Texto directo sin panel sólido</small></footer>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="advanced-only hidden" id="scriptureAdvancedView">
+          <div class="scripture-advanced-grid">
+            <div class="settings-stack">
+              <details class="panel" open>
+                <summary>Fuente de contenido</summary>
+                <div class="panel-body">
+                  <div class="source-switch">
+                    <button class="source-option active" data-source="manual">
+                      <strong>Manual</strong><small>Escribir dentro de BMMS</small>
+                    </button>
+                    <button class="source-option" data-source="propresenter">
+                      <strong>ProPresenter</strong><small>Recibir la Escritura en vivo</small>
+                    </button>
+                  </div>
+
+                  <div id="manualContent" class="source-panel">
+                    <div class="form-grid two">
+                      <label>Referencia<input id="scriptureReference"></label>
+                      <label>Versión<input id="scriptureVersion"></label>
                     </div>
-                    <button data-open-integrations>Configurar</button>
+                    <label>Texto<textarea id="scriptureText" rows="6"></textarea></label>
+                    <button id="loadManualPreview">Cargar en Preview</button>
                   </div>
-                  <div class="incoming-card">
-                    <span class="eyebrow">CONTENIDO RECIBIDO</span>
-                    <h3 id="incomingReference">Sin contenido</h3>
-                    <p id="incomingText">Cuando llegue un cambio desde ProPresenter aparecerá aquí.</p>
-                    <small id="incomingMeta"></small>
+
+                  <div id="propresenterContent" class="source-panel hidden">
+                    <div class="incoming-card">
+                      <span class="eyebrow">CONTENIDO RECIBIDO</span>
+                      <h3 id="incomingReference">Sin contenido</h3>
+                      <p id="incomingText">Cuando llegue un cambio desde ProPresenter aparecerá aquí.</p>
+                      <small id="incomingMeta"></small>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </details>
+              </details>
 
-            <details class="panel">
-              <summary>Composición</summary>
-              <div class="panel-body form-grid two">
-                <label>Distribución
-                  <select id="layoutMode">
-                    <option value="automatic">Automática</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                </label>
-                <label>Columnas
-                  <select id="columns"><option value="1">1</option><option value="2">2</option></select>
-                </label>
-                <label>Alineación
-                  <select id="scriptureAlign">
-                    <option value="left">Izquierda</option>
-                    <option value="center">Centro</option>
-                  </select>
-                </label>
-                <label>Máximo de líneas<input id="maxLines" type="number" min="2" max="14"></label>
-                <label class="check-row full"><input id="balanceText" type="checkbox"> Balancear texto automáticamente</label>
-              </div>
-            </details>
-
-            <details class="panel">
-              <summary>Apariencia</summary>
-              <div class="panel-body">
-                <label>Editar elemento
-                  <select id="selectedElement">
-                    <option value="text">Texto bíblico</option>
-                    <option value="reference">Referencia</option>
-                    <option value="both">Ambos</option>
-                  </select>
-                </label>
-                <div class="form-grid two">
-                  <label>Tipografía<input id="fontFamily"></label>
-                  <label>Tamaño<input id="fontSize" type="number" min="18" max="160"></label>
-                  <label>Peso
-                    <select id="fontWeight">
-                      <option value="400">Regular</option>
-                      <option value="600">Semibold</option>
-                      <option value="700">Bold</option>
-                      <option value="800">Extra Bold</option>
+              <details class="panel">
+                <summary>Composición</summary>
+                <div class="panel-body form-grid two">
+                  <label>Distribución
+                    <select id="layoutMode">
+                      <option value="automatic">Automática</option>
+                      <option value="manual">Manual</option>
                     </select>
                   </label>
-                  <label>Interlineado<input id="lineHeight" type="number" min="0.8" max="2" step="0.05"></label>
-                  <label>Color texto<input id="textColor" type="color"></label>
-                  <label>Color fondo<input id="backgroundColor" type="color"></label>
+                  <label>Columnas
+                    <select id="columns"><option value="1">1</option><option value="2">2</option></select>
+                  </label>
+                  <label>Alineación
+                    <select id="scriptureAlign">
+                      <option value="left">Izquierda</option>
+                      <option value="center">Centro</option>
+                    </select>
+                  </label>
+                  <label>Máximo de líneas<input id="maxLines" type="number" min="2" max="14"></label>
+                  <label class="check-row full"><input id="balanceText" type="checkbox"> Smart Balance automático</label>
                 </div>
-              </div>
-            </details>
+              </details>
 
-            <details class="panel">
-              <summary>Animación</summary>
-              <div class="panel-body form-grid two">
-                <label>Entrada
-                  <select id="animationIn">
-                    <option value="fade-up">Fade Up</option>
-                    <option value="fade">Fade</option>
-                    <option value="slide-left">Slide Left</option>
-                  </select>
-                </label>
-                <label>Salida
-                  <select id="animationOut">
-                    <option value="fade-down">Fade Down</option>
-                    <option value="fade">Fade</option>
-                    <option value="slide-right">Slide Right</option>
-                  </select>
-                </label>
-                <label class="full">Duración<input id="scriptureAnimationMs" type="range" min="100" max="1600" step="50"><output id="scriptureAnimationValue"></output></label>
+              <details class="panel">
+                <summary>Apariencia</summary>
+                <div class="panel-body">
+                  <label>Editar elemento
+                    <select id="selectedElement">
+                      <option value="text">Texto bíblico</option>
+                      <option value="reference">Referencia</option>
+                      <option value="both">Ambos</option>
+                    </select>
+                  </label>
+                  <div class="form-grid two">
+                    <label>Tipografía<input id="fontFamily"></label>
+                    <label>Tamaño<input id="fontSize" type="number" min="18" max="160"></label>
+                    <label>Peso
+                      <select id="fontWeight">
+                        <option value="400">Regular</option>
+                        <option value="600">Semibold</option>
+                        <option value="700">Bold</option>
+                        <option value="800">Extra Bold</option>
+                      </select>
+                    </label>
+                    <label>Interlineado<input id="lineHeight" type="number" min="0.8" max="2" step="0.05"></label>
+                    <label>Color texto<input id="textColor" type="color"></label>
+                    <label>Color fondo<input id="backgroundColor" type="color"></label>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel">
+                <summary>Animación</summary>
+                <div class="panel-body form-grid two">
+                  <label>Entrada
+                    <select id="animationIn">
+                      <option value="fade-up">Fade Up</option>
+                      <option value="fade">Fade</option>
+                      <option value="slide-left">Slide Left</option>
+                    </select>
+                  </label>
+                  <label>Salida
+                    <select id="animationOut">
+                      <option value="fade-down">Fade Down</option>
+                      <option value="fade">Fade</option>
+                      <option value="slide-right">Slide Right</option>
+                    </select>
+                  </label>
+                  <label class="full">Duración<input id="scriptureAnimationMs" type="range" min="100" max="1600" step="50"><output id="scriptureAnimationValue"></output></label>
+                </div>
+              </details>
+            </div>
+
+            <div>
+              <div class="broadcast-console">
+                <article class="broadcast-bus program">
+                  <header><span>PROGRAM</span><strong id="integratedOnAir">OFF AIR</strong></header>
+                  <h3 id="integratedProgramReference">Sin contenido</h3>
+                  <p id="integratedProgramText">El contenido al aire aparecerá aquí.</p>
+                  <small id="integratedProgramVersion"></small>
+                </article>
+
+                <article class="broadcast-bus preview">
+                  <header><span>PREVIEW</span><strong>READY</strong></header>
+                  <h3 id="integratedPreviewReference">Esperando contenido</h3>
+                  <p id="integratedPreviewText">La siguiente Escritura aparecerá aquí.</p>
+                  <small id="integratedPreviewVersion"></small>
+                </article>
               </div>
-            </details>
+
+              <div class="scripture-transport">
+                <button id="integratedTakeButton" class="take">TAKE</button>
+                <button id="integratedClearButton" class="clear">CLEAR</button>
+                <button id="integratedAutoButton">AUTO: OFF</button>
+              </div>
+
+              <div class="output-card">
+                <span class="eyebrow">BROWSER OUTPUT</span>
+                <code>http://localhost:4173/overlay/scripture</code>
+                <small>Use 1920 × 1080 en el Browser Input de vMix u OBS.</small>
+              </div>
+
+              <details class="panel">
+                <summary>Diagnóstico en vivo</summary>
+                <div class="panel-body">
+                  <pre id="integratedScriptureDiagnostics">Cargando…</pre>
+                </div>
+              </details>
+            </div>
           </div>
-
-          <aside class="scripture-preview-panel">
-            <span class="eyebrow">PREVIEW DE COMPOSICIÓN</span>
-            <div id="scripturePreview" class="scripture-preview">
-              <div id="previewScriptureText"></div>
-              <div id="previewScriptureReference"></div>
-            </div>
-            <div class="transport">
-              <button id="scriptureTakeIn" class="primary">TAKE IN</button>
-              <button id="scriptureTakeOut">TAKE OUT</button>
-            </div>
-          </aside>
-        </div>
+        </section>
       </section>
 
       <section class="view" id="view-integrations">

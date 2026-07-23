@@ -6,6 +6,7 @@ export const defaultAppState = Object.freeze({
   settings: defaultProjectSettings,
   scripture: {
     source: "manual",
+    design: "classic",
     manual: {
       reference: "Juan 3:16",
       version: "RVR1960",
@@ -39,6 +40,11 @@ export const defaultAppState = Object.freeze({
       in: "fade-up",
       out: "fade-down",
       durationMs: 400
+    },
+    broadcast: {
+      preview: null,
+      program: null,
+      visible: false
     },
     output: {
       visible: false
