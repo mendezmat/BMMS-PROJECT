@@ -522,4 +522,118 @@ body.debug #status{display:block}
 #bibleBanner.format-fullscreen.style-editorial #verse,#bibleBanner.format-fullscreen.style-broadcast #verse,#bibleBanner.format-fullscreen.style-kinetic #verse{text-align:center}
 #bibleBanner.format-minimal.style-editorial .content,#bibleBanner.format-minimal.style-broadcast .content,#bibleBanner.format-minimal.style-glass .content,#bibleBanner.format-minimal.style-kinetic .content{padding-top:24px;padding-bottom:28px}
 
-#version{margin-top:12px;color:var(--text-color);font-family:var(--body-font);font-size:18px;font-weight:600;opacity:.62}#bibleBanner.no-version #version{display:none}body.preview-output #stage{transform-origin:top left}@media(max-aspect-ratio:16/9){body.preview-output #stage{transform:scale(calc(100vw / 1920))}}@media(min-aspect-ratio:16/9){body.preview-output #stage{transform:scale(calc(100vh / 1080))}}
+#version{margin-top:12px;color:var(--text-color);font-family:var(--body-font);font-size:18px;font-weight:600;opacity:.62}#bibleBanner.no-version #version{display:none}}
+
+
+/* Scripture TV Broadcast CG — final television-style design. */
+#bibleBanner.style-tv {
+  --tv-panel-height: 188px;
+  min-height: var(--tv-panel-height);
+}
+#bibleBanner.style-tv .gradient {
+  display: none;
+}
+#bibleBanner.style-tv .content {
+  position: relative;
+  min-height: var(--tv-panel-height);
+  padding: 25px 56px 24px 122px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 10px;
+  background:
+    linear-gradient(105deg, rgba(5,8,14,.99), rgba(19,23,33,.97) 44%, rgba(40,44,54,.96));
+  box-shadow: 0 22px 58px rgba(0,0,0,.46);
+  text-align: left;
+  text-shadow: none;
+}
+#bibleBanner.style-tv .content::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 72px;
+  height: 100%;
+  background: linear-gradient(168deg, #ffffff 0 34%, #dfe3e8 35% 41%, #080b11 42% 100%);
+  clip-path: polygon(0 0,100% 0,58% 100%,0 100%);
+}
+#bibleBanner.style-tv .content::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 55px;
+  top: 0;
+  bottom: 0;
+  width: 110px;
+  background: linear-gradient(90deg, rgba(255,255,255,.12), transparent);
+  transform: skewX(-10deg);
+}
+#bibleBanner.style-tv #reference,
+#bibleBanner.style-tv #verse,
+#bibleBanner.style-tv #version,
+#bibleBanner.style-tv .divider {
+  position: relative;
+  z-index: 2;
+}
+#bibleBanner.style-tv #reference {
+  display: inline-flex;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  margin: 0 0 12px;
+  padding: 7px 15px 6px;
+  background: #ffffff;
+  color: #05080e;
+  font-size: calc(var(--title-size) * .68);
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: .085em;
+  line-height: 1;
+  transform: skewX(-6deg);
+}
+#bibleBanner.style-tv .divider {
+  display: none;
+}
+#bibleBanner.style-tv #verse {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  text-align: left;
+}
+#bibleBanner.style-tv #version {
+  position: absolute;
+  right: 24px;
+  bottom: 12px;
+  margin: 0;
+  font-size: 14px;
+  opacity: .5;
+}
+#bibleBanner.format-left-column.style-tv .content,
+#bibleBanner.format-right-column.style-tv .content {
+  min-height: 300px;
+  padding: 52px 44px 44px 92px;
+}
+#bibleBanner.format-fullscreen.style-tv .content {
+  min-height: 320px;
+  padding: 56px 92px 52px 150px;
+}
+#bibleBanner.format-minimal.style-tv .content {
+  min-height: 150px;
+}
+
+/* Exact embedded preview: one real 1920x1080 stage, scaled once. */
+body.preview-output {
+  position: relative;
+  background: transparent;
+}
+body.preview-output #stage {
+  position: absolute;
+  left: var(--preview-offset-x, 0px);
+  top: var(--preview-offset-y, 0px);
+  width: 1920px;
+  height: 1080px;
+  transform: scale(var(--preview-scale, 1));
+  transform-origin: top left;
+}

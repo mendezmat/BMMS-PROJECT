@@ -416,3 +416,44 @@ p { color: var(--muted); margin: 7px 0; line-height: 1.45; }
 }
 
 .advanced-template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.advanced-template-grid .design-card footer{min-height:auto;padding:10px 12px}.advanced-template-grid .design-thumb{min-height:105px}.compact-copy{margin-top:0}.subsection-title{margin:4px 0 12px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9eb0ca}.subsection-title:not(:first-child){margin-top:24px;padding-top:20px;border-top:1px solid #273246}.field-help{display:block;margin:7px 0 13px;color:#8e9db4;font-size:12px;line-height:1.45}.preserved-note{display:flex;flex-direction:column;gap:5px;margin:16px 0;padding:13px 15px;border:1px solid #33415a;border-radius:10px;background:#111927}.preserved-note span{color:#aab7ca;font-size:12px;line-height:1.45}.scripture-live-preview{margin-bottom:16px;overflow:hidden}.preview-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #273246}.preview-panel-head>div{display:flex;flex-direction:column;gap:4px}.scripture-output-frame{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#080d15}.scripture-output-frame iframe{width:100%;height:100%;border:0;display:block;background:transparent}@media(max-width:1050px){.advanced-template-grid{grid-template-columns:1fr}}
+
+
+.design-tv .design-thumb {
+  position: relative;
+  justify-content: center;
+  padding: 22px 18px 18px 38px;
+  overflow: hidden;
+  background: linear-gradient(105deg,#070a10,#1d222d 58%,#323640);
+  text-align: left;
+}
+.design-tv .design-thumb::before {
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:34px;
+  background:linear-gradient(168deg,#fff 0 34%,#dfe3e8 35% 41%,#080b11 42%);
+  clip-path:polygon(0 0,100% 0,58% 100%,0 100%);
+}
+.design-tv .sample-ref {
+  position:relative;
+  z-index:1;
+  width:max-content;
+  padding:4px 8px;
+  background:#fff;
+  color:#080b11;
+  font-style:italic;
+  font-weight:900;
+}
+.design-tv .sample-text {
+  position:relative;
+  z-index:1;
+  font-size:10px;
+  font-weight:700;
+}
+#scriptureOutputPreview {
+  opacity:0;
+  transition:opacity .18s ease;
+}
+#scriptureOutputPreview.ready {
+  opacity:1;
+}

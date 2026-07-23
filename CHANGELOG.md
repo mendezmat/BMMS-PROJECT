@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.5.0-beta.7] - 2026-07-22
+
+### Fixed
+
+- Scripture text no longer overflows or gets cut at the right edge.
+- Text fitting now uses real browser font measurements.
+- Every font-size attempt recalculates the balanced line distribution.
+- Added a 40–48 px internal safety margin.
+- Embedded preview now scales one real 1920 × 1080 output stage exactly once.
+- Preview reload and live configuration synchronization improved.
+
+### Added
+
+- TV Broadcast CG, matching the final television-style lower-third design.
+- Dynamic-programming line partitioning for balanced, width-safe verse layouts.
+- Final browser-metric verification after rendering.
+
+
 ## [1.4.1-beta.6] - 2026-07-22
 
 ### Fixed
