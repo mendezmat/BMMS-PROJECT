@@ -3,7 +3,7 @@
   --title-font:"Montserrat",Arial,sans-serif;--body-font:"Montserrat",Arial,sans-serif;
   --title-size:44px;--body-size:36px;--title-weight:800;--body-weight:500;
   --line-height:1.16;--title-color:#fff;--text-color:#fff;
-  --line-color:rgba(255,255,255,.9);--gradient-strength:.96;--gradient-color:0,0,0;--gradient-height:430px;--gradient-softness:58%;--edge-fade:150px;
+  --line-color:rgba(255,255,255,.9);--gradient-strength:.96;--gradient-color:0,0,0;--gradient-height:430px;--gradient-top-offset:0px;--gradient-bottom-extension:0px;--gradient-extend-to-bottom:1;--gradient-softness:58%;--edge-fade:150px;
 }
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
@@ -777,4 +777,35 @@ body.preview-output #stage {
 }
 #bibleBanner .verse-line {
   transform: none;
+}
+
+
+/* Update 026 final geometry authority.
+   This block intentionally comes after all legacy template rules. */
+#bibleBanner .gradient {
+  top: auto !important;
+  bottom: calc(
+    -1 * (var(--bottom) + var(--gradient-bottom-extension))
+  ) !important;
+  height: calc(
+    var(--gradient-height) * var(--geometry-scale-y)
+  ) !important;
+}
+
+#bibleBanner.extend-to-bottom .gradient {
+  top: auto !important;
+  bottom: calc(
+    -1 * (var(--bottom) + var(--gradient-bottom-extension))
+  ) !important;
+  height: calc(
+    1080px - var(--gradient-top-offset) +
+    var(--gradient-bottom-extension)
+  ) !important;
+}
+
+/* Templates that intentionally use a solid panel may continue hiding the
+   gradient, but no template can silently redefine its visible height. */
+#bibleBanner.style-broadcast .gradient,
+#bibleBanner.style-tv .gradient {
+  display: none;
 }

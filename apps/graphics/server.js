@@ -41,6 +41,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
 const publicDir = path.join(__dirname, "public");
 const configPath = path.join(projectRoot, "data", "bmms-state.json");
+const connectionsPath = path.join(projectRoot, "data", "bmms-connections.json");
+
+async function loadGlobalConnections() {
+  try {
+    return JSON.parse(await fs.readFile(connectionsPath, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+async function saveGlobalConnections(connections) {
+  await fs.mkdir(path.dirname(connectionsPath), { recursive: true });
+  const temporaryPath = `${connectionsPath}.tmp`;
+  await fs.writeFile(
+    temporaryPath,
+    `${JSON.stringify(connections, null, 2)}\n`,
+    "utf8"
+  );
+  await fs.rename(temporaryPath, connectionsPath);
+}
 
 const services = new ServiceContainer();
 const logger = services.register("logger", new Logger("graphics"));
@@ -89,7 +109,21 @@ function hydrateAppState(saved = {}) {
   };
 }
 
-const persistedState = hydrateAppState(await config.load());
+const savedAppState = await config.load();
+const savedConnections = await loadGlobalConnections();
+const persistedState = hydrateAppState({
+  ...savedAppState,
+  settings: {
+    ...(savedAppState.settings || {}),
+    integrations: {
+      ...(savedAppState.settings?.integrations || {}),
+      propresenter: {
+        ...(savedAppState.settings?.integrations?.propresenter || {}),
+        ...(savedConnections.propresenter || {})
+      }
+    }
+  }
+});
 const overlays = services.register(
   "overlays",
   new OverlayRuntime(persistedState.lowerThird)
@@ -696,7 +730,10 @@ const server = http.createServer(async (request, response) => {
           propresenter: normalized
         }
       };
-      await saveState({ ...appState, settings });
+      await Promise.all([
+        saveState({ ...appState, settings }),
+        saveGlobalConnections({ propresenter: normalized })
+      ]);
       return json(response, 200, {
         config: normalized,
         status: proPresenter.getStatus()
@@ -704,6 +741,14 @@ const server = http.createServer(async (request, response) => {
     } catch (error) {
       return json(response, 400, { error: error.message });
     }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/settings/propresenter/persistence") {
+    const savedConnections = await loadGlobalConnections();
+    return json(response, 200, {
+      persisted: Boolean(savedConnections.propresenter),
+      config: savedConnections.propresenter || proPresenter.getConfig()
+    });
   }
 
   if (request.method === "POST" && url.pathname === "/api/propresenter/test") {

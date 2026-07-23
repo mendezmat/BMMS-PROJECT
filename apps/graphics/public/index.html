@@ -259,10 +259,19 @@
                       <input id="gradientOpacity" type="range" min="0" max="1" step="0.01">
                       <output id="gradientOpacityValue"></output>
                     </label>
-                    <label>Altura
-                      <input id="gradientHeight" type="range" min="180" max="850" step="5">
+                    <label>Altura del fondo
+                      <input id="gradientHeight" type="range" min="80" max="1080" step="5">
                       <output id="gradientHeightValue"></output>
                     </label>
+                    <label>Inicio superior
+                      <input id="gradientTopOffset" type="range" min="-500" max="500" step="5">
+                      <output id="gradientTopOffsetValue"></output>
+                    </label>
+                    <label>Extensión inferior
+                      <input id="gradientBottomExtension" type="range" min="0" max="600" step="5">
+                      <output id="gradientBottomExtensionValue"></output>
+                    </label>
+                    <label class="check-row full"><input id="gradientExtendToBottom" type="checkbox"> Extender el fondo hasta el borde inferior</label>
                     <label>Suavidad
                       <input id="gradientSoftness" type="range" min="15" max="90" step="1">
                       <output id="gradientSoftnessValue"></output>
@@ -369,7 +378,17 @@
                     <span class="eyebrow">PREVIEW DEL OUTPUT</span>
                     <strong>Vista exacta 1920 × 1080</strong><small id="scripturePreviewStatus">Conectando…</small>
                   </div>
-                  <button id="refreshScripturePreview">Recargar</button>
+                  <div class="preview-actions">
+                    <select id="scripturePreviewZoom" aria-label="Zoom del Preview">
+                      <option value="fit">Ajustar</option>
+                      <option value="0.5">50%</option>
+                      <option value="0.75">75%</option>
+                      <option value="1">100%</option>
+                    </select>
+                    <button id="toggleLargeScripturePreview">Ampliar</button>
+                    <button id="fullscreenScripturePreview">Pantalla completa</button>
+                    <button id="refreshScripturePreview">Recargar</button>
+                  </div>
                 </div>
                 <div class="scripture-output-frame">
                   <iframe id="scriptureOutputPreview" src="/overlay/scripture?preview=1" title="Preview del Browser Output"></iframe>

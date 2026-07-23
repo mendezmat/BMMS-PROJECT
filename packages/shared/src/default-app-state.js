@@ -56,6 +56,9 @@ export const defaultAppState = Object.freeze({
       color: "#000000",
       opacity: 0.96,
       height: 430,
+      topOffset: 0,
+      bottomExtension: 0,
+      extendToBottom: true,
       softness: 58,
       edgeFade: 150,
       edgeFadeEnabled: true

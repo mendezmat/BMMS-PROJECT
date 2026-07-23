@@ -492,3 +492,40 @@ p { color: var(--muted); margin: 7px 0; line-height: 1.45; }
   font-size: 11px;
   font-weight: 500;
 }
+
+
+/* Update 026 — larger, adjustable Scripture Preview */
+.preview-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.preview-actions select,
+.preview-actions button {
+  min-height: 34px;
+}
+.scripture-live-preview:fullscreen {
+  padding: 18px;
+  background: #060a11;
+  overflow: auto;
+}
+.scripture-live-preview:fullscreen .scripture-output-frame {
+  width: min(100%, 1920px);
+  margin: 0 auto;
+}
+body.scripture-preview-large #scriptureAdvancedView {
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+}
+body.scripture-preview-large .scripture-live-preview {
+  position: fixed;
+  inset: 12px;
+  z-index: 5000;
+  overflow: auto;
+  background: #080d15;
+  box-shadow: 0 24px 80px rgba(0,0,0,.65);
+}
+body.scripture-preview-large .scripture-live-preview .scripture-output-frame {
+  width: min(100%, 1920px);
+  margin: 0 auto;
+}

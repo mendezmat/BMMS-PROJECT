@@ -17,7 +17,7 @@ const scriptureControls = {
   format: $("#scriptureFormat"), alignment: $("#scriptureAlign"), maxLines: $("#maxLines"), balance: $("#balanceText"),
   bottom: $("#scriptureBottom"), width: $("#scriptureWidth"), horizontalPadding: $("#scripturePadding"), scaleX: $("#compositionScaleX"), scaleY: $("#compositionScaleY"),
   gradientMode: $("#gradientMode"), gradientColor: $("#gradientColor"), gradientOpacity: $("#gradientOpacity"),
-  gradientHeight: $("#gradientHeight"), gradientSoftness: $("#gradientSoftness"), edgeFadeEnabled: $("#edgeFadeEnabled"), edgeFade: $("#edgeFade"),
+  gradientHeight: $("#gradientHeight"), gradientTopOffset: $("#gradientTopOffset"), gradientBottomExtension: $("#gradientBottomExtension"), gradientExtendToBottom: $("#gradientExtendToBottom"), gradientSoftness: $("#gradientSoftness"), edgeFadeEnabled: $("#edgeFadeEnabled"), edgeFade: $("#edgeFade"),
   titleFont: $("#titleFont"), bodyFont: $("#bodyFont"), titleSize: $("#titleSize"), bodySize: $("#bodySize"),
   titleWeight: $("#titleWeight"), bodyWeight: $("#bodyWeight"), lineHeight: $("#lineHeight"), letterSpacing: $("#letterSpacing"),
   titleColor: $("#titleColor"), textColor: $("#textColor"), lineColor: $("#lineColor"),
@@ -153,8 +153,8 @@ function renderScripture() {
   $("#scriptureBottomValue").value=`${c.bottom??28}px`; $("#scriptureWidthValue").value=`${c.width??1660}px`; $("#scripturePaddingValue").value=`${c.horizontalPadding??72}px`;
   $("#compositionScaleX").value=c.scaleX??1; $("#compositionScaleY").value=c.scaleY??1;
   $("#compositionScaleXValue").value=`${Math.round((c.scaleX??1)*100)}%`; $("#compositionScaleYValue").value=`${Math.round((c.scaleY??1)*100)}%`;
-  $("#gradientMode").value=g.mode||"adaptive"; $("#gradientColor").value=g.color||"#000000"; $("#gradientOpacity").value=g.opacity??.96; $("#gradientHeight").value=g.height??430; $("#gradientSoftness").value=g.softness??58; $("#edgeFadeEnabled").checked=g.edgeFadeEnabled!==false; $("#edgeFade").value=g.edgeFade??150;
-  $("#gradientOpacityValue").value=`${Math.round((g.opacity??.96)*100)}%`; $("#gradientHeightValue").value=`${g.height??430}px`; $("#gradientSoftnessValue").value=`${g.softness??58}%`; $("#edgeFadeValue").value=`${g.edgeFade??150}px`;
+  $("#gradientMode").value=g.mode||"adaptive"; $("#gradientColor").value=g.color||"#000000"; $("#gradientOpacity").value=g.opacity??.96; $("#gradientHeight").value=g.height??430; $("#gradientTopOffset").value=g.topOffset??0; $("#gradientBottomExtension").value=g.bottomExtension??0; $("#gradientExtendToBottom").checked=g.extendToBottom!==false; $("#gradientSoftness").value=g.softness??58; $("#edgeFadeEnabled").checked=g.edgeFadeEnabled!==false; $("#edgeFade").value=g.edgeFade??150;
+  $("#gradientOpacityValue").value=`${Math.round((g.opacity??.96)*100)}%`; $("#gradientHeightValue").value=`${g.height??430}px`; $("#gradientTopOffsetValue").value=`${g.topOffset??0}px`; $("#gradientBottomExtensionValue").value=`${g.bottomExtension??0}px`; $("#gradientSoftnessValue").value=`${g.softness??58}%`; $("#edgeFadeValue").value=`${g.edgeFade??150}px`;
   $("#titleFont").value=a.titleFont||"Montserrat"; $("#bodyFont").value=a.bodyFont||"Montserrat"; $("#titleSize").value=a.titleSize??44; $("#bodySize").value=a.bodySize??72; $("#titleWeight").value=String(a.titleWeight??800); $("#bodyWeight").value=String(a.bodyWeight??500); $("#lineHeight").value=a.lineHeight??1.16; $("#letterSpacing").value=a.letterSpacing??-.01; $("#titleColor").value=a.titleColor||"#ffffff"; $("#textColor").value=a.textColor||"#ffffff"; $("#lineColor").value=rgbaToHex(a.lineColor||"rgba(255,255,255,.90)");
   $("#wordCascade").checked=an.wordCascade!==false; $("#wordCascadeStep").value=an.wordCascadeStepMs??18; $("#sameChapterOutMs").value=an.sameChapterOutMs??100; $("#sameChapterInMs").value=an.sameChapterInMs??170; $("#chapterChangeMs").value=an.chapterChangeMs??320; $("#bookChangeMs").value=an.bookChangeMs??420;
   $("#wordCascadeStepValue").value=`${an.wordCascadeStepMs??18} ms/palabra`; $("#sameChapterOutValue").value=`${an.sameChapterOutMs??100} ms`; $("#sameChapterInValue").value=`${an.sameChapterInMs??170} ms`; $("#chapterChangeValue").value=`${an.chapterChangeMs??320} ms`; $("#bookChangeValue").value=`${an.bookChangeMs??420} ms`;
@@ -234,7 +234,7 @@ $$(".source-option").forEach(option => {
 
 const scriptureBindings = [
  ["format",null,"format"],["alignment","composition","alignment"],["maxLines","composition","maxLines",Number],["bottom","composition","bottom",Number],["width","composition","width",Number],["horizontalPadding","composition","horizontalPadding",Number],["scaleX","composition","scaleX",Number],["scaleY","composition","scaleY",Number],
- ["gradientMode","gradient","mode"],["gradientColor","gradient","color"],["gradientOpacity","gradient","opacity",Number],["gradientHeight","gradient","height",Number],["gradientSoftness","gradient","softness",Number],["edgeFade","gradient","edgeFade",Number],
+ ["gradientMode","gradient","mode"],["gradientColor","gradient","color"],["gradientOpacity","gradient","opacity",Number],["gradientHeight","gradient","height",Number],["gradientTopOffset","gradient","topOffset",Number],["gradientBottomExtension","gradient","bottomExtension",Number],["gradientSoftness","gradient","softness",Number],["edgeFade","gradient","edgeFade",Number],
  ["titleFont","appearance","titleFont"],["bodyFont","appearance","bodyFont"],["titleSize","appearance","titleSize",Number],["bodySize","appearance","bodySize",Number],["titleWeight","appearance","titleWeight",Number],["bodyWeight","appearance","bodyWeight",Number],["lineHeight","appearance","lineHeight",Number],["letterSpacing","appearance","letterSpacing",Number],["titleColor","appearance","titleColor"],["textColor","appearance","textColor"],["lineColor","appearance","lineColor"],
  ["wordCascadeStepMs","animation","wordCascadeStepMs",Number],["sameChapterOutMs","animation","sameChapterOutMs",Number],["sameChapterInMs","animation","sameChapterInMs",Number],["chapterChangeMs","animation","chapterChangeMs",Number],["bookChangeMs","animation","bookChangeMs",Number]
 ];
@@ -254,6 +254,7 @@ for (const [controlKey, group, key, cast = value => value] of scriptureBindings)
 }
 scriptureControls.balance.addEventListener("change",()=>updateScripture({composition:{balance:scriptureControls.balance.checked}}));
 scriptureControls.edgeFadeEnabled.addEventListener("change",()=>updateScripture({gradient:{edgeFadeEnabled:scriptureControls.edgeFadeEnabled.checked}}));
+scriptureControls.gradientExtendToBottom.addEventListener("change",()=>updateScripture({gradient:{extendToBottom:scriptureControls.gradientExtendToBottom.checked}}));
 scriptureControls.wordCascade.addEventListener("change",()=>updateScripture({animation:{wordCascade:scriptureControls.wordCascade.checked}}));
 
 $("#testScriptureAnimation").addEventListener("click", async () => { await api("/api/scripture/replay",{method:"POST"}); $("#scriptureOutputPreview").contentWindow?.postMessage({type:"bmms-scripture-replay"},"*"); });
@@ -264,14 +265,21 @@ const scripturePreviewStatus = $("#scripturePreviewStatus");
 function resizeScripturePreview() {
   if (!scripturePreviewFrame || !scripturePreviewViewport) return;
 
-  const width = scripturePreviewViewport.clientWidth || 960;
-  const scale = Math.max(0.1, width / 1920);
+  const zoomValue = $("#scripturePreviewZoom")?.value || "fit";
+  const availableWidth = scripturePreviewViewport.clientWidth || 960;
+  const availableHeight = Math.max(320, window.innerHeight - 210);
+  const fitScale = Math.min(availableWidth / 1920, availableHeight / 1080);
+  const scale = zoomValue === "fit"
+    ? Math.max(0.1, fitScale)
+    : Math.max(0.1, Number(zoomValue));
 
   scripturePreviewFrame.style.setProperty(
     "--scripture-preview-scale",
     String(scale)
   );
   scripturePreviewViewport.style.height = `${1080 * scale}px`;
+  scripturePreviewViewport.style.overflow =
+    scale > availableWidth / 1920 ? "auto" : "hidden";
 }
 
 if (scripturePreviewFrame && scripturePreviewViewport) {
@@ -293,6 +301,30 @@ if (scripturePreviewFrame && scripturePreviewViewport) {
 
   resizeScripturePreview();
 }
+
+$("#scripturePreviewZoom")?.addEventListener("change", resizeScripturePreview);
+
+$("#toggleLargeScripturePreview")?.addEventListener("click", () => {
+  document.body.classList.toggle("scripture-preview-large");
+  const expanded = document.body.classList.contains("scripture-preview-large");
+  $("#toggleLargeScripturePreview").textContent = expanded ? "Restaurar" : "Ampliar";
+  requestAnimationFrame(resizeScripturePreview);
+});
+
+$("#fullscreenScripturePreview")?.addEventListener("click", async () => {
+  const panel = scripturePreviewViewport?.closest(".scripture-live-preview");
+  if (!panel) return;
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+  } else {
+    await panel.requestFullscreen();
+  }
+  requestAnimationFrame(resizeScripturePreview);
+});
+
+document.addEventListener("fullscreenchange", () => {
+  requestAnimationFrame(resizeScripturePreview);
+});
 
 $("#refreshScripturePreview")?.addEventListener("click", () => {
   if (!scripturePreviewFrame) return;

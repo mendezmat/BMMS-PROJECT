@@ -84,6 +84,9 @@ function applyConfig(nextScripture) {
   root.setProperty("--gradient-strength", gradient.opacity ?? .96);
   root.setProperty("--gradient-color", rgb(gradient.color || "#000000"));
   root.setProperty("--gradient-height", `${gradient.height ?? 430}px`);
+  root.setProperty("--gradient-top-offset", `${gradient.topOffset ?? 0}px`);
+  root.setProperty("--gradient-bottom-extension", `${gradient.bottomExtension ?? 0}px`);
+  root.setProperty("--gradient-extend-to-bottom", gradient.extendToBottom === false ? "0" : "1");
   root.setProperty("--gradient-softness", `${gradient.softness ?? 58}%`);
   root.setProperty(
     "--edge-fade",
@@ -114,6 +117,7 @@ function applyConfig(nextScripture) {
   );
 
   bible.classList.toggle("edge-fade", gradient.edgeFadeEnabled !== false);
+  bible.classList.toggle("extend-to-bottom", gradient.extendToBottom !== false);
   bible.style.textAlign = composition.alignment || "center";
 }
 
