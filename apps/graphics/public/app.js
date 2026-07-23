@@ -13,24 +13,16 @@ const lowerThirdFields = {
 };
 
 const scriptureControls = {
-  reference: $("#scriptureReference"),
-  version: $("#scriptureVersion"),
-  text: $("#scriptureText"),
-  layoutMode: $("#layoutMode"),
-  columns: $("#columns"),
-  alignment: $("#scriptureAlign"),
-  maxLines: $("#maxLines"),
-  balance: $("#balanceText"),
-  selectedElement: $("#selectedElement"),
-  fontFamily: $("#fontFamily"),
-  fontSize: $("#fontSize"),
-  fontWeight: $("#fontWeight"),
-  lineHeight: $("#lineHeight"),
-  textColor: $("#textColor"),
-  backgroundColor: $("#backgroundColor"),
-  animationIn: $("#animationIn"),
-  animationOut: $("#animationOut"),
-  animationMs: $("#scriptureAnimationMs")
+  reference: $("#scriptureReference"), version: $("#scriptureVersion"), text: $("#scriptureText"),
+  format: $("#scriptureFormat"), alignment: $("#scriptureAlign"), maxLines: $("#maxLines"), balance: $("#balanceText"),
+  bottom: $("#scriptureBottom"), width: $("#scriptureWidth"), horizontalPadding: $("#scripturePadding"),
+  gradientMode: $("#gradientMode"), gradientColor: $("#gradientColor"), gradientOpacity: $("#gradientOpacity"),
+  gradientHeight: $("#gradientHeight"), gradientSoftness: $("#gradientSoftness"), edgeFadeEnabled: $("#edgeFadeEnabled"), edgeFade: $("#edgeFade"),
+  titleFont: $("#titleFont"), bodyFont: $("#bodyFont"), titleSize: $("#titleSize"), bodySize: $("#bodySize"),
+  titleWeight: $("#titleWeight"), bodyWeight: $("#bodyWeight"), lineHeight: $("#lineHeight"), letterSpacing: $("#letterSpacing"),
+  titleColor: $("#titleColor"), textColor: $("#textColor"), lineColor: $("#lineColor"),
+  wordCascade: $("#wordCascade"), wordCascadeStepMs: $("#wordCascadeStep"), sameChapterOutMs: $("#sameChapterOutMs"),
+  sameChapterInMs: $("#sameChapterInMs"), chapterChangeMs: $("#chapterChangeMs"), bookChangeMs: $("#bookChangeMs")
 };
 
 function markSaving() {
@@ -105,44 +97,7 @@ let scriptureBroadcast = {
   autoTake: false
 };
 
-const scriptureDesigns = {
-  classic: {
-    appearance: {
-      fontFamily: "Inter, Arial, sans-serif",
-      fontSize: 68,
-      fontWeight: 800,
-      lineHeight: 1.08,
-      textColor: "#ffffff",
-      backgroundColor: "#101827"
-    },
-    composition: { alignment: "left", balance: true, maxLines: 5 },
-    animation: { in: "fade-up", out: "fade-down", durationMs: 380 }
-  },
-  clean: {
-    appearance: {
-      fontFamily: "Inter, Arial, sans-serif",
-      fontSize: 64,
-      fontWeight: 700,
-      lineHeight: 1.12,
-      textColor: "#111827",
-      backgroundColor: "#f4f6fa"
-    },
-    composition: { alignment: "left", balance: true, maxLines: 5 },
-    animation: { in: "fade", out: "fade", durationMs: 300 }
-  },
-  minimal: {
-    appearance: {
-      fontFamily: "Inter, Arial, sans-serif",
-      fontSize: 70,
-      fontWeight: 800,
-      lineHeight: 1.06,
-      textColor: "#ffffff",
-      backgroundColor: "#000000"
-    },
-    composition: { alignment: "center", balance: true, maxLines: 4 },
-    animation: { in: "fade-up", out: "fade", durationMs: 420 }
-  }
-};
+const scriptureDesigns = { classic:{}, editorial:{}, worship:{}, broadcast:{}, glass:{}, kinetic:{} };
 
 function setScriptureMode(mode) {
   scriptureUiMode = mode;
@@ -183,77 +138,86 @@ async function refreshScriptureBroadcast() {
   }
 }
 
-function renderScripture() {
-  const scripture = appState.scripture;
-  const manual = scripture.manual;
-  $("#scriptureReference").value = manual.reference || "";
-  $("#scriptureVersion").value = manual.version || "";
-  $("#scriptureText").value = manual.text || "";
-
-  $("#layoutMode").value = scripture.composition.layoutMode;
-  $("#columns").value = String(scripture.composition.columns);
-  $("#scriptureAlign").value = scripture.composition.alignment;
-  $("#maxLines").value = scripture.composition.maxLines;
-  $("#balanceText").checked = scripture.composition.balance;
-
-  $("#selectedElement").value = scripture.appearance.selectedElement;
-  $("#fontFamily").value = scripture.appearance.fontFamily;
-  $("#fontSize").value = scripture.appearance.fontSize;
-  $("#fontWeight").value = String(scripture.appearance.fontWeight);
-  $("#lineHeight").value = scripture.appearance.lineHeight;
-  $("#textColor").value = scripture.appearance.textColor;
-  $("#backgroundColor").value = scripture.appearance.backgroundColor;
-
-  $("#animationIn").value = scripture.animation.in;
-  $("#animationOut").value = scripture.animation.out;
-  $("#scriptureAnimationMs").value = scripture.animation.durationMs;
-  $("#scriptureAnimationValue").value = `${scripture.animation.durationMs} ms`;
-
-  $$(".source-option").forEach(option => option.classList.toggle("active", option.dataset.source === scripture.source));
-  $("#manualContent").classList.toggle("hidden", scripture.source !== "manual");
-  $("#propresenterContent").classList.toggle("hidden", scripture.source !== "propresenter");
-  $("#scriptureSourceBadge").textContent = scripture.source === "manual" ? "MANUAL" : "PROPRESENTER";
-
-  const activeDesign = scripture.design || "classic";
-  $$("[data-scripture-design]").forEach(card => {
-    card.classList.toggle("active", card.dataset.scriptureDesign === activeDesign);
-  });
-
-  const incoming = scripture.propresenter;
-  $("#incomingReference").textContent = incoming.reference || "Sin contenido";
-  $("#incomingText").textContent = incoming.text || "Cuando llegue un cambio desde ProPresenter aparecerá aquí.";
-  $("#incomingMeta").textContent = incoming.receivedAt
-    ? `${incoming.presentation || "Presentación"} · Slide ${incoming.slideIndex ?? "-"} · ${new Date(incoming.receivedAt).toLocaleTimeString()}`
-    : "";
-
-  setScriptureMode(scriptureUiMode);
-  renderConnection();
-  refreshScriptureBroadcast();
+function rgbaToHex(value) {
+  if (String(value).startsWith("#")) return String(value).slice(0, 7);
+  const match = String(value).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+  if (!match) return "#ffffff";
+  return `#${[match[1],match[2],match[3]].map(n=>Number(n).toString(16).padStart(2,"0")).join("")}`;
 }
 
-async function updateScripture(patch) {
-  appState.scripture = await api("/api/scripture", {
-    method: "POST",
-    body: JSON.stringify(patch)
-  });
+function renderScripture() {
+  const s=appState.scripture, m=s.manual, c=s.composition||{}, a=s.appearance||{}, g=s.gradient||{}, an=s.animation||{};
+  $("#scriptureReference").value=m.reference||""; $("#scriptureVersion").value=m.version||""; $("#scriptureText").value=m.text||"";
+  $("#scriptureFormat").value=s.format||"lower"; $("#scriptureAlign").value=c.alignment||"center"; $("#maxLines").value=String(c.maxLines||4); $("#balanceText").checked=c.balance!==false;
+  $("#scriptureBottom").value=c.bottom??28; $("#scriptureWidth").value=c.width??1660; $("#scripturePadding").value=c.horizontalPadding??72;
+  $("#scriptureBottomValue").value=`${c.bottom??28}px`; $("#scriptureWidthValue").value=`${c.width??1660}px`; $("#scripturePaddingValue").value=`${c.horizontalPadding??72}px`;
+  $("#gradientMode").value=g.mode||"adaptive"; $("#gradientColor").value=g.color||"#000000"; $("#gradientOpacity").value=g.opacity??.96; $("#gradientHeight").value=g.height??430; $("#gradientSoftness").value=g.softness??58; $("#edgeFadeEnabled").checked=g.edgeFadeEnabled!==false; $("#edgeFade").value=g.edgeFade??150;
+  $("#gradientOpacityValue").value=`${Math.round((g.opacity??.96)*100)}%`; $("#gradientHeightValue").value=`${g.height??430}px`; $("#gradientSoftnessValue").value=`${g.softness??58}%`; $("#edgeFadeValue").value=`${g.edgeFade??150}px`;
+  $("#titleFont").value=a.titleFont||"Montserrat"; $("#bodyFont").value=a.bodyFont||"Montserrat"; $("#titleSize").value=a.titleSize??44; $("#bodySize").value=a.bodySize??36; $("#titleWeight").value=String(a.titleWeight??800); $("#bodyWeight").value=String(a.bodyWeight??500); $("#lineHeight").value=a.lineHeight??1.16; $("#letterSpacing").value=a.letterSpacing??-.01; $("#titleColor").value=a.titleColor||"#ffffff"; $("#textColor").value=a.textColor||"#ffffff"; $("#lineColor").value=rgbaToHex(a.lineColor||"rgba(255,255,255,.90)");
+  $("#wordCascade").checked=an.wordCascade!==false; $("#wordCascadeStep").value=an.wordCascadeStepMs??18; $("#sameChapterOutMs").value=an.sameChapterOutMs??100; $("#sameChapterInMs").value=an.sameChapterInMs??170; $("#chapterChangeMs").value=an.chapterChangeMs??320; $("#bookChangeMs").value=an.bookChangeMs??420;
+  $("#wordCascadeStepValue").value=`${an.wordCascadeStepMs??18} ms/palabra`; $("#sameChapterOutValue").value=`${an.sameChapterOutMs??100} ms`; $("#sameChapterInValue").value=`${an.sameChapterInMs??170} ms`; $("#chapterChangeValue").value=`${an.chapterChangeMs??320} ms`; $("#bookChangeValue").value=`${an.bookChangeMs??420} ms`;
+  $$(".source-option").forEach(o=>o.classList.toggle("active",o.dataset.source===s.source)); $("#manualContent").classList.toggle("hidden",s.source!=="manual"); $("#propresenterContent").classList.toggle("hidden",s.source!=="propresenter"); $("#scriptureSourceBadge").textContent=s.source==="manual"?"MANUAL":"PROPRESENTER";
+  $$('[data-scripture-design]').forEach(card=>card.classList.toggle('active',card.dataset.scriptureDesign===(s.design||'classic')));
+  const help={lower:'Composición inferior original con degradado adaptativo.','center-lower':'Versión inferior centrada y más contenida.','left-column':'Columna vertical anclada al lado izquierdo.','right-column':'Columna vertical anclada al lado derecho.',fullscreen:'Lectura amplia centrada dentro del área segura.',minimal:'Texto limpio con presencia gráfica reducida.'}; $("#scriptureFormatHelp").textContent=help[s.format||'lower'];
+  const incoming=s.propresenter; $("#incomingReference").textContent=incoming.reference||"Sin contenido"; $("#incomingText").textContent=incoming.text||"Cuando llegue un cambio desde ProPresenter aparecerá aquí."; $("#incomingMeta").textContent=incoming.receivedAt?`${incoming.presentation||"Presentación"} · Slide ${incoming.slideIndex??"-"} · ${new Date(incoming.receivedAt).toLocaleTimeString()}`:"";
+  setScriptureMode(scriptureUiMode); renderConnection(); refreshScriptureBroadcast();
+}
+
+let scriptureSaveTimer = null;
+let scriptureSaveQueue = {};
+let scriptureSaveSequence = 0;
+
+function mergeScripturePatch(current, patch) {
+  return {
+    ...current,
+    ...patch,
+    manual: { ...current.manual, ...(patch.manual || {}) },
+    propresenter: { ...current.propresenter, ...(patch.propresenter || {}) },
+    composition: { ...current.composition, ...(patch.composition || {}) },
+    appearance: { ...current.appearance, ...(patch.appearance || {}) },
+    gradient: { ...current.gradient, ...(patch.gradient || {}) },
+    animation: { ...current.animation, ...(patch.animation || {}) },
+    output: { ...current.output, ...(patch.output || {}) }
+  };
+}
+
+function queueScriptureSave(patch, delay = 90) {
+  scriptureSaveQueue = mergeScripturePatch(scriptureSaveQueue, patch);
+  clearTimeout(scriptureSaveTimer);
+  const sequence = ++scriptureSaveSequence;
+
+  scriptureSaveTimer = setTimeout(async () => {
+    const payload = scriptureSaveQueue;
+    scriptureSaveQueue = {};
+    try {
+      const saved = await api("/api/scripture", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      if (sequence === scriptureSaveSequence) {
+        appState.scripture = saved;
+      }
+      $("#saveState").textContent = "Guardado";
+    } catch (error) {
+      $("#saveState").textContent = "Error al guardar";
+      console.error(error);
+    }
+  }, delay);
+}
+
+function updateScripture(patch, { render = true, immediate = false } = {}) {
+  appState.scripture = mergeScripturePatch(appState.scripture, patch);
   markSaving();
-  renderScripture();
+  if (render) renderScripture();
+  queueScriptureSave(patch, immediate ? 0 : 90);
+  return Promise.resolve(appState.scripture);
 }
 
 $("#scriptureSimpleMode").addEventListener("click", () => setScriptureMode("simple"));
 $("#scriptureAdvancedMode").addEventListener("click", () => setScriptureMode("advanced"));
 
 $$("[data-scripture-design]").forEach(card => {
-  card.addEventListener("click", async () => {
-    const design = card.dataset.scriptureDesign;
-    const preset = scriptureDesigns[design];
-    await updateScripture({
-      design,
-      appearance: preset.appearance,
-      composition: preset.composition,
-      animation: preset.animation
-    });
-  });
+  card.addEventListener("click", () => updateScripture({ design: card.dataset.scriptureDesign }, { immediate: true }));
 });
 
 $$(".source-option").forEach(option => {
@@ -262,35 +226,23 @@ $$(".source-option").forEach(option => {
 
 ["reference", "version", "text"].forEach(key => {
   scriptureControls[key].addEventListener("input", () => {
-    updateScripture({ manual: { [key]: scriptureControls[key].value } });
+    updateScripture({ manual: { [key]: scriptureControls[key].value } }, { render: false });
   });
 });
 
 const scriptureBindings = [
-  ["layoutMode", "composition", "layoutMode"],
-  ["columns", "composition", "columns", Number],
-  ["alignment", "composition", "alignment"],
-  ["maxLines", "composition", "maxLines", Number],
-  ["selectedElement", "appearance", "selectedElement"],
-  ["fontFamily", "appearance", "fontFamily"],
-  ["fontSize", "appearance", "fontSize", Number],
-  ["fontWeight", "appearance", "fontWeight", Number],
-  ["lineHeight", "appearance", "lineHeight", Number],
-  ["textColor", "appearance", "textColor"],
-  ["backgroundColor", "appearance", "backgroundColor"],
-  ["animationIn", "animation", "in"],
-  ["animationOut", "animation", "out"],
-  ["animationMs", "animation", "durationMs", Number]
+ ["format",null,"format"],["alignment","composition","alignment"],["maxLines","composition","maxLines",Number],["bottom","composition","bottom",Number],["width","composition","width",Number],["horizontalPadding","composition","horizontalPadding",Number],
+ ["gradientMode","gradient","mode"],["gradientColor","gradient","color"],["gradientOpacity","gradient","opacity",Number],["gradientHeight","gradient","height",Number],["gradientSoftness","gradient","softness",Number],["edgeFade","gradient","edgeFade",Number],
+ ["titleFont","appearance","titleFont"],["bodyFont","appearance","bodyFont"],["titleSize","appearance","titleSize",Number],["bodySize","appearance","bodySize",Number],["titleWeight","appearance","titleWeight",Number],["bodyWeight","appearance","bodyWeight",Number],["lineHeight","appearance","lineHeight",Number],["letterSpacing","appearance","letterSpacing",Number],["titleColor","appearance","titleColor"],["textColor","appearance","textColor"],["lineColor","appearance","lineColor"],
+ ["wordCascadeStepMs","animation","wordCascadeStepMs",Number],["sameChapterOutMs","animation","sameChapterOutMs",Number],["sameChapterInMs","animation","sameChapterInMs",Number],["chapterChangeMs","animation","chapterChangeMs",Number],["bookChangeMs","animation","bookChangeMs",Number]
 ];
+for(const [controlKey,group,key,cast=(v=>v)] of scriptureBindings){scriptureControls[controlKey].addEventListener("input",()=>{const value=cast(scriptureControls[controlKey].value);updateScripture(group?{[group]:{[key]:value}}:{[key]:value});});}
+scriptureControls.balance.addEventListener("change",()=>updateScripture({composition:{balance:scriptureControls.balance.checked}}));
+scriptureControls.edgeFadeEnabled.addEventListener("change",()=>updateScripture({gradient:{edgeFadeEnabled:scriptureControls.edgeFadeEnabled.checked}}));
+scriptureControls.wordCascade.addEventListener("change",()=>updateScripture({animation:{wordCascade:scriptureControls.wordCascade.checked}}));
 
-for (const [controlKey, group, key, cast = value => value] of scriptureBindings) {
-  scriptureControls[controlKey].addEventListener("input", () => {
-    updateScripture({ [group]: { [key]: cast(scriptureControls[controlKey].value) } });
-  });
-}
-scriptureControls.balance.addEventListener("change", () => {
-  updateScripture({ composition: { balance: scriptureControls.balance.checked } });
-});
+$("#testScriptureAnimation").addEventListener("click", async () => { await api("/api/scripture/replay",{method:"POST"}); $("#scriptureOutputPreview").contentWindow?.postMessage({type:"bmms-scripture-replay"},"*"); });
+$("#refreshScripturePreview").addEventListener("click",()=>{const f=$("#scriptureOutputPreview");f.src=`/overlay/scripture?preview=1&t=${Date.now()}`;});
 
 $("#integratedTakeButton").addEventListener("click", async () => {
   await api("/api/scripture/take", { method: "POST" });
@@ -314,10 +266,7 @@ $("#loadManualPreview").addEventListener("click", async () => {
   });
   await refreshScriptureBroadcast();
 });
-$("#integratedConnectButton").addEventListener("click", async () => {
-  await api("/api/integrations/propresenter/connect", { method: "POST" });
-  await loadState();
-});
+$("#integratedConnectButton").addEventListener("click", async () => { await api("/api/integrations/propresenter/connect",{method:"POST"}); await refreshScriptureBroadcast(); });
 $("#integratedLiveButton").addEventListener("click", async () => {
   const running = $("#integratedLiveButton").dataset.running === "true";
   await api(`/api/scripture/live/${running ? "stop" : "start"}`, { method: "POST" });
@@ -427,17 +376,68 @@ function renderAll() {
   renderIntegration();
 }
 
-const events = new EventSource("/api/app-events");
-events.addEventListener("scripture-updated", event => {
-  appState.scripture = JSON.parse(event.data);
-  renderScripture();
+
+async function loadNetworkInfo() {
+  try {
+    const network = await api("/api/network");
+    const outputUrl = network.scriptureOutputUrl;
+
+    $("#scriptureOutputUrl").textContent = outputUrl;
+    $("#openScriptureOutputUrl").href = outputUrl;
+
+    if (network.addresses.length) {
+      $("#scriptureNetworkHelp").textContent =
+        `Desde otro PC de la misma red use esta URL. Puerto ${network.port}.`;
+    } else {
+      $("#scriptureNetworkHelp").textContent =
+        "No se detectó una IP de red. Revise que el PC esté conectado al mismo router o switch.";
+    }
+  } catch (error) {
+    $("#scriptureOutputUrl").textContent = `${location.origin}/overlay/scripture`;
+    console.error("No fue posible detectar la dirección LAN", error);
+  }
+}
+
+$("#copyScriptureOutputUrl").addEventListener("click", async () => {
+  const url = $("#scriptureOutputUrl").textContent.trim();
+  try {
+    await navigator.clipboard.writeText(url);
+    $("#copyScriptureOutputUrl").textContent = "Copiado";
+    setTimeout(() => {
+      $("#copyScriptureOutputUrl").textContent = "Copiar URL";
+    }, 1200);
+  } catch {
+    window.prompt("Copie esta URL:", url);
+  }
 });
+
+const events = new EventSource("/api/app-events");
+
+events.addEventListener("scripture-updated", event => {
+  const incoming = JSON.parse(event.data);
+  if (incoming?.manual && incoming?.appearance && incoming?.animation) {
+    appState.scripture = incoming;
+    renderScripture();
+  }
+});
+
+events.addEventListener("scripture-program", event => {
+  scriptureBroadcast = JSON.parse(event.data);
+  renderBroadcastState();
+});
+
+events.addEventListener("scripture-live-status", () => refreshScriptureBroadcast());
+
 events.addEventListener("propresenter-status", event => {
   appState.propresenterStatus = JSON.parse(event.data);
   renderConnection();
 });
 
-loadState();
+events.onerror = () => {
+  setTimeout(() => {
+    refreshScriptureBroadcast();
+  }, 500);
+};
 
-const integratedEvents = new EventSource("/api/app-events");
-["scripture-program","scripture-live-status"].forEach(name => integratedEvents.addEventListener(name, refreshScriptureBroadcast));
+loadNetworkInfo();
+loadState();

@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import {
   ServiceContainer,
@@ -15,6 +16,26 @@ import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphi
 import { resolveDocument, createBroadcastComponent, listBroadcastComponents, createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter, ProPresenterLiveScriptureService } from "../../packages/integrations/src/propresenter/index.js";
 import { ScriptureController } from "../../packages/scripture-core/src/index.js";
+
+
+function getLanAddresses() {
+  const addresses = [];
+  const interfaces = os.networkInterfaces();
+
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (
+        entry.family === "IPv4" &&
+        !entry.internal &&
+        !entry.address.startsWith("169.254.")
+      ) {
+        addresses.push(entry.address);
+      }
+    }
+  }
+
+  return [...new Set(addresses)];
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -58,7 +79,7 @@ const liveScripture = services.register(
     adapter: proPresenter,
     events,
     logger,
-    intervalMs: persistedState.scripture?.live?.intervalMs ?? 350
+    intervalMs: persistedState.scripture?.live?.intervalMs ?? 180
   })
 );
 
@@ -146,7 +167,7 @@ events.subscribe("propresenter.scripture.changed", async event => {
   };
 
   await saveState({ ...appState, scripture });
-  broadcast("scripture-updated", scriptureBroadcast);
+  broadcast("scripture-updated", scripture);
   broadcast("scripture-program", scriptureBroadcast);
 });
 
@@ -214,6 +235,9 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "GET" && url.pathname === "/scripture-overlay.css") {
     return serveFile(response, "scripture-overlay.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/scripture-layout.js") {
+    return serveFile(response, "scripture-layout.js", "text/javascript; charset=utf-8");
   }
   if (request.method === "GET" && url.pathname === "/scripture-balance.js") {
     return serveFile(response, "scripture-balance.js", "text/javascript; charset=utf-8");
@@ -302,13 +326,21 @@ const server = http.createServer(async (request, response) => {
       broadcast: scriptureBroadcast
     };
     await saveState({ ...appState, scripture });
-    broadcast("scripture-updated", scriptureBroadcast);
+    broadcast("scripture-updated", scripture);
     broadcast("scripture-program", scriptureBroadcast);
     return json(response, 200, scriptureBroadcast);
   }
 
   if (request.method === "GET" && url.pathname === "/api/scripture/program") {
     return json(response, 200, scriptureBroadcast);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/replay") {
+    broadcast("scripture-replay", {
+      ...scriptureBroadcast,
+      replayId: Date.now()
+    });
+    return json(response, 200, { ok: true });
   }
 
   if (request.method === "POST" && url.pathname === "/api/scripture/take") {
@@ -530,6 +562,19 @@ const server = http.createServer(async (request, response) => {
     });
   }
 
+  if (request.method === "GET" && url.pathname === "/api/network") {
+    const addresses = getLanAddresses();
+    const preferredAddress = addresses[0] || "localhost";
+    return json(response, 200, {
+      port,
+      host,
+      addresses,
+      preferredAddress,
+      editorUrl: `http://${preferredAddress}:${port}`,
+      scriptureOutputUrl: `http://${preferredAddress}:${port}/overlay/scripture`
+    });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/app-state") {
     return json(response, 200, {
       ...appState,
@@ -615,15 +660,20 @@ const server = http.createServer(async (request, response) => {
       const scripture = {
         ...appState.scripture,
         ...patch,
-        manual: { ...appState.scripture.manual, ...patch.manual },
-        propresenter: { ...appState.scripture.propresenter, ...patch.propresenter },
-        composition: { ...appState.scripture.composition, ...patch.composition },
-        appearance: { ...appState.scripture.appearance, ...patch.appearance },
-        animation: { ...appState.scripture.animation, ...patch.animation },
-        output: { ...appState.scripture.output, ...patch.output }
+        design: patch.design ?? appState.scripture.design ?? "classic",
+        format: patch.format ?? appState.scripture.format ?? "lower",
+        manual: { ...appState.scripture.manual, ...(patch.manual || {}) },
+        propresenter: { ...appState.scripture.propresenter, ...(patch.propresenter || {}) },
+        composition: { ...appState.scripture.composition, ...(patch.composition || {}) },
+        appearance: { ...appState.scripture.appearance, ...(patch.appearance || {}) },
+        gradient: { ...appState.scripture.gradient, ...(patch.gradient || {}) },
+        animation: { ...appState.scripture.animation, ...(patch.animation || {}) },
+        output: { ...appState.scripture.output, ...(patch.output || {}) },
+        broadcast: scriptureBroadcast
       };
       await saveState({ ...appState, scripture });
       broadcast("scripture-updated", scripture);
+      broadcast("scripture-config", scripture);
       return json(response, 200, scripture);
     } catch (error) {
       return json(response, 400, { error: error.message });
@@ -651,11 +701,12 @@ const server = http.createServer(async (request, response) => {
 });
 
 const port = Number(process.env.PORT || 4173);
-const host = process.env.BMMS_HOST || "127.0.0.1";
+const host = process.env.BMMS_HOST || "0.0.0.0";
 server.listen(port, host, () => {
+  const addresses = getLanAddresses();
   logger.info("BMMS Graphics ready", {
-    editor: `http://localhost:${port}`,
-    overlay: `http://localhost:${port}/overlay/lower-third`,
-    graphicsOutput: `http://localhost:${port}/overlay/graphics`
+    localEditor: `http://localhost:${port}`,
+    lanEditors: addresses.map(address => `http://${address}:${port}`),
+    scriptureOutputs: addresses.map(address => `http://${address}:${port}/overlay/scripture`)
   });
 });

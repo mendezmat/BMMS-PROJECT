@@ -1,5 +1,64 @@
 # Changelog
 
+## [1.4.1-beta.6] - 2026-07-22
+
+### Fixed
+
+- Browser Output no longer stays blank.
+- Added the missing HTTP route for `/scripture-layout.js`.
+- The Scripture overlay can now load its original line-balancing module.
+- Embedded preview and LAN Browser Output use the same repaired asset route.
+
+
+## [1.4.0-beta.5] - 2026-07-22
+
+### Restored
+
+- Exact Scripture S12 templates and formats.
+- Original gradient, geometry and typography controls.
+- Progressive word-writing animation with speed.
+- Same chapter, new chapter and new book transitions.
+- Embedded live Browser Output preview in Advanced mode.
+
+
+## [1.3.2-beta.4] - 2026-07-22
+
+### Added
+
+- BMMS Graphics now listens on the local network by default.
+- Automatic detection of the server PC IPv4 address.
+- LAN Browser Output URL displayed inside Scripture.
+- Copy URL and Open Output controls.
+
+### Changed
+
+- Default server host changed from `127.0.0.1` to `0.0.0.0`.
+- No distributed-server architecture or additional networking layer was added.
+
+
+## [1.3.1-beta.3] - 2026-07-22
+
+### Fixed
+
+- Reduced ProPresenter Scripture polling from a three-request critical loop to one fast slide request.
+- Metadata requests are now throttled to prevent intermittent ProPresenter stalls.
+- Scripture UI no longer sends one blocking request and re-renders the entire module for every input event.
+- Corrected inconsistent `scripture-updated` payloads that replaced the complete Scripture state with broadcast-only data.
+- Appearance controls now update font, size, weight, line height, text color, background and alignment in the output.
+- Entry and exit animation selection and duration now affect the Browser Output.
+- Added an explicit animation replay control.
+
+### Restored
+
+- Classic Gradient
+- Editorial Frame
+- Worship Glow
+- Broadcast Clean
+- Glass Scripture
+- Kinetic Accent
+- Six original Scripture spatial formats
+
+
 ## [1.3.0-beta.2] - 2026-07-22
 
 ### Added

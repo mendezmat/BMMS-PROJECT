@@ -1,112 +1,13 @@
-import { balanceText } from "/scripture-balance.js";
-
-const graphic = document.querySelector("#graphic");
-const panel = document.querySelector(".panel");
-const reference = document.querySelector("#reference");
-const verseNode = document.querySelector("#verse");
-const version = document.querySelector("#version");
-const context = document.querySelector("#measureCanvas").getContext("2d");
-
-let lastSignature = "";
-let lastState = null;
-
-async function api(path) {
-  const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) throw new Error(`BMMS ${response.status}`);
-  return response.json();
-}
-
-function applyDesign(design, appearance, composition) {
-  const selected = design || "classic";
-  graphic.dataset.design = selected;
-  panel.style.background = selected === "minimal"
-    ? "transparent"
-    : appearance?.backgroundColor || "";
-  panel.style.color = appearance?.textColor || "";
-  panel.style.textAlign = composition?.alignment || "left";
-}
-
-function render(payload) {
-  const broadcast = payload.broadcast || payload;
-  const scripture = payload.scripture || {};
-  const verse = broadcast.program || scripture.currentVerse || broadcast.preview;
-  const visible = Boolean(broadcast.visible && verse);
-  lastState = payload;
-
-  if (verse) {
-    const appearance = scripture.appearance || {};
-    const composition = scripture.composition || {};
-    const signature = [
-      verse.id, verse.reference, verse.text, verse.version,
-      appearance.fontFamily, appearance.fontWeight, appearance.fontSize,
-      composition.maxLines, composition.alignment, scripture.design
-    ].join("|");
-
-    if (signature !== lastSignature) {
-      lastSignature = signature;
-      applyDesign(scripture.design, appearance, composition);
-      reference.textContent = verse.reference || "";
-      version.textContent = verse.version || "";
-
-      const family = appearance.fontFamily || "Inter, Arial, sans-serif";
-      const weight = appearance.fontWeight || 760;
-      const panelWidth = Math.max(720, window.innerWidth * .82);
-      const maxWidth = panelWidth - 90;
-      const maxHeight = Math.max(130, window.innerHeight * .28);
-
-      const balanced = balanceText({
-        text: verse.text || "",
-        measure(value, fontSize) {
-          context.font = `${weight} ${fontSize}px ${family}`;
-          return context.measureText(value).width;
-        },
-        maxWidth,
-        maxHeight,
-        minFontSize: 28,
-        maxFontSize: Math.min(Number(appearance.fontSize) || 68, 96),
-        lineHeight: Number(appearance.lineHeight) || 1.08,
-        maxLines: Number(composition.maxLines) || 5
-      });
-
-      verseNode.style.fontFamily = family;
-      verseNode.style.fontWeight = String(weight);
-      verseNode.style.fontSize = `${balanced.fontSize}px`;
-      verseNode.style.lineHeight = String(balanced.lineHeight);
-      verseNode.style.color = appearance.textColor || "";
-      verseNode.replaceChildren(...balanced.lines.map(line => {
-        const span = document.createElement("span");
-        span.className = "verse-line";
-        span.textContent = line;
-        return span;
-      }));
-    }
-  }
-
-  graphic.classList.toggle("visible", visible);
-}
-
-async function refresh() {
-  try {
-    const [broadcast, appState] = await Promise.all([
-      api("/api/scripture/program"),
-      api("/api/app-state")
-    ]);
-    render({ broadcast, scripture: appState.scripture || {} });
-  } catch (error) {
-    console.error("Scripture output refresh failed", error);
-  }
-}
-
-const events = new EventSource("/api/app-events");
-["scripture-program", "scripture-updated"].forEach(name => {
-  events.addEventListener(name, refresh);
-});
-events.onerror = () => setTimeout(refresh, 600);
-
-window.addEventListener("resize", () => {
-  lastSignature = "";
-  if (lastState) render(lastState);
-});
-
-refresh();
-setInterval(refresh, 1500);
+import {balanceLines} from "/scripture-layout.js";
+const $=id=>document.getElementById(id), bible=$("bibleBanner"), verseEl=$("verse"), referenceEl=$("reference"), versionEl=$("version"), statusEl=$("status");
+const previewMode=new URLSearchParams(location.search).get("preview")==="1", sleep=ms=>new Promise(r=>setTimeout(r,ms));let scripture={},broadcast={},currentBook="",currentChapter="",first=true,busy=false,pending=null,lastSignature="";if(previewMode)document.body.classList.add("preview-output");
+async function api(path){const r=await fetch(path,{cache:"no-store"});if(!r.ok)throw Error(`BMMS ${r.status}`);return r.json()}
+function parseReference(ref){const r=String(ref||"").trim().replace(/[–—]/g,"-");const m=r.match(/^((?:[1-3]\s*)?[A-Za-zÁÉÍÓÚÜÑáéíóúüñ. ]+?)\s+(\d{1,3})(?::(\d{1,3})(?:-(\d{1,3}))?)?$/);return m?{book:m[1].replace(/\s+/g," ").trim().toLowerCase(),chapter:m[2]}:{book:r.toLowerCase(),chapter:""}}
+function rgb(hex){const h=String(hex||"#000").replace("#","");const x=parseInt(h.length===3?h.split("").map(v=>v+v).join(""):h,16);return `${x>>16&255},${x>>8&255},${x&255}`}
+function applyConfig(s){scripture=s;const r=document.documentElement.style,c=s.composition||{},a=s.appearance||{},g=s.gradient||{};r.setProperty("--bottom",`${c.bottom??28}px`);r.setProperty("--width",`${c.width??1660}px`);r.setProperty("--padding-x",`${c.horizontalPadding??72}px`);r.setProperty("--title-font",`"${a.titleFont||'Montserrat'}",Arial,sans-serif`);r.setProperty("--body-font",`"${a.bodyFont||'Montserrat'}",Arial,sans-serif`);r.setProperty("--title-size",`${a.titleSize??44}px`);r.setProperty("--body-size",`${a.bodySize??36}px`);r.setProperty("--title-weight",a.titleWeight??800);r.setProperty("--body-weight",a.bodyWeight??500);r.setProperty("--line-height",a.lineHeight??1.16);r.setProperty("--title-color",a.titleColor||"#fff");r.setProperty("--text-color",a.textColor||"#fff");r.setProperty("--line-color",a.lineColor||"rgba(255,255,255,.9)");r.setProperty("--gradient-strength",g.opacity??.96);r.setProperty("--gradient-color",rgb(g.color||"#000"));r.setProperty("--gradient-height",`${g.height??430}px`);r.setProperty("--gradient-softness",`${g.softness??58}%`);r.setProperty("--edge-fade",`${g.edgeFadeEnabled===false?0:g.edgeFade??150}px`);for(const n of ["format-lower","format-center-lower","format-left-column","format-right-column","format-fullscreen","format-minimal","style-classic","style-editorial","style-worship","style-broadcast","style-glass","style-kinetic"])bible.classList.remove(n);bible.classList.add(`format-${s.format||'lower'}`,`style-${s.design||'classic'}`);bible.classList.toggle("edge-fade",g.edgeFadeEnabled!==false)}
+function renderText(text,animate=true){const c=scripture.composition||{},a=scripture.appearance||{},an=scripture.animation||{},max=Number(c.maxLines)||4,balanced=c.balance===false?String(text||""):balanceLines(String(text||""),max);verseEl.innerHTML="";let wi=0;for(const line of balanced.split("\n").filter(Boolean).slice(0,max)){const l=document.createElement("span");l.className="verse-line";for(const part of line.split(/(\s+)/)){if(!part)continue;const s=document.createElement("span");if(/^\s+$/.test(part)){s.className="word-space";s.textContent=part}else if(animate&&an.wordCascade!==false){s.className="word";s.textContent=part;s.style.animationDelay=`${wi++*(an.wordCascadeStepMs??18)}ms`}else s.textContent=part;l.appendChild(s)}verseEl.appendChild(l)}fit();if((scripture.gradient?.mode||"adaptive")==="adaptive"){const h=Math.max(260,Math.min(900,(bible.querySelector('.content')?.scrollHeight||250)+(Number(c.bottom)||0)+150));document.documentElement.style.setProperty("--gradient-height",`${h}px`)}}
+function fit(){const max=Number(scripture.composition?.maxLines)||4,base=Number(scripture.appearance?.bodySize)||36,min=Math.max(18,Math.round(base*.58)),lines=[...verseEl.querySelectorAll('.verse-line')].slice(0,max);verseEl.style.fontSize=`${base}px`;let size=base;while(size>min&&lines.some(l=>l.scrollWidth>verseEl.clientWidth+1)){verseEl.style.fontSize=`${--size}px`}}
+function previewVerse(){const v=scripture.source==="propresenter"?scripture.propresenter:scripture.manual;return v?.text?v:scripture.manual}
+async function renderVerse(v,replay=false){if(!v?.text){bible.classList.remove("visible");return}if(busy){pending={v,replay};return}busy=true;const ref=String(v.reference||"").replace(/\s*-\s*/g,"–").toUpperCase(),p=parseReference(ref),an=scripture.animation||{};let kind=first?"first":p.book===currentBook&&p.chapter===currentChapter?"same":p.book===currentBook?"chapter":"book";if(replay)kind="book";if(kind==="same"){bible.classList.add("soft-out");await sleep(an.sameChapterOutMs??100)}else if(!first||replay){bible.classList.add(kind==="chapter"?"chapter-out":"book-out");bible.classList.remove("visible");await sleep(kind==="chapter"?an.chapterChangeMs??320:an.bookChangeMs??420)}referenceEl.textContent=ref;versionEl.textContent=v.version||"";renderText(v.text,true);bible.classList.toggle("no-reference",!ref);bible.classList.toggle("no-version",!v.version);bible.classList.remove("soft-out","chapter-out","book-out");void bible.offsetWidth;bible.classList.add("visible");currentBook=p.book;currentChapter=p.chapter;first=false;busy=false;if(pending){const x=pending;pending=null;renderVerse(x.v,x.replay)}}
+async function refresh({replay=false}={}){try{const [state,b]=await Promise.all([api('/api/app-state'),api('/api/scripture/program')]);scripture=state.scripture||{};broadcast=b||{};applyConfig(scripture);const v=previewMode?previewVerse():(broadcast.program||broadcast.preview),visible=previewMode||Boolean(broadcast.visible&&v),sig=JSON.stringify({v,design:scripture.design,format:scripture.format,c:scripture.composition,a:scripture.appearance,g:scripture.gradient,an:scripture.animation});if(sig!==lastSignature||replay){lastSignature=sig;await renderVerse(v,replay)}bible.classList.toggle("visible",visible&&Boolean(v?.text));statusEl.textContent=previewMode?"PREVIEW INTERNO":"BROWSER OUTPUT"}catch(e){statusEl.textContent=e.message;console.error(e)}}
+const events=new EventSource('/api/app-events');for(const n of ['scripture-program','scripture-updated','scripture-config'])events.addEventListener(n,()=>refresh());events.addEventListener('scripture-replay',()=>refresh({replay:true}));events.onerror=()=>setTimeout(refresh,350);window.addEventListener('message',e=>{if(e.data?.type==='bmms-scripture-replay')refresh({replay:true})});window.addEventListener('resize',fit);refresh();setInterval(refresh,2000);

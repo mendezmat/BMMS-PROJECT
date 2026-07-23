@@ -17,12 +17,15 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
   #lastSuccessAt = null;
   #lastError = null;
   #version = null;
+  #activePresentation = null;
+  #slideIndex = null;
+  #lastMetadataAt = 0;
 
   constructor({
     adapter,
     events,
     logger,
-    intervalMs = 350
+    intervalMs = 180
   }) {
     super();
     if (!adapter) throw new Error("LiveScriptureService requires a ProPresenter adapter.");
@@ -95,25 +98,38 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
         this.#version = versionResponse?.data ?? null;
       }
 
-      const [statusSlide, activePresentation, slideIndex] = await Promise.all([
-        this.#adapter.request({ url: "v1/status/slide" }),
-        this.#adapter.request({ url: "v1/presentation/active" }),
-        this.#adapter.request({ url: "v1/presentation/slide_index" })
-      ]);
+      // Keep the critical poll lightweight. ProPresenter can stall when three
+      // JSON requests are issued every cycle, so metadata is refreshed at 1 Hz.
+      const statusSlide = await this.#adapter.request({ url: "v1/status/slide" });
+      const now = Date.now();
+
+      if (
+        !this.#activePresentation ||
+        !this.#slideIndex ||
+        now - this.#lastMetadataAt >= 1000
+      ) {
+        const [activePresentation, slideIndex] = await Promise.all([
+          this.#adapter.request({ url: "v1/presentation/active" }),
+          this.#adapter.request({ url: "v1/presentation/slide_index" })
+        ]);
+        this.#activePresentation = activePresentation;
+        this.#slideIndex = slideIndex;
+        this.#lastMetadataAt = now;
+      }
 
       const receivedAt = new Date().toISOString();
       this.#lastSnapshot = createStatusSlideSnapshot({
         statusSlide,
-        activePresentation,
-        slideIndex,
+        activePresentation: this.#activePresentation,
+        slideIndex: this.#slideIndex,
         version: this.#version,
         receivedAt
       });
 
       const verse = normalizeStatusSlideResponse({
         statusSlide,
-        activePresentation,
-        slideIndex,
+        activePresentation: this.#activePresentation,
+        slideIndex: this.#slideIndex,
         receivedAt
       });
 
@@ -183,6 +199,6 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
 
 function clampInterval(value) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return 350;
-  return Math.max(150, Math.min(5000, Math.round(number)));
+  if (!Number.isFinite(number)) return 180;
+  return Math.max(120, Math.min(5000, Math.round(number)));
 }

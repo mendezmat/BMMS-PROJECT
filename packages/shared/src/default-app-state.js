@@ -7,6 +7,7 @@ export const defaultAppState = Object.freeze({
   scripture: {
     source: "manual",
     design: "classic",
+    format: "lower",
     manual: {
       reference: "Juan 3:16",
       version: "RVR1960",
@@ -23,28 +24,56 @@ export const defaultAppState = Object.freeze({
     composition: {
       layoutMode: "automatic",
       columns: 1,
-      alignment: "left",
-      maxLines: 6,
-      balance: true
+      alignment: "center",
+      maxLines: 4,
+      balance: true,
+      bottom: 28,
+      width: 1660,
+      horizontalPadding: 72
     },
     appearance: {
-      selectedElement: "text",
-      fontFamily: "Inter",
-      fontSize: 48,
-      fontWeight: 700,
-      lineHeight: 1.12,
+      selectedElement: "both",
+      fontFamily: "Montserrat",
+      fontSize: 36,
+      fontWeight: 500,
+      titleFont: "Montserrat",
+      bodyFont: "Montserrat",
+      titleSize: 44,
+      bodySize: 36,
+      titleWeight: 800,
+      bodyWeight: 500,
+      lineHeight: 1.16,
+      letterSpacing: -0.01,
+      titleColor: "#ffffff",
       textColor: "#ffffff",
-      backgroundColor: "#10141a"
+      lineColor: "rgba(255,255,255,0.90)",
+      backgroundColor: "#000000"
+    },
+    gradient: {
+      mode: "adaptive",
+      color: "#000000",
+      opacity: 0.96,
+      height: 430,
+      softness: 58,
+      edgeFade: 150,
+      edgeFadeEnabled: true
     },
     animation: {
-      in: "fade-up",
-      out: "fade-down",
-      durationMs: 400
+      in: "legacy",
+      out: "legacy",
+      durationMs: 360,
+      sameChapterOutMs: 100,
+      sameChapterInMs: 170,
+      chapterChangeMs: 320,
+      bookChangeMs: 420,
+      wordCascade: true,
+      wordCascadeStepMs: 18
     },
     broadcast: {
       preview: null,
       program: null,
-      visible: false
+      visible: false,
+      autoTake: false
     },
     output: {
       visible: false

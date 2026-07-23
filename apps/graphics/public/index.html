@@ -10,7 +10,7 @@
   <header class="topbar">
     <div class="brand">
       <strong>BMMS Graphics</strong>
-      <span class="version">v1.3.0 Beta 2</span>
+      <span class="version">v1.4.0 Beta 5</span>
     </div>
     <div class="top-actions">
       <a href="/editor">Abrir Visual Editor</a>
@@ -83,29 +83,30 @@
               <h2>Seleccione el aspecto de la Escritura</h2>
               <p class="muted">El modo simple mantiene ocultos los controles técnicos. El contenido continúa siguiendo a ProPresenter.</p>
 
-              <div class="design-library">
+              <div class="design-library scripture-template-library">
                 <button class="design-card design-classic active" data-scripture-design="classic">
-                  <div class="design-thumb">
-                    <span class="sample-ref">Juan 3:16</span>
-                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
-                  </div>
-                  <footer><strong>Broadcast Classic</strong><small>Panel oscuro con acento azul</small></footer>
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Classic Gradient</strong><small>El diseño original estable de BMMS</small></footer>
                 </button>
-
-                <button class="design-card design-clean" data-scripture-design="clean">
-                  <div class="design-thumb">
-                    <span class="sample-ref">Juan 3:16</span>
-                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
-                  </div>
-                  <footer><strong>Clean Light</strong><small>Claro, limpio y contemporáneo</small></footer>
+                <button class="design-card design-editorial" data-scripture-design="editorial">
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Editorial Frame</strong><small>Jerarquía tipo revista</small></footer>
                 </button>
-
-                <button class="design-card design-minimal" data-scripture-design="minimal">
-                  <div class="design-thumb">
-                    <span class="sample-ref">Juan 3:16</span>
-                    <span class="sample-text">Porque de tal manera amó Dios al mundo…</span>
-                  </div>
-                  <footer><strong>Minimal Transparent</strong><small>Texto directo sin panel sólido</small></footer>
+                <button class="design-card design-worship" data-scripture-design="worship">
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Worship Glow</strong><small>Suave, amplio y contemplativo</small></footer>
+                </button>
+                <button class="design-card design-broadcast" data-scripture-design="broadcast">
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Broadcast Clean</strong><small>Panel compacto para televisión</small></footer>
+                </button>
+                <button class="design-card design-glass" data-scripture-design="glass">
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Glass Scripture</strong><small>Tarjeta translúcida con desenfoque</small></footer>
+                </button>
+                <button class="design-card design-kinetic" data-scripture-design="kinetic">
+                  <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                  <footer><strong>Kinetic Accent</strong><small>Angular, juvenil y de alto impacto</small></footer>
                 </button>
               </div>
             </div>
@@ -115,6 +116,38 @@
         <section class="advanced-only hidden" id="scriptureAdvancedView">
           <div class="scripture-advanced-grid">
             <div class="settings-stack">
+              <details class="panel" open>
+                <summary>Plantillas originales</summary>
+                <div class="panel-body">
+                  <p class="muted compact-copy">Las seis plantillas visuales originales de Scripture. El formato espacial se configura por separado.</p>
+                  <div class="advanced-template-grid">
+                    <button class="design-card design-classic active" data-scripture-design="classic">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Classic Gradient</strong></footer>
+                    </button>
+                    <button class="design-card design-editorial" data-scripture-design="editorial">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Editorial Frame</strong></footer>
+                    </button>
+                    <button class="design-card design-worship" data-scripture-design="worship">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Worship Glow</strong></footer>
+                    </button>
+                    <button class="design-card design-broadcast" data-scripture-design="broadcast">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Broadcast Clean</strong></footer>
+                    </button>
+                    <button class="design-card design-glass" data-scripture-design="glass">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Glass Scripture</strong></footer>
+                    </button>
+                    <button class="design-card design-kinetic" data-scripture-design="kinetic">
+                      <div class="design-thumb"><span class="sample-ref">JUAN 3:16</span><span class="sample-text">Porque de tal manera amó Dios al mundo…</span></div>
+                      <footer><strong>Kinetic Accent</strong></footer>
+                    </button>
+                  </div>
+                </div>
+              </details>
               <details class="panel" open>
                 <summary>Fuente de contenido</summary>
                 <div class="panel-body">
@@ -147,80 +180,186 @@
                 </div>
               </details>
 
-              <details class="panel">
-                <summary>Composición</summary>
-                <div class="panel-body form-grid two">
-                  <label>Distribución
-                    <select id="layoutMode">
-                      <option value="automatic">Automática</option>
-                      <option value="manual">Manual</option>
-                    </select>
-                  </label>
-                  <label>Columnas
-                    <select id="columns"><option value="1">1</option><option value="2">2</option></select>
-                  </label>
-                  <label>Alineación
-                    <select id="scriptureAlign">
-                      <option value="left">Izquierda</option>
-                      <option value="center">Centro</option>
-                    </select>
-                  </label>
-                  <label>Máximo de líneas<input id="maxLines" type="number" min="2" max="14"></label>
-                  <label class="check-row full"><input id="balanceText" type="checkbox"> Smart Balance automático</label>
-                </div>
-              </details>
-
-              <details class="panel">
-                <summary>Apariencia</summary>
+              <details class="panel" open>
+                <summary>Formato y composición</summary>
                 <div class="panel-body">
-                  <label>Editar elemento
-                    <select id="selectedElement">
-                      <option value="text">Texto bíblico</option>
-                      <option value="reference">Referencia</option>
-                      <option value="both">Ambos</option>
+                  <label>Formato de overlay
+                    <select id="scriptureFormat">
+                      <option value="lower">Inferior clásico</option>
+                      <option value="center-lower">Centro inferior</option>
+                      <option value="left-column">Columna izquierda</option>
+                      <option value="right-column">Columna derecha</option>
+                      <option value="fullscreen">Lectura a pantalla completa</option>
+                      <option value="minimal">Minimal</option>
                     </select>
                   </label>
+                  <p id="scriptureFormatHelp" class="field-help"></p>
                   <div class="form-grid two">
-                    <label>Tipografía<input id="fontFamily"></label>
-                    <label>Tamaño<input id="fontSize" type="number" min="18" max="160"></label>
-                    <label>Peso
-                      <select id="fontWeight">
-                        <option value="400">Regular</option>
-                        <option value="600">Semibold</option>
-                        <option value="700">Bold</option>
-                        <option value="800">Extra Bold</option>
+                    <label>Altura
+                      <input id="scriptureBottom" type="range" min="0" max="260" step="1">
+                      <output id="scriptureBottomValue"></output>
+                    </label>
+                    <label>Ancho
+                      <input id="scriptureWidth" type="range" min="620" max="1920" step="10">
+                      <output id="scriptureWidthValue"></output>
+                    </label>
+                    <label class="full">Espacio lateral
+                      <input id="scripturePadding" type="range" min="20" max="180" step="1">
+                      <output id="scripturePaddingValue"></output>
+                    </label>
+                    <label>Alineación
+                      <select id="scriptureAlign">
+                        <option value="left">Izquierda</option>
+                        <option value="center">Centro</option>
                       </select>
                     </label>
-                    <label>Interlineado<input id="lineHeight" type="number" min="0.8" max="2" step="0.05"></label>
-                    <label>Color texto<input id="textColor" type="color"></label>
-                    <label>Color fondo<input id="backgroundColor" type="color"></label>
+                    <label>Líneas máximas
+                      <select id="maxLines">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                      </select>
+                    </label>
+                    <label class="check-row full"><input id="balanceText" type="checkbox"> Smart Balance automático</label>
                   </div>
                 </div>
               </details>
 
-              <details class="panel">
-                <summary>Animación</summary>
-                <div class="panel-body form-grid two">
-                  <label>Entrada
-                    <select id="animationIn">
-                      <option value="fade-up">Fade Up</option>
-                      <option value="fade">Fade</option>
-                      <option value="slide-left">Slide Left</option>
+              <details class="panel" open>
+                <summary>Apariencia exacta</summary>
+                <div class="panel-body">
+                  <h3 class="subsection-title">Difuminado</h3>
+                  <label>Modo
+                    <select id="gradientMode">
+                      <option value="adaptive">Adaptativo al contenido</option>
+                      <option value="fixed">Altura fija</option>
                     </select>
                   </label>
-                  <label>Salida
-                    <select id="animationOut">
-                      <option value="fade-down">Fade Down</option>
-                      <option value="fade">Fade</option>
-                      <option value="slide-right">Slide Right</option>
-                    </select>
+                  <div class="form-grid two">
+                    <label>Color<input id="gradientColor" type="color"></label>
+                    <label>Opacidad
+                      <input id="gradientOpacity" type="range" min="0" max="1" step="0.01">
+                      <output id="gradientOpacityValue"></output>
+                    </label>
+                    <label>Altura
+                      <input id="gradientHeight" type="range" min="180" max="850" step="5">
+                      <output id="gradientHeightValue"></output>
+                    </label>
+                    <label>Suavidad
+                      <input id="gradientSoftness" type="range" min="15" max="90" step="1">
+                      <output id="gradientSoftnessValue"></output>
+                    </label>
+                    <label class="check-row full"><input id="edgeFadeEnabled" type="checkbox"> Difuminar bordes laterales</label>
+                    <label class="full">Ancho del borde difuminado
+                      <input id="edgeFade" type="range" min="0" max="360" step="5">
+                      <output id="edgeFadeValue"></output>
+                    </label>
+                  </div>
+
+                  <h3 class="subsection-title">Tipografía</h3>
+                  <div class="form-grid two">
+                    <label>Fuente de referencia
+                      <select id="titleFont">
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                      </select>
+                    </label>
+                    <label>Fuente del versículo
+                      <select id="bodyFont">
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                      </select>
+                    </label>
+                    <label>Tamaño referencia<input id="titleSize" type="number" min="18" max="160"></label>
+                    <label>Tamaño versículo<input id="bodySize" type="number" min="18" max="160"></label>
+                    <label>Peso referencia
+                      <select id="titleWeight">
+                        <option value="400">Regular</option>
+                        <option value="500">Medium</option>
+                        <option value="600">Semibold</option>
+                        <option value="700">Bold</option>
+                        <option value="800">Extra Bold</option>
+                        <option value="900">Black</option>
+                      </select>
+                    </label>
+                    <label>Peso versículo
+                      <select id="bodyWeight">
+                        <option value="400">Regular</option>
+                        <option value="500">Medium</option>
+                        <option value="600">Semibold</option>
+                        <option value="700">Bold</option>
+                        <option value="800">Extra Bold</option>
+                        <option value="900">Black</option>
+                      </select>
+                    </label>
+                    <label>Interlineado<input id="lineHeight" type="number" min="0.8" max="2" step="0.01"></label>
+                    <label>Espaciado<input id="letterSpacing" type="number" min="-0.1" max="0.2" step="0.005"></label>
+                    <label>Color referencia<input id="titleColor" type="color"></label>
+                    <label>Color versículo<input id="textColor" type="color"></label>
+                    <label class="full">Color divisor<input id="lineColor" type="color"></label>
+                  </div>
+                </div>
+              </details>
+
+              <details class="panel" open>
+                <summary>Animaciones originales</summary>
+                <div class="panel-body">
+                  <h3 class="subsection-title">Escritura progresiva</h3>
+                  <label class="check-row"><input id="wordCascade" type="checkbox"> Animación de escritura por palabra</label>
+                  <label>Velocidad de escritura
+                    <input id="wordCascadeStep" type="range" min="5" max="60" step="1">
+                    <output id="wordCascadeStepValue"></output>
                   </label>
-                  <label class="full">Duración<input id="scriptureAnimationMs" type="range" min="100" max="1600" step="50"><output id="scriptureAnimationValue"></output></label>
+                  <p class="field-help">Se aplica cada vez que aparece un texto nuevo, incluida la transición entre versos del mismo capítulo.</p>
+
+                  <h3 class="subsection-title">Transiciones automáticas</h3>
+                  <div class="form-grid two">
+                    <label>Mismo capítulo · salida
+                      <input id="sameChapterOutMs" type="range" min="40" max="500" step="10">
+                      <output id="sameChapterOutValue"></output>
+                    </label>
+                    <label>Mismo capítulo · entrada
+                      <input id="sameChapterInMs" type="range" min="60" max="700" step="10">
+                      <output id="sameChapterInValue"></output>
+                    </label>
+                    <label>Cambio de capítulo
+                      <input id="chapterChangeMs" type="range" min="100" max="1000" step="10">
+                      <output id="chapterChangeValue"></output>
+                    </label>
+                    <label>Cambio de libro
+                      <input id="bookChangeMs" type="range" min="150" max="1400" step="10">
+                      <output id="bookChangeValue"></output>
+                    </label>
+                  </div>
+                  <div class="preserved-note">
+                    <strong>Lógica original restaurada</strong>
+                    <span>Mismo capítulo: transición sutil · Nuevo capítulo: salida media · Nuevo libro: salida completa.</span>
+                  </div>
+                  <button id="testScriptureAnimation" class="full">Probar animación y escritura</button>
                 </div>
               </details>
             </div>
 
             <div>
+              <div class="scripture-live-preview panel">
+                <div class="preview-panel-head">
+                  <div>
+                    <span class="eyebrow">PREVIEW DEL OUTPUT</span>
+                    <strong>Vista 1920 × 1080</strong>
+                  </div>
+                  <button id="refreshScripturePreview">Recargar</button>
+                </div>
+                <div class="scripture-output-frame">
+                  <iframe id="scriptureOutputPreview" src="/overlay/scripture?preview=1" title="Preview del Browser Output"></iframe>
+                </div>
+              </div>
+
               <div class="broadcast-console">
                 <article class="broadcast-bus program">
                   <header><span>PROGRAM</span><strong id="integratedOnAir">OFF AIR</strong></header>
@@ -245,8 +384,12 @@
 
               <div class="output-card">
                 <span class="eyebrow">BROWSER OUTPUT</span>
-                <code>http://localhost:4173/overlay/scripture</code>
-                <small>Use 1920 × 1080 en el Browser Input de vMix u OBS.</small>
+                <code id="scriptureOutputUrl">Detectando dirección de red…</code>
+                <div class="output-actions">
+                  <button id="copyScriptureOutputUrl">Copiar URL</button>
+                  <a id="openScriptureOutputUrl" href="/overlay/scripture" target="_blank">Abrir output</a>
+                </div>
+                <small id="scriptureNetworkHelp">Use 1920 × 1080 en el Browser Input de vMix u OBS.</small>
               </div>
 
               <details class="panel">

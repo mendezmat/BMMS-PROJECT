@@ -1,94 +1,525 @@
-:root {
-  background: transparent;
-  font-family: Inter, Arial, sans-serif;
+:root{
+  --bottom:28px;--width:1660px;--padding-x:72px;
+  --title-font:"Montserrat",Arial,sans-serif;--body-font:"Montserrat",Arial,sans-serif;
+  --title-size:44px;--body-size:36px;--title-weight:800;--body-weight:500;
+  --line-height:1.16;--title-color:#fff;--text-color:#fff;
+  --line-color:rgba(255,255,255,.9);--gradient-strength:.96;--gradient-color:0,0,0;--gradient-height:430px;--gradient-softness:58%;--edge-fade:150px;
 }
-* { box-sizing: border-box; }
-html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
-.graphic {
-  position: absolute;
-  left: 5.2%;
-  right: 5.2%;
-  bottom: 5.8%;
-  min-height: 210px;
-  display: flex;
-  align-items: stretch;
-  opacity: 0;
-  transform: translateY(34px);
-  transition: opacity 320ms ease, transform 380ms cubic-bezier(.2,.8,.2,1);
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
+#stage{position:relative;width:1920px;height:1080px;background:transparent}
+#status{position:absolute;left:18px;top:16px;color:#fff8;font:14px Arial;display:none}
+body.debug #status{display:block}
+.graphic{display:none}
+.graphic.active{display:block}
+
+/* Biblia */
+#bibleBanner{position:absolute;left:50%;bottom:var(--bottom);width:var(--width);min-height:250px;transform:translate(-50%,18px);opacity:0;pointer-events:none}
+#bibleBanner.visible{opacity:1;transform:translate(-50%,0);transition:opacity .36s ease,transform .36s cubic-bezier(.22,.8,.28,1)}
+#bibleBanner.soft-out{opacity:.78;transform:translate(-50%,4px)}
+#bibleBanner.chapter-out{opacity:0;transform:translate(-50%,20px);transition:.22s ease}
+#bibleBanner.book-out{opacity:0;transform:translate(-50%,28px) scale(.985);transition:.26s ease}
+.gradient{position:absolute;left:calc(-1 * var(--edge-fade));right:calc(-1 * var(--edge-fade));bottom:calc(-1 * var(--bottom));height:var(--gradient-height);background:linear-gradient(to bottom,rgba(var(--gradient-color),0) 0%,rgba(var(--gradient-color),.08) calc(var(--gradient-softness) * .30),rgba(var(--gradient-color),.48) var(--gradient-softness),rgba(var(--gradient-color),var(--gradient-strength)) 100%);opacity:0;transform:translateY(12px);pointer-events:none}
+#bibleBanner.visible .gradient{opacity:1;transform:translateY(0);transition:.34s ease}
+.content{position:relative;z-index:2;width:100%;padding:26px var(--padding-x) 34px;text-align:center;text-shadow:0 2px 10px #000b}
+#reference{margin:0 auto 13px;color:var(--title-color);font-family:var(--title-font);font-size:var(--title-size);font-weight:var(--title-weight);line-height:1;letter-spacing:.035em;text-transform:uppercase}
+.divider{width:min(650px,58%);height:2px;margin:0 auto 16px;background:var(--line-color)}
+#verse{max-width:1500px;margin:0 auto;color:var(--text-color);font-family:var(--body-font);font-size:var(--body-size);font-weight:var(--body-weight);line-height:var(--line-height);letter-spacing:-.01em;overflow:hidden}.verse-line{display:block;white-space:nowrap}.bible-graphic:not(.edge-fade) .gradient{left:calc((var(--width) - 1920px)/2);right:calc((var(--width) - 1920px)/2)}
+.bible-graphic.edge-fade .gradient{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 var(--edge-fade),#000 calc(100% - var(--edge-fade)),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 var(--edge-fade),#000 calc(100% - var(--edge-fade)),transparent 100%)}
+#bibleBanner.no-reference #reference,#bibleBanner.no-reference .divider{display:none}
+
+/* Flyer → CG */
+.flyer-graphic{--flyer-primary:#7c3aed;--flyer-accent:#f59e0b;position:absolute;inset:0;overflow:hidden;color:#fff;opacity:0;transform:translateY(18px)}
+.flyer-graphic.visible{opacity:1;transform:none;transition:opacity .36s ease,transform .36s cubic-bezier(.22,.8,.28,1)}
+.flyer-bg{position:absolute;inset:-25px;background-position:center;background-repeat:no-repeat;background-size:var(--flyer-bg-fit,cover);filter:blur(var(--flyer-bg-blur,14px)) saturate(1.15);opacity:var(--flyer-bg-opacity,.38);will-change:background-image,filter,opacity}
+.flyer-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,5,10,var(--flyer-shade-strong,.98)),rgba(4,5,10,var(--flyer-shade-mid,.62)) 52%,rgba(4,5,10,var(--flyer-shade-light,.18)))}
+.flyer-accent{position:absolute;left:118px;bottom:140px;width:var(--flyer-accent-width,8px);height:470px;border-radius:99px;background:linear-gradient(var(--flyer-primary),var(--flyer-accent))}
+.flyer-content{position:absolute;left:158px;bottom:140px;width:1180px;text-shadow:0 3px 18px #000b}
+.flyer-eyebrow{color:var(--flyer-accent);font:800 20px Montserrat,Arial;letter-spacing:.18em;margin-bottom:24px}
+#flyerTitleOut{font:900 82px/.94 Montserrat,Arial;letter-spacing:-.045em;max-width:1100px}
+#flyerSloganOut{font:500 29px/1.25 Montserrat,Arial;color:#d8dbe3;margin-top:20px;max-width:920px}
+.flyer-meta{display:flex;gap:16px;margin-top:30px;font:800 24px Montserrat,Arial}.flyer-dot{color:var(--flyer-accent)}
+#flyerPlaceOut{margin-top:13px;font:600 20px Montserrat,Arial;color:#c5cad4}#flyerExtraOut{margin-top:15px;font:500 16px Montserrat,Arial;color:#999fac}
+#flyerMedia{position:absolute;right:118px;top:110px;width:440px;height:620px;border-radius:24px;overflow:hidden;background:#1116;border:1px solid #ffffff26;box-shadow:0 24px 70px #0009;display:none}
+#flyerMedia.visible{display:block}
+#flyerMedia.asset-landscape{width:560px;height:315px;top:145px}
+#flyerMedia.asset-square{width:500px;height:500px;top:125px}
+#flyerMedia.asset-portrait{width:440px;height:620px}
+#flyerMedia.asset-error{display:none!important}
+#flyerMedia img{width:100%;height:100%;object-fit:var(--flyer-image-fit,cover);display:block}
+#flyerQrCard{position:absolute;right:118px;bottom:140px;width:235px;background:#fff;border-radius:18px;padding:14px;color:#111;display:none;flex-direction:column;align-items:center;box-shadow:0 20px 55px #0008}
+#flyerQrCard.visible{display:flex}
+#flyerQrCard.asset-error{display:none!important}
+#flyerQrCard img{width:100%;aspect-ratio:1;object-fit:contain;display:block;background:#fff}#flyerQrCard span{font:900 11px Montserrat,Arial;letter-spacing:.14em;margin-top:9px}
+.flyer-graphic.clean{color:#111827}.flyer-graphic.clean .flyer-shade{background:linear-gradient(90deg,rgba(248,249,252,var(--flyer-shade-strong,.98)),rgba(248,249,252,var(--flyer-shade-mid,.91)) 58%,rgba(248,249,252,var(--flyer-shade-light,.25)))}.flyer-graphic.clean #flyerSloganOut,.flyer-graphic.clean #flyerPlaceOut{color:#374151}.flyer-graphic.clean #flyerExtraOut{color:#6b7280}.flyer-graphic.clean .flyer-eyebrow{color:var(--flyer-primary)}
+.flyer-graphic.premium .flyer-shade{inset:80px;border:1px solid #ffffff2b;border-radius:28px;background:linear-gradient(115deg,rgba(8,10,18,var(--flyer-shade-strong,.9)),rgba(15,18,30,var(--flyer-shade-mid,.56)));backdrop-filter:blur(18px)}.flyer-graphic.premium .flyer-content{left:210px;bottom:180px}.flyer-graphic.premium .flyer-accent{left:170px;bottom:180px}.flyer-graphic.premium #flyerQrCard{right:170px;bottom:180px}
+.flyer-graphic.compact .flyer-content{bottom:95px}.flyer-graphic.compact #flyerSloganOut,.flyer-graphic.compact #flyerPlaceOut,.flyer-graphic.compact #flyerExtraOut{display:none}.flyer-graphic.compact .flyer-accent{bottom:95px;height:300px}.flyer-graphic.compact #flyerQrCard{bottom:95px;width:190px}.flyer-graphic.compact #flyerTitleOut{font-size:68px;max-width:1250px}
+.flyer-graphic.full .flyer-shade{background:linear-gradient(0deg,rgba(3,4,9,var(--flyer-shade-strong,.97)),rgba(3,4,9,var(--flyer-shade-light,.18)) 74%)}.flyer-graphic.full .flyer-content{left:145px;bottom:90px;width:1320px}.flyer-graphic.full .flyer-accent{left:110px;bottom:90px;height:430px}.flyer-graphic.full #flyerQrCard{right:90px;bottom:90px}
+.flyer-graphic.banner .flyer-bg{}.flyer-graphic.banner .flyer-shade{top:auto;height:360px;background:rgba(5,7,13,var(--flyer-shade-strong,.95));border-top:3px solid var(--flyer-primary)}.flyer-graphic.banner .flyer-content{left:135px;bottom:55px;width:1400px}.flyer-graphic.banner #flyerTitleOut{font-size:58px;max-width:1250px}.flyer-graphic.banner #flyerSloganOut,.flyer-graphic.banner #flyerPlaceOut,.flyer-graphic.banner #flyerExtraOut{display:none}.flyer-graphic.banner .flyer-accent{display:none}.flyer-graphic.banner #flyerQrCard{right:95px;bottom:45px;width:175px}.flyer-graphic.banner .flyer-eyebrow{margin-bottom:12px}
+
+.word{display:inline-block;opacity:0;transform:translateY(5px);animation:wordIn .19s ease forwards}
+.word-space{white-space:pre}
+@keyframes wordIn{to{opacity:1;transform:none}}
+
+.flyer-graphic.no-accent .flyer-accent{display:none}
+.flyer-graphic.no-accent .flyer-content{left:118px}
+
+.flyer-graphic.compact #flyerMedia{right:92px;top:120px;max-width:420px;max-height:470px}
+.flyer-graphic.full #flyerMedia{right:90px;top:80px;max-width:620px;max-height:720px}
+.flyer-graphic.banner #flyerMedia{right:95px;top:60px;max-width:420px;max-height:240px}
+.flyer-graphic.premium #flyerMedia{right:150px;top:120px;max-width:520px;max-height:570px}
+.flyer-graphic.no-media .flyer-content{width:1450px}
+
+/* Smart Flyer S5: graphic elements and corrected compositions */
+.flyer-panel{display:none;position:absolute;left:105px;bottom:105px;width:1260px;height:610px;border-radius:30px;background:linear-gradient(135deg,#0b0e18cc,#141a2a88);border:1px solid #ffffff1e;box-shadow:0 28px 90px #0008;backdrop-filter:blur(18px)}
+.flyer-graphic.show-panel .flyer-panel{display:block}
+.flyer-line{display:none;position:absolute;left:158px;bottom:118px;width:560px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--flyer-primary),var(--flyer-accent),transparent)}
+.flyer-graphic.show-line .flyer-line{display:block}
+.flyer-corner{display:none;position:absolute;right:72px;top:72px;width:118px;height:118px;border-top:8px solid var(--flyer-accent);border-right:8px solid var(--flyer-primary);border-radius:0 20px 0 0}
+.flyer-graphic.show-corner .flyer-corner{display:block}
+.flyer-badge{display:none;width:max-content;margin-bottom:16px;padding:8px 14px;border-radius:999px;background:var(--flyer-primary);color:#fff;font:800 13px Montserrat,Arial;letter-spacing:.13em;box-shadow:0 8px 26px #0005}
+.flyer-graphic.show-badge .flyer-badge{display:block}
+.flyer-graphic.accent-right .flyer-accent{left:auto;right:118px}
+.flyer-graphic.accent-right .flyer-content{left:118px}
+.flyer-graphic.accent-right.no-media .flyer-content{width:1500px}
+/* Stable layouts: formats own geometry, templates own visual language. */
+.flyer-graphic.medium .flyer-content{left:158px;bottom:135px;width:1010px}
+.flyer-graphic.medium #flyerTitleOut{max-width:980px;font-size:76px}
+.flyer-graphic.medium #flyerMedia{right:105px;top:105px}
+.flyer-graphic.medium #flyerQrCard{right:105px;bottom:105px}
+.flyer-graphic.compact .flyer-content{left:145px;bottom:86px;width:1230px}
+.flyer-graphic.compact .flyer-meta{margin-top:20px}
+.flyer-graphic.compact #flyerMedia{right:86px;top:105px}
+.flyer-graphic.full .flyer-content{left:135px;bottom:82px;width:1320px}
+.flyer-graphic.full #flyerTitleOut{max-width:1280px;font-size:78px}
+.flyer-graphic.full #flyerMedia{right:88px;top:72px}
+.flyer-graphic.banner .flyer-content{left:120px;bottom:42px;width:1390px}
+.flyer-graphic.banner .flyer-meta{margin-top:15px}
+.flyer-graphic.banner #flyerMedia{right:78px;top:auto;bottom:42px}
+.flyer-graphic.banner #flyerQrCard{right:78px;bottom:40px}
+.flyer-graphic.banner.show-line .flyer-line{left:120px;bottom:28px;width:680px}
+.flyer-graphic.full.show-line .flyer-line{left:135px;bottom:55px;width:760px}
+.flyer-graphic.premium.show-panel .flyer-panel{left:80px;bottom:80px;width:1760px;height:920px}
+.flyer-graphic.clean .flyer-panel{background:#f8faf0e8;border-color:#11182718;box-shadow:0 24px 80px #11182722}
+.flyer-graphic.clean .flyer-badge{color:#fff}
+
+/* Smart Flyer S6 — unified responsive composition system */
+.flyer-graphic{
+  --layout-left:158px;--layout-bottom:135px;--layout-width:1010px;
+  --title-size:76px;--title-lines:3;--content-gap:38px;
+  --qr-right:105px;--qr-bottom:105px;--qr-size:220px;
+  --media-right:105px;--media-top:105px;
 }
-.graphic.visible { opacity: 1; transform: translateY(0); }
-.accent {
-  width: 10px;
-  border-radius: 10px 0 0 10px;
-  background: linear-gradient(180deg, #8ab4ff, #486eea);
-  box-shadow: 0 16px 50px rgba(35,73,170,.25);
+.flyer-content{left:var(--layout-left)!important;bottom:var(--layout-bottom)!important;width:var(--layout-width)!important;max-width:calc(1920px - var(--layout-left) - 90px);z-index:5}
+#flyerTitleOut{font-size:var(--title-size)!important;max-width:100%!important;overflow:hidden;overflow-wrap:anywhere}
+#flyerQrCard{right:var(--qr-right)!important;bottom:var(--qr-bottom)!important;z-index:7}
+#flyerMedia{right:var(--media-right)!important;top:var(--media-top)!important;z-index:4}
+.flyer-accent,.flyer-line,.flyer-panel,.flyer-corner{z-index:3}
+
+/* Formats own every spatial decision. */
+.flyer-graphic.medium{--layout-left:158px;--layout-bottom:135px;--layout-width:1010px;--title-size:76px;--qr-right:105px;--qr-bottom:105px;--media-right:105px;--media-top:105px}
+.flyer-graphic.medium.no-media{--layout-width:1400px}
+.flyer-graphic.medium.no-media:has(#flyerQrCard.visible){--layout-width:1250px}
+.flyer-graphic.compact{--layout-left:145px;--layout-bottom:86px;--layout-width:1210px;--title-size:66px;--qr-right:86px;--qr-bottom:86px;--media-right:86px;--media-top:105px}
+.flyer-graphic.compact:has(#flyerQrCard.visible){--layout-width:1080px}
+.flyer-graphic.full{--layout-left:135px;--layout-bottom:82px;--layout-width:1320px;--title-size:78px;--qr-right:88px;--qr-bottom:82px;--media-right:88px;--media-top:72px}
+.flyer-graphic.full:has(#flyerQrCard.visible){--layout-width:1220px}
+.flyer-graphic.banner{--layout-left:120px;--layout-bottom:45px;--layout-width:1390px;--title-size:56px;--qr-right:78px;--qr-bottom:40px;--media-right:78px;--media-top:auto}
+.flyer-graphic.banner:has(#flyerQrCard.visible){--layout-width:1120px}
+.flyer-graphic.banner .flyer-content{height:270px;display:flex;flex-direction:column;justify-content:flex-end}
+.flyer-graphic.banner .flyer-eyebrow{margin-bottom:10px}
+.flyer-graphic.banner .flyer-meta{margin-top:12px}
+.flyer-graphic.banner #flyerTitleOut{line-height:.92}
+.flyer-graphic.banner #flyerMedia{top:auto!important;bottom:42px!important;width:330px!important;height:230px!important}
+
+/* Right-side rails reserve space instead of colliding with QR/media. */
+.flyer-graphic.accent-right{--qr-right:155px;--media-right:155px}
+.flyer-graphic.accent-right.graphic-rail .flyer-accent,
+.flyer-graphic.accent-right.graphic-split .flyer-accent{left:auto!important;right:78px!important}
+.flyer-graphic:not(.accent-right).graphic-rail .flyer-accent,
+.flyer-graphic:not(.accent-right).graphic-split .flyer-accent{left:78px!important;right:auto!important}
+.flyer-graphic:not(.accent-right).graphic-rail,
+.flyer-graphic:not(.accent-right).graphic-split{--layout-left:138px}
+
+/* Single selectable graphic element. */
+.flyer-graphic .flyer-accent,.flyer-graphic .flyer-line,.flyer-graphic .flyer-panel,.flyer-graphic .flyer-corner,.flyer-graphic .flyer-badge{display:none}
+.flyer-graphic.graphic-rail .flyer-accent{display:block;bottom:var(--layout-bottom);height:min(470px,calc(1080px - var(--layout-bottom) - 150px));width:var(--flyer-accent-width);border-radius:99px}
+.flyer-graphic.graphic-split .flyer-accent{display:block;bottom:var(--layout-bottom);height:390px;width:calc(var(--flyer-accent-width) * .72);border-radius:99px;box-shadow:18px -32px 0 -2px var(--flyer-primary)}
+.flyer-graphic.graphic-underline .flyer-line{display:block;left:var(--layout-left)!important;bottom:calc(var(--layout-bottom) - 24px)!important;width:min(720px,var(--layout-width))!important;height:4px}
+.flyer-graphic.graphic-corner .flyer-corner{display:block;right:72px;top:72px}
+.flyer-graphic.graphic-frame .flyer-panel{display:block;left:calc(var(--layout-left) - 34px)!important;bottom:calc(var(--layout-bottom) - 34px)!important;width:calc(var(--layout-width) + 68px)!important;height:calc(100% - var(--layout-bottom) - 120px)!important;max-height:690px}
+.flyer-graphic.graphic-pill .flyer-badge{display:block}
+.flyer-graphic.graphic-none .flyer-accent,.flyer-graphic.graphic-none .flyer-line,.flyer-graphic.graphic-none .flyer-panel,.flyer-graphic.graphic-none .flyer-corner,.flyer-graphic.graphic-none .flyer-badge{display:none}
+.flyer-graphic.banner.graphic-frame .flyer-panel{height:310px!important;max-height:310px;bottom:25px!important}
+.flyer-graphic.banner.graphic-rail .flyer-accent,.flyer-graphic.banner.graphic-split .flyer-accent{height:250px;bottom:45px}
+
+/* Added contemporary templates. */
+.flyer-graphic.worship .flyer-shade{background:linear-gradient(105deg,rgba(5,7,12,var(--flyer-shade-strong,.92)) 0%,rgba(10,12,18,var(--flyer-shade-mid,.62)) 48%,rgba(5,7,12,var(--flyer-shade-light,.16)) 100%)}
+.flyer-graphic.worship .flyer-eyebrow{font-size:18px;letter-spacing:.28em;color:#fff;text-transform:uppercase;opacity:.88}
+.flyer-graphic.worship #flyerTitleOut{font-weight:700;letter-spacing:-.055em;text-transform:none}
+.flyer-graphic.worship #flyerSloganOut{font-weight:400;color:#f3f4f6;max-width:820px}
+.flyer-graphic.worship .flyer-meta{font-weight:600;letter-spacing:.02em}
+.flyer-graphic.worship .flyer-panel{background:linear-gradient(135deg,#ffffff16,#ffffff08);border-color:#ffffff24}
+.flyer-graphic.worship .flyer-badge{background:#fff;color:#111;box-shadow:none}
+
+.flyer-graphic.kinetic .flyer-shade{background:linear-gradient(115deg,rgba(3,4,8,var(--flyer-shade-strong,.98)) 0 44%,rgba(3,4,8,var(--flyer-shade-mid,.72)) 66%,rgba(3,4,8,var(--flyer-shade-light,.18)) 100%)}
+.flyer-graphic.kinetic #flyerTitleOut{text-transform:uppercase;font-weight:900;letter-spacing:-.065em}
+.flyer-graphic.kinetic .flyer-eyebrow{display:inline-block;width:max-content;background:var(--flyer-primary);color:#fff;padding:8px 13px;margin-bottom:18px;letter-spacing:.12em;transform:skew(-7deg)}
+.flyer-graphic.kinetic .flyer-meta{width:max-content;background:#fff;color:#111;padding:9px 14px;border-radius:4px;gap:11px}
+.flyer-graphic.kinetic .flyer-dot{color:var(--flyer-primary)}
+.flyer-graphic.kinetic .flyer-panel{border-radius:8px;background:linear-gradient(120deg,var(--flyer-primary),transparent 38%),#080a10d9}
+
+/* Template/format compatibility fixes. */
+.flyer-graphic.premium .flyer-shade{inset:80px}
+.flyer-graphic.premium.banner .flyer-shade{inset:auto 80px 25px 80px;height:330px;border-radius:24px;border-top:1px solid #ffffff2b}
+.flyer-graphic.premium.banner{--layout-left:150px;--layout-bottom:52px;--layout-width:1320px;--qr-right:105px;--qr-bottom:52px}
+.flyer-graphic.premium.banner:has(#flyerQrCard.visible){--layout-width:1080px}
+.flyer-graphic.premium.compact{--layout-left:150px;--layout-bottom:105px;--layout-width:1180px}
+.flyer-graphic.premium.full{--layout-left:150px;--layout-bottom:105px;--layout-width:1260px}
+.flyer-graphic.clean.banner .flyer-shade{background:rgba(248,249,252,var(--flyer-shade-strong,.96));border-top-color:var(--flyer-primary)}
+.flyer-graphic.clean.banner #flyerTitleOut{color:#111827}
+.flyer-graphic.worship.banner .flyer-shade{background:linear-gradient(90deg,#080a10f2,#111827df)}
+.flyer-graphic.kinetic.banner .flyer-shade{background:#05070df4;border-top:7px solid var(--flyer-primary)}
+
+
+/* S7: adjustable banner systems */
+.flyer-graphic.banner{
+  --banner-height:300px;
+  --banner-pad-y:clamp(24px,calc(var(--banner-height) * .14),58px);
+  --banner-title-size:clamp(32px,calc(var(--banner-height) * .19),74px);
+  --banner-meta-size:clamp(17px,calc(var(--banner-height) * .075),28px);
 }
-.panel {
-  width: 100%;
-  padding: 30px 38px 32px;
-  border-radius: 0 20px 20px 0;
-  background: linear-gradient(110deg, rgba(10,15,25,.94), rgba(18,26,40,.88));
-  border: 1px solid rgba(255,255,255,.12);
-  border-left: 0;
-  box-shadow: 0 22px 70px rgba(0,0,0,.38);
-  backdrop-filter: blur(16px);
+.flyer-graphic.banner .flyer-shade{height:var(--banner-height)!important}
+.flyer-graphic.banner .flyer-content{
+  bottom:calc((var(--banner-height) - 270px)/2 + 45px)!important;
+  height:calc(var(--banner-height) - (var(--banner-pad-y) * 2))!important;
+  justify-content:center!important;
 }
-.reference {
-  margin: 0 0 14px;
-  color: #9fc0ff;
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: .01em;
+.flyer-graphic.banner #flyerTitleOut{font-size:var(--banner-title-size);max-height:calc(var(--banner-height) * .48);overflow:hidden}
+.flyer-graphic.banner .flyer-meta{font-size:var(--banner-meta-size)}
+.flyer-graphic.banner #flyerQrCard{
+  width:clamp(120px,calc(var(--banner-height) * .53),210px)!important;
+  height:clamp(120px,calc(var(--banner-height) * .53),210px)!important;
+  bottom:calc((var(--banner-height) - clamp(120px,calc(var(--banner-height) * .53),210px))/2)!important;
 }
-.verse {
-  color: white;
-  font-weight: 760;
-  letter-spacing: -.025em;
+.flyer-graphic.banner #flyerMedia{
+  width:clamp(190px,calc(var(--banner-height) * 1.15),420px)!important;
+  height:clamp(100px,calc(var(--banner-height) * .7),250px)!important;
+  bottom:calc((var(--banner-height) - clamp(100px,calc(var(--banner-height) * .7),250px))/2)!important;
 }
-.verse-line { display: block; white-space: nowrap; }
-.version {
-  margin: 16px 0 0;
-  color: rgba(255,255,255,.62);
-  font-size: 19px;
-  font-weight: 650;
+.flyer-graphic.banner.graphic-frame .flyer-panel{height:calc(var(--banner-height) - 20px)!important;max-height:none!important;bottom:10px!important}
+.flyer-graphic.banner.graphic-rail .flyer-accent,.flyer-graphic.banner.graphic-split .flyer-accent{height:calc(var(--banner-height) - 70px)!important;bottom:35px!important}
+.flyer-graphic.premium.banner .flyer-shade{height:var(--banner-height)!important;bottom:25px!important}
+
+/* Compact TV-style CG inspired by broadcast promo banners. */
+.flyer-graphic.ticker{
+  --banner-height:210px;
+  --layout-left:370px;
+  --layout-bottom:55px;
+  --layout-width:1120px;
+  --qr-right:88px;
+  --qr-bottom:55px;
+  --media-right:auto;
+  --media-top:auto;
+}
+.flyer-graphic.ticker .flyer-bg{display:none}
+.flyer-graphic.ticker .flyer-shade{
+  inset:auto 150px 42px 210px;
+  height:var(--banner-height);
+  border-radius:18px;
+  background:linear-gradient(105deg,rgba(7,10,18,.98),rgba(12,18,34,.95) 42%,rgba(6,8,14,.98));
+  border:1px solid #ffffff20;
+  box-shadow:0 16px 45px #0008;
+}
+.flyer-graphic.ticker .flyer-content{
+  left:430px;
+  bottom:calc(42px + (var(--banner-height) * .20));
+  width:930px;
+  height:calc(var(--banner-height) * .62);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+  text-shadow:0 2px 16px #000d;
+}
+.flyer-graphic.ticker .flyer-eyebrow{display:none}
+.flyer-graphic.ticker #flyerTitleOut{
+  font-size:clamp(28px,calc(var(--banner-height) * .20),58px);
+  line-height:1.05;
+  letter-spacing:-.025em;
+  max-width:930px;
+  text-transform:uppercase;
+}
+.flyer-graphic.ticker #flyerSloganOut{
+  display:block;
+  font-size:clamp(17px,calc(var(--banner-height) * .09),26px);
+  margin-top:9px;
+  max-width:900px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.flyer-graphic.ticker .flyer-meta{justify-content:center;margin-top:10px;font-size:clamp(16px,calc(var(--banner-height) * .08),24px)}
+.flyer-graphic.ticker #flyerPlaceOut,.flyer-graphic.ticker #flyerExtraOut{display:none}
+.flyer-graphic.ticker #flyerMedia{
+  display:none;
+  left:230px!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:calc(42px + (var(--banner-height) * .12))!important;
+  width:190px!important;
+  height:calc(var(--banner-height) * .76)!important;
+  max-width:190px!important;
+  max-height:none!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+.flyer-graphic.ticker #flyerMedia.visible{display:block}
+.flyer-graphic.ticker #flyerMedia img{object-fit:contain!important}
+.flyer-graphic.ticker #flyerQrCard{
+  right:180px!important;
+  bottom:calc(42px + (var(--banner-height) * .07))!important;
+  width:calc(var(--banner-height) * .86)!important;
+  height:calc(var(--banner-height) * .86)!important;
+  max-width:210px;max-height:210px;
+}
+.flyer-graphic.ticker.graphic-rail .flyer-accent,.flyer-graphic.ticker.graphic-split .flyer-accent{
+  left:210px!important;right:auto!important;bottom:42px!important;height:var(--banner-height)!important;border-radius:18px 0 0 18px;width:10px;
+}
+.flyer-graphic.ticker.graphic-underline .flyer-line{left:430px!important;bottom:62px!important;width:600px!important}
+.flyer-graphic.ticker.graphic-frame .flyer-panel{left:210px!important;bottom:42px!important;width:1560px!important;height:var(--banner-height)!important;max-height:none!important;border-radius:18px}
+.flyer-graphic.ticker.graphic-corner .flyer-corner{right:162px;top:auto;bottom:calc(42px + var(--banner-height) - 70px)}
+.flyer-graphic.ticker.graphic-pill .flyer-badge{left:430px;top:auto;bottom:calc(42px + var(--banner-height) - 32px)}
+.flyer-graphic.ticker.premium .flyer-shade,.flyer-graphic.ticker.clean .flyer-shade,.flyer-graphic.ticker.worship .flyer-shade,.flyer-graphic.ticker.kinetic .flyer-shade{inset:auto 150px 42px 210px;height:var(--banner-height)}
+.flyer-graphic.ticker.clean .flyer-shade{background:linear-gradient(90deg,#f8fafcf4,#e5e7ebf2);border-color:#11182722}
+.flyer-graphic.ticker.clean #flyerTitleOut,.flyer-graphic.ticker.clean #flyerSloganOut,.flyer-graphic.ticker.clean .flyer-meta{color:#111827;text-shadow:none}
+.flyer-graphic.ticker.worship .flyer-shade{background:linear-gradient(105deg,#090b12fa,#172033f3)}
+.flyer-graphic.ticker.kinetic .flyer-shade{background:linear-gradient(100deg,#06070b 0 20%,var(--flyer-primary) 20% 22%,#0b0d14 22%)}
+
+/* S8: definitive responsive geometry for adjustable banners.
+   These rules intentionally override the legacy fixed-position declarations. */
+.flyer-graphic.banner .flyer-shade{
+  inset:auto 0 var(--responsive-bottom,0) 0!important;
+  height:var(--banner-height)!important;
+}
+.flyer-graphic.premium.banner .flyer-shade{
+  left:80px!important;right:80px!important;bottom:var(--responsive-bottom,25px)!important;
+}
+.flyer-graphic.banner .flyer-content{
+  left:var(--responsive-content-left)!important;
+  right:auto!important;
+  bottom:calc(var(--responsive-bottom,0px) + var(--responsive-pad-y,20px))!important;
+  width:var(--responsive-content-width)!important;
+  height:calc(var(--banner-height) - (var(--responsive-pad-y,20px) * 2))!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.flyer-graphic.banner .flyer-eyebrow{margin:0 0 clamp(4px,calc(var(--banner-height)*.025),10px)!important;line-height:1!important}
+.flyer-graphic.banner #flyerTitleOut{max-width:100%!important;max-height:none!important;line-height:.94!important;overflow:visible!important}
+.flyer-graphic.banner .flyer-meta{margin-top:clamp(4px,calc(var(--banner-height)*.035),12px)!important;line-height:1!important;flex-shrink:0}
+.flyer-graphic.banner #flyerQrCard{
+  right:var(--responsive-asset-right)!important;
+  bottom:calc(var(--responsive-bottom,0px) + ((var(--banner-height) - var(--responsive-qr-size,0px))/2))!important;
+  width:var(--responsive-qr-size)!important;
+  height:var(--responsive-qr-size)!important;
+  padding:clamp(5px,calc(var(--banner-height)*.035),14px)!important;
+}
+.flyer-graphic.banner #flyerQrCard span{font-size:clamp(7px,calc(var(--banner-height)*.035),11px)!important;margin-top:clamp(2px,calc(var(--banner-height)*.018),8px)!important}
+.flyer-graphic.banner #flyerMedia{
+  left:auto!important;
+  right:var(--responsive-media-right,var(--responsive-asset-right))!important;
+  top:auto!important;
+  bottom:calc(var(--responsive-bottom,0px) + ((var(--banner-height) - var(--responsive-media-height,0px))/2))!important;
+  width:var(--responsive-media-width)!important;
+  height:var(--responsive-media-height)!important;
+  max-width:none!important;max-height:none!important;
+}
+.flyer-graphic.banner.graphic-frame .flyer-panel{
+  left:calc(var(--responsive-content-left) - 30px)!important;
+  bottom:calc(var(--responsive-bottom,0px) + 10px)!important;
+  width:calc(var(--responsive-content-width) + 60px)!important;
+  height:calc(var(--banner-height) - 20px)!important;
+}
+.flyer-graphic.banner.graphic-rail .flyer-accent,.flyer-graphic.banner.graphic-split .flyer-accent{
+  bottom:calc(var(--responsive-bottom,0px) + 12px)!important;
+  height:calc(var(--banner-height) - 24px)!important;
+}
+
+.flyer-graphic.ticker .flyer-shade{
+  inset:auto 150px var(--responsive-bottom,42px) 210px!important;
+  height:var(--banner-height)!important;
+}
+.flyer-graphic.ticker .flyer-content{
+  left:var(--responsive-content-left)!important;
+  right:auto!important;
+  bottom:calc(var(--responsive-bottom,42px) + 12px)!important;
+  width:var(--responsive-content-width)!important;
+  height:calc(var(--banner-height) - 24px)!important;
+  min-height:0!important;
+  display:flex!important;flex-direction:column!important;justify-content:center!important;
+  overflow:hidden!important;
+}
+.flyer-graphic.ticker #flyerTitleOut{max-width:100%!important;max-height:none!important;overflow:visible!important;line-height:1!important}
+.flyer-graphic.ticker #flyerSloganOut{max-width:100%!important;margin-top:clamp(3px,calc(var(--banner-height)*.025),9px)!important;line-height:1.1!important}
+.flyer-graphic.ticker .flyer-meta{margin-top:clamp(3px,calc(var(--banner-height)*.025),10px)!important;line-height:1!important}
+.flyer-graphic.ticker #flyerMedia{
+  left:var(--responsive-media-left)!important;right:auto!important;top:auto!important;
+  bottom:calc(var(--responsive-bottom,42px) + ((var(--banner-height) - var(--responsive-media-height,0px))/2))!important;
+  width:var(--responsive-media-width)!important;height:var(--responsive-media-height)!important;
+  max-width:none!important;max-height:none!important;
+}
+.flyer-graphic.ticker #flyerQrCard{
+  right:var(--responsive-qr-right)!important;
+  bottom:calc(var(--responsive-bottom,42px) + ((var(--banner-height) - var(--responsive-qr-size,0px))/2))!important;
+  width:var(--responsive-qr-size)!important;height:var(--responsive-qr-size)!important;
+  padding:clamp(5px,calc(var(--banner-height)*.035),14px)!important;
+}
+.flyer-graphic.ticker #flyerQrCard span{font-size:clamp(7px,calc(var(--banner-height)*.035),11px)!important;margin-top:clamp(2px,calc(var(--banner-height)*.018),8px)!important}
+.flyer-graphic.ticker.graphic-rail .flyer-accent,.flyer-graphic.ticker.graphic-split .flyer-accent{
+  bottom:var(--responsive-bottom,42px)!important;height:var(--banner-height)!important;
+}
+.flyer-graphic.ticker.graphic-frame .flyer-panel{
+  bottom:var(--responsive-bottom,42px)!important;height:var(--banner-height)!important;
 }
 
 
-.graphic[data-design="clean"] .accent {
-  background: linear-gradient(180deg,#3159ad,#6a8de1);
-}
-.graphic[data-design="clean"] .panel {
-  border-color: rgba(17,24,39,.12);
-  box-shadow: 0 22px 70px rgba(0,0,0,.2);
-}
-.graphic[data-design="clean"] .reference {
-  color: #3559a8;
-}
-.graphic[data-design="clean"] .version {
-  color: rgba(17,24,39,.58);
-}
+/* S9: palette-driven banners and protected supporting typography */
+.flyer-graphic{--flyer-surface:#0b0e16;--flyer-text:#fff;--flyer-muted:#e5e7eb}
+.flyer-graphic.banner .flyer-shade,.flyer-graphic.ticker .flyer-shade{background:linear-gradient(105deg,color-mix(in srgb,var(--flyer-surface) 96%,var(--flyer-primary) 4%),var(--flyer-surface) 58%,color-mix(in srgb,var(--flyer-surface) 90%,var(--flyer-accent) 10%))!important;border-color:color-mix(in srgb,var(--flyer-primary) 28%,transparent)!important}
+.flyer-graphic.banner #flyerTitleOut,.flyer-graphic.ticker #flyerTitleOut{color:var(--flyer-text)!important}
+.flyer-graphic.banner #flyerSloganOut,.flyer-graphic.ticker #flyerSloganOut,.flyer-graphic.banner .flyer-meta,.flyer-graphic.ticker .flyer-meta{color:var(--flyer-muted)!important;text-shadow:0 2px 13px color-mix(in srgb,var(--flyer-surface) 88%,transparent)!important}
+.flyer-graphic.banner .flyer-eyebrow,.flyer-graphic.ticker .flyer-eyebrow{color:var(--flyer-accent)!important}
+.flyer-graphic.banner .flyer-content,.flyer-graphic.ticker .flyer-content{gap:0!important}
+.flyer-graphic.banner #flyerSloganOut{margin-top:clamp(4px,calc(var(--banner-height)*.024),10px)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.flyer-graphic.banner .flyer-meta,.flyer-graphic.ticker .flyer-meta{font-weight:700!important;letter-spacing:-.01em!important;white-space:nowrap;flex-shrink:0}
+.flyer-graphic.ticker #flyerSloganOut{font-weight:500!important}
+.flyer-graphic.ticker .flyer-dot{color:var(--flyer-accent)!important}
+.flyer-graphic.banner.graphic-frame .flyer-panel,.flyer-graphic.ticker.graphic-frame .flyer-panel{background:color-mix(in srgb,var(--flyer-surface) 82%,transparent)!important;border-color:color-mix(in srgb,var(--flyer-primary) 35%,transparent)!important}
 
-.graphic[data-design="minimal"] {
-  left: 9%;
-  right: 9%;
-  bottom: 8%;
-  justify-content: center;
+
+/* S10: optional slogan, readable supporting copy and CG surface transparency */
+.flyer-graphic.banner .flyer-shade,.flyer-graphic.ticker .flyer-shade{
+  opacity:var(--flyer-cg-opacity,.96)!important;
 }
-.graphic[data-design="minimal"] .accent {
-  display: none;
+.flyer-graphic.banner.no-slogan #flyerSloganOut,.flyer-graphic.ticker.no-slogan #flyerSloganOut{display:none!important}
+.flyer-graphic.banner.no-slogan .flyer-meta,.flyer-graphic.ticker.no-slogan .flyer-meta{margin-top:clamp(5px,calc(var(--banner-height)*.035),12px)!important}
+.flyer-graphic.banner #flyerSloganOut,.flyer-graphic.ticker #flyerSloganOut{
+  min-font-size:17px;
+  opacity:1!important;
 }
-.graphic[data-design="minimal"] .panel {
-  padding: 20px;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-  text-align: center;
-  text-shadow: 0 4px 20px rgba(0,0,0,.9);
+.flyer-graphic.banner .flyer-meta,.flyer-graphic.ticker .flyer-meta{opacity:1!important}
+
+
+/* Scripture S11: composiciones de overlay */
+#bibleBanner.format-center-lower{width:min(var(--width),1320px);min-height:300px}
+#bibleBanner.format-center-lower .content{padding-left:58px;padding-right:58px}
+#bibleBanner.format-center-lower #verse{max-width:1160px}
+
+#bibleBanner.format-left-column,#bibleBanner.format-right-column{bottom:90px;width:min(var(--width),820px);height:760px;min-height:0;display:flex;align-items:flex-end}
+#bibleBanner.format-left-column{left:80px;transform:translateY(18px)}
+#bibleBanner.format-right-column{left:auto;right:80px;transform:translateY(18px)}
+#bibleBanner.format-left-column.visible,#bibleBanner.format-right-column.visible{transform:none}
+#bibleBanner.format-left-column.soft-out,#bibleBanner.format-right-column.soft-out{transform:translateY(4px)}
+#bibleBanner.format-left-column.chapter-out,#bibleBanner.format-right-column.chapter-out{transform:translateY(20px)}
+#bibleBanner.format-left-column.book-out,#bibleBanner.format-right-column.book-out{transform:translateY(28px) scale(.985)}
+#bibleBanner.format-left-column .content,#bibleBanner.format-right-column .content{text-align:left;padding:44px 52px 48px}
+#bibleBanner.format-left-column #reference,#bibleBanner.format-right-column #reference{margin-left:0;margin-right:0}
+#bibleBanner.format-left-column .divider,#bibleBanner.format-right-column .divider{margin-left:0;width:72%}
+#bibleBanner.format-left-column #verse,#bibleBanner.format-right-column #verse{margin-left:0;max-width:710px}
+#bibleBanner.format-left-column .gradient,#bibleBanner.format-right-column .gradient{inset:auto -40px -90px -40px;height:720px;background:linear-gradient(to top,rgba(var(--gradient-color),var(--gradient-strength)) 0%,rgba(var(--gradient-color),.76) 38%,rgba(var(--gradient-color),.15) 78%,rgba(var(--gradient-color),0) 100%)}
+#bibleBanner.format-left-column.edge-fade .gradient,#bibleBanner.format-right-column.edge-fade .gradient{-webkit-mask-image:none;mask-image:none}
+
+#bibleBanner.format-fullscreen{left:150px;right:150px;bottom:150px;width:auto;height:780px;min-height:0;transform:translateY(18px);display:flex;align-items:center}
+#bibleBanner.format-fullscreen.visible{transform:none}
+#bibleBanner.format-fullscreen.soft-out{transform:translateY(4px)}
+#bibleBanner.format-fullscreen.chapter-out{transform:translateY(20px)}
+#bibleBanner.format-fullscreen.book-out{transform:translateY(28px) scale(.985)}
+#bibleBanner.format-fullscreen .content{padding:90px 130px;text-align:center}
+#bibleBanner.format-fullscreen #reference{font-size:calc(var(--title-size) * 1.15)}
+#bibleBanner.format-fullscreen #verse{max-width:1420px;font-size:calc(var(--body-size) * 1.12)}
+#bibleBanner.format-fullscreen .gradient{inset:-80px -150px -150px;height:auto;background:radial-gradient(ellipse at center,rgba(var(--gradient-color),calc(var(--gradient-strength) * .86)) 0%,rgba(var(--gradient-color),calc(var(--gradient-strength) * .62)) 48%,rgba(var(--gradient-color),0) 82%)}
+#bibleBanner.format-fullscreen.edge-fade .gradient{-webkit-mask-image:none;mask-image:none}
+
+#bibleBanner.format-minimal{min-height:210px}
+#bibleBanner.format-minimal .divider{display:none}
+#bibleBanner.format-minimal #reference{font-size:calc(var(--title-size) * .72);margin-bottom:10px;letter-spacing:.08em}
+#bibleBanner.format-minimal .content{padding-top:18px;padding-bottom:24px;text-shadow:0 3px 18px #000e}
+#bibleBanner.format-minimal .gradient{height:min(var(--gradient-height),330px);background:linear-gradient(to bottom,rgba(var(--gradient-color),0),rgba(var(--gradient-color),calc(var(--gradient-strength) * .72)) 100%)}
+
+
+/* BMMS Scripture S12 — true visual styles, independent from spatial formats */
+#bibleBanner{--scripture-accent:var(--line-color);--scripture-panel:rgba(5,7,12,.86);--scripture-panel-soft:rgba(13,16,25,.62)}
+#bibleBanner .content{transition:padding .22s ease,background .22s ease,border .22s ease,border-radius .22s ease,box-shadow .22s ease,backdrop-filter .22s ease}
+#bibleBanner #reference,#bibleBanner #verse,#bibleBanner .divider{transition:all .22s ease}
+
+/* Classic Gradient — preserves the stable production look. */
+#bibleBanner.style-classic .content{background:transparent;border:0;box-shadow:none;backdrop-filter:none}
+
+/* Editorial Frame — structured, magazine-like hierarchy. */
+#bibleBanner.style-editorial .content{
+  background:linear-gradient(115deg,rgba(8,10,16,.94),rgba(17,20,30,.84));
+  border:1px solid rgba(255,255,255,.18);border-left:6px solid var(--line-color);
+  border-radius:18px;padding-top:34px;padding-bottom:38px;
+  box-shadow:0 24px 70px rgba(0,0,0,.42);text-align:left;text-shadow:none
 }
-.graphic[data-design="minimal"] .reference {
-  color: rgba(255,255,255,.82);
+#bibleBanner.style-editorial #reference{display:inline-flex;width:max-content;margin:0 0 18px;padding:9px 14px;border-radius:999px;background:var(--line-color);color:#0b0d12;font-size:calc(var(--title-size)*.62);letter-spacing:.12em}
+#bibleBanner.style-editorial .divider{width:100%;height:1px;margin:0 0 20px;background:linear-gradient(90deg,var(--line-color),transparent)}
+#bibleBanner.style-editorial #verse{max-width:none;margin:0;text-align:left;font-weight:600}
+#bibleBanner.style-editorial .gradient{opacity:.58}
+
+/* Worship Glow — soft light, generous air, contemplative tone. */
+#bibleBanner.style-worship .content{padding-top:42px;padding-bottom:46px;text-shadow:0 3px 24px rgba(0,0,0,.86)}
+#bibleBanner.style-worship .gradient{background:radial-gradient(ellipse at 50% 100%,rgba(var(--gradient-color),var(--gradient-strength)) 0%,rgba(var(--gradient-color),.62) 42%,rgba(var(--gradient-color),.16) 72%,rgba(var(--gradient-color),0) 100%)}
+#bibleBanner.style-worship #reference{font-size:calc(var(--title-size)*.72);font-weight:600;letter-spacing:.22em;opacity:.92}
+#bibleBanner.style-worship .divider{width:86px;height:3px;border-radius:999px;background:linear-gradient(90deg,transparent,var(--line-color),transparent)}
+#bibleBanner.style-worship #verse{font-weight:500;letter-spacing:.005em;max-width:1380px}
+
+/* Broadcast Clean — compact TV-safe panel and crisp information hierarchy. */
+#bibleBanner.style-broadcast .content{
+  background:rgba(7,10,16,.94);border-top:3px solid var(--line-color);border-radius:12px;
+  padding-top:24px;padding-bottom:28px;box-shadow:0 18px 48px rgba(0,0,0,.48);text-align:left;text-shadow:none
 }
-.graphic[data-design="minimal"] .version {
-  color: rgba(255,255,255,.62);
+#bibleBanner.style-broadcast #reference{margin:0 0 10px;font-size:calc(var(--title-size)*.68);letter-spacing:.08em}
+#bibleBanner.style-broadcast .divider{width:100%;height:1px;margin:0 0 14px;background:rgba(255,255,255,.24)}
+#bibleBanner.style-broadcast #verse{max-width:none;margin:0;text-align:left;font-size:calc(var(--body-size)*.92);font-weight:600}
+#bibleBanner.style-broadcast .gradient{display:none}
+
+/* Glass Scripture — true frosted card, not merely a relocated gradient. */
+#bibleBanner.style-glass .content{
+  background:linear-gradient(135deg,rgba(18,22,34,.72),rgba(8,11,18,.54));
+  border:1px solid rgba(255,255,255,.22);border-radius:28px;
+  box-shadow:0 28px 90px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.12);
+  backdrop-filter:blur(22px) saturate(1.15);padding-top:38px;padding-bottom:42px
 }
+#bibleBanner.style-glass #reference{font-size:calc(var(--title-size)*.82);letter-spacing:.12em}
+#bibleBanner.style-glass .divider{height:1px;width:min(760px,68%);background:linear-gradient(90deg,transparent,var(--line-color),transparent)}
+#bibleBanner.style-glass #verse{max-width:1420px}
+#bibleBanner.style-glass .gradient{opacity:.35}
+
+/* Kinetic Accent — angular, youthful and intentionally high-impact. */
+#bibleBanner.style-kinetic .content{
+  background:linear-gradient(110deg,rgba(5,7,12,.96) 0 62%,rgba(14,18,28,.82));
+  border-radius:8px;padding-top:30px;padding-bottom:34px;padding-left:calc(var(--padding-x) + 32px);
+  box-shadow:0 22px 64px rgba(0,0,0,.5);text-align:left;text-shadow:none;overflow:hidden
+}
+#bibleBanner.style-kinetic .content:before{content:"";position:absolute;left:0;top:0;bottom:0;width:18px;background:linear-gradient(180deg,var(--line-color),rgba(255,255,255,.15));transform:skewX(-8deg);transform-origin:top}
+#bibleBanner.style-kinetic #reference{display:inline-block;margin:0 0 16px;padding:8px 13px;background:var(--line-color);color:#080a0f;font-size:calc(var(--title-size)*.64);letter-spacing:.1em;transform:skewX(-6deg)}
+#bibleBanner.style-kinetic .divider{display:none}
+#bibleBanner.style-kinetic #verse{max-width:none;margin:0;text-align:left;font-weight:700;letter-spacing:-.025em}
+#bibleBanner.style-kinetic .gradient{opacity:.38}
+
+/* Style/format compatibility: each visual language follows every geometry. */
+#bibleBanner.format-left-column.style-editorial .content,#bibleBanner.format-right-column.style-editorial .content,
+#bibleBanner.format-left-column.style-broadcast .content,#bibleBanner.format-right-column.style-broadcast .content,
+#bibleBanner.format-left-column.style-kinetic .content,#bibleBanner.format-right-column.style-kinetic .content{padding:42px 46px 48px}
+#bibleBanner.format-fullscreen.style-editorial .content,#bibleBanner.format-fullscreen.style-broadcast .content,#bibleBanner.format-fullscreen.style-kinetic .content{text-align:center}
+#bibleBanner.format-fullscreen.style-editorial #reference,#bibleBanner.format-fullscreen.style-broadcast #reference,#bibleBanner.format-fullscreen.style-kinetic #reference{margin-left:auto;margin-right:auto}
+#bibleBanner.format-fullscreen.style-editorial #verse,#bibleBanner.format-fullscreen.style-broadcast #verse,#bibleBanner.format-fullscreen.style-kinetic #verse{text-align:center}
+#bibleBanner.format-minimal.style-editorial .content,#bibleBanner.format-minimal.style-broadcast .content,#bibleBanner.format-minimal.style-glass .content,#bibleBanner.format-minimal.style-kinetic .content{padding-top:24px;padding-bottom:28px}
+
+#version{margin-top:12px;color:var(--text-color);font-family:var(--body-font);font-size:18px;font-weight:600;opacity:.62}#bibleBanner.no-version #version{display:none}body.preview-output #stage{transform-origin:top left}@media(max-aspect-ratio:16/9){body.preview-output #stage{transform:scale(calc(100vw / 1920))}}@media(min-aspect-ratio:16/9){body.preview-output #stage{transform:scale(calc(100vh / 1080))}}
