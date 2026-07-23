@@ -701,3 +701,360 @@ body.scripture-preview-large .scripture-live-preview .scripture-output-frame {
     border-top: 1px solid rgba(148,163,184,.18);
   }
 }
+
+
+/* Update 030 — Smart Canvas Professional */
+.toolbar-caption {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.visual-editor-layer {
+  user-select: none;
+}
+
+.editor-safe-area {
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.editor-safe-area > span {
+  position: absolute;
+  left: 8px;
+  top: 7px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(2,6,23,.72);
+  font: 700 9px/1 system-ui,sans-serif;
+  letter-spacing: .08em;
+}
+
+.editor-safe-area::after {
+  content: none;
+}
+
+.editor-safe-area.action-safe {
+  left: 5%;
+  right: 5%;
+  top: 5%;
+  bottom: 5%;
+  border: 1px dashed rgba(251,191,36,.72);
+}
+
+.editor-safe-area.action-safe > span {
+  color: #fde68a;
+}
+
+.editor-safe-area.title-safe {
+  left: 10%;
+  right: 10%;
+  top: 10%;
+  bottom: 10%;
+  border: 1px dashed rgba(52,211,153,.72);
+}
+
+.editor-safe-area.title-safe > span {
+  color: #a7f3d0;
+}
+
+.editor-ruler {
+  position: absolute;
+  z-index: 22;
+  pointer-events: auto;
+  background: rgba(8,13,21,.94);
+  border-color: rgba(148,163,184,.24);
+  color: rgba(203,213,225,.68);
+  overflow: hidden;
+  font: 600 8px/1 system-ui,sans-serif;
+}
+
+.editor-ruler.horizontal {
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 20px;
+  border-bottom: 1px solid rgba(148,163,184,.24);
+  cursor: crosshair;
+}
+
+.editor-ruler.vertical {
+  top: 20px;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  border-right: 1px solid rgba(148,163,184,.24);
+  cursor: crosshair;
+}
+
+.editor-ruler.horizontal span {
+  position: absolute;
+  top: 5px;
+  height: 15px;
+  border-left: 1px solid rgba(148,163,184,.42);
+  padding-left: 3px;
+}
+
+.editor-ruler.vertical span {
+  position: absolute;
+  left: 5px;
+  width: 15px;
+  border-top: 1px solid rgba(148,163,184,.42);
+  padding-top: 3px;
+  writing-mode: vertical-rl;
+}
+
+.ruler-corner {
+  position: absolute;
+  z-index: 23;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: rgba(15,23,42,.98);
+  border-right: 1px solid rgba(148,163,184,.24);
+  border-bottom: 1px solid rgba(148,163,184,.24);
+}
+
+.editor-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.persistent-guide {
+  position: absolute;
+  z-index: 16;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  pointer-events: auto;
+  background: rgba(34,211,238,.82);
+}
+
+.persistent-guide.vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.persistent-guide.horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.smart-guide {
+  position: absolute;
+  z-index: 18;
+  pointer-events: none;
+  opacity: 0;
+  background: #f472b6;
+  transition: opacity .08s linear;
+}
+
+.smart-guide.is-visible {
+  opacity: .95;
+}
+
+.smart-guide.vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.smart-guide.horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.smart-guide span {
+  position: absolute;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: rgba(131,24,67,.94);
+  color: #fce7f3;
+  font: 800 9px/1 system-ui,sans-serif;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.smart-guide.vertical span {
+  top: 26px;
+  left: 5px;
+}
+
+.smart-guide.horizontal span {
+  top: 5px;
+  left: 26px;
+}
+
+.composition-selection {
+  border: 1px solid #60a5fa;
+  background: rgba(37,99,235,.025);
+  box-shadow:
+    0 0 0 1px rgba(2,6,23,.72),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+  transition:
+    border-color .1s ease,
+    background .1s ease;
+}
+
+.composition-selection:hover {
+  border-color: #93c5fd;
+  background: rgba(37,99,235,.05);
+}
+
+.composition-selection.is-editing {
+  border-color: #bfdbfe;
+  background: rgba(37,99,235,.09);
+}
+
+.selection-label {
+  top: -27px;
+  border-radius: 6px;
+  background: rgba(29,78,216,.96);
+  box-shadow: 0 4px 14px rgba(2,6,23,.35);
+}
+
+.selection-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(191,219,254,.9);
+  border-radius: 50%;
+  transform: translate(-50%,-50%);
+  box-shadow:
+    inset 0 0 0 3px rgba(15,23,42,.8),
+    0 0 0 1px rgba(15,23,42,.7);
+}
+
+.selection-center::before,
+.selection-center::after {
+  content: "";
+  position: absolute;
+  background: rgba(191,219,254,.9);
+}
+
+.selection-center::before {
+  left: 50%;
+  top: -4px;
+  width: 1px;
+  height: 20px;
+  transform: translateX(-50%);
+}
+
+.selection-center::after {
+  left: -4px;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.resize-handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(15,23,42,.98);
+  border-radius: 50%;
+  background: #dbeafe;
+  box-shadow: 0 1px 5px rgba(0,0,0,.45);
+}
+
+.handle-nw { left: -6px; top: -6px; cursor: nwse-resize; }
+.handle-n { left: calc(50% - 5px); top: -6px; cursor: ns-resize; }
+.handle-ne { right: -6px; top: -6px; cursor: nesw-resize; }
+.handle-e { right: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+.handle-se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.handle-s { left: calc(50% - 5px); bottom: -6px; cursor: ns-resize; }
+.handle-sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+.handle-w { left: -6px; top: calc(50% - 5px); cursor: ew-resize; }
+
+.geometry-inspector {
+  position: absolute;
+  z-index: 30;
+  right: 14px;
+  top: 34px;
+  display: flex;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(96,165,250,.36);
+  border-radius: 8px;
+  background: rgba(2,6,23,.9);
+  box-shadow: 0 10px 30px rgba(0,0,0,.38);
+  color: #94a3b8;
+  font: 700 9px/1 system-ui,sans-serif;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .1s ease, transform .1s ease;
+  pointer-events: none;
+}
+
+.geometry-inspector.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.geometry-inspector strong {
+  margin-left: 2px;
+  color: #e2e8f0;
+}
+
+.canvas-navigator {
+  position: absolute;
+  z-index: 26;
+  right: 14px;
+  bottom: 14px;
+  width: 150px;
+  height: 84px;
+  padding: 6px;
+  border: 1px solid rgba(148,163,184,.26);
+  border-radius: 9px;
+  background: rgba(2,6,23,.86);
+  box-shadow: 0 12px 34px rgba(0,0,0,.42);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .12s ease, transform .12s ease;
+  pointer-events: none;
+}
+
+.canvas-navigator.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.navigator-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(148,163,184,.2);
+  background:
+    linear-gradient(135deg, rgba(37,99,235,.12), rgba(15,23,42,.72));
+}
+
+.navigator-viewport {
+  position: absolute;
+  min-width: 12px;
+  min-height: 8px;
+  border: 1px solid #60a5fa;
+  background: rgba(59,130,246,.18);
+}
+
+.scripture-output-frame.can-pan {
+  cursor: grab;
+}
+
+.scripture-output-frame.is-panning {
+  cursor: grabbing;
+}
+
+@media (max-width: 1180px) {
+  .snap-controls {
+    width: 100%;
+  }
+}

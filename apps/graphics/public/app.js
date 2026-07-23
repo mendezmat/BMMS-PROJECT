@@ -307,15 +307,33 @@ const scripturePreviewStatus = $("#scripturePreviewStatus");
 
 const scriptureEditorLayer = $("#scriptureEditorLayer");
 const scriptureCompositionSelection = $("#scriptureCompositionSelection");
-const scriptureSafeArea = $("#scriptureSafeArea");
+const scriptureActionSafe = $("#scriptureActionSafe");
+const scriptureTitleSafe = $("#scriptureTitleSafe");
 const scriptureGrid = $("#scriptureGrid");
+const scriptureGuides = $("#scriptureGuides");
+const scriptureHorizontalRuler = $("#scriptureHorizontalRuler");
+const scriptureVerticalRuler = $("#scriptureVerticalRuler");
+const scriptureSmartGuideVertical = $("#scriptureSmartGuideVertical");
+const scriptureSmartGuideHorizontal = $("#scriptureSmartGuideHorizontal");
+const scriptureGeometryInspector = $("#scriptureGeometryInspector");
+const scriptureNavigator = $("#scriptureNavigator");
+const scriptureNavigatorViewport = $("#scriptureNavigatorViewport");
 
 const scriptureEditorState = {
   scale: 1,
-  safeArea: true,
+  panX: 0,
+  panY: 0,
+  actionSafe: true,
+  titleSafe: true,
   grid: false,
-  snap: true,
+  rulers: true,
+  snapGrid: true,
+  snapCenter: true,
+  snapSafe: true,
   gridSize: 32,
+  guides: [],
+  spacePressed: false,
+  panning: null,
   interaction: null
 };
 
@@ -332,13 +350,28 @@ function setToolbarToggle(id, active) {
 
 function hydrateEditorSettings() {
   const settings = editorSettings();
-  scriptureEditorState.safeArea = settings.safeArea !== false;
+  scriptureEditorState.actionSafe =
+    settings.actionSafe ?? settings.safeArea ?? true;
+  scriptureEditorState.titleSafe = settings.titleSafe !== false;
   scriptureEditorState.grid = settings.grid === true;
-  scriptureEditorState.snap = settings.snap !== false;
+  scriptureEditorState.rulers = settings.rulers !== false;
+  scriptureEditorState.snapGrid =
+    settings.snapGrid ?? settings.snap ?? true;
+  scriptureEditorState.snapCenter = settings.snapCenter !== false;
+  scriptureEditorState.snapSafe = settings.snapSafe !== false;
   scriptureEditorState.gridSize = Number(settings.gridSize || 32);
-  setToolbarToggle("#toggleSafeArea", scriptureEditorState.safeArea);
+  scriptureEditorState.guides = Array.isArray(settings.guides)
+    ? settings.guides
+    : [];
+
+  setToolbarToggle("#toggleActionSafe", scriptureEditorState.actionSafe);
+  setToolbarToggle("#toggleTitleSafe", scriptureEditorState.titleSafe);
   setToolbarToggle("#toggleGrid", scriptureEditorState.grid);
-  setToolbarToggle("#toggleSnap", scriptureEditorState.snap);
+  setToolbarToggle("#toggleRulers", scriptureEditorState.rulers);
+  setToolbarToggle("#toggleSnapGrid", scriptureEditorState.snapGrid);
+  setToolbarToggle("#toggleSnapCenter", scriptureEditorState.snapCenter);
+  setToolbarToggle("#toggleSnapSafe", scriptureEditorState.snapSafe);
+
   if ($("#scriptureGridSize")) {
     $("#scriptureGridSize").value = String(scriptureEditorState.gridSize);
   }
@@ -353,118 +386,330 @@ function persistEditorSettings(patch) {
   }, { render: false, history: false });
 }
 
-function snapValue(value, points = []) {
-  if (!scriptureEditorState.snap) return value;
-  const grid = scriptureEditorState.gridSize || 32;
-  const candidates = [
-    Math.round(value / grid) * grid,
-    ...points
-  ];
-  let best = value;
-  let distance = 12;
-  for (const candidate of candidates) {
-    const currentDistance = Math.abs(value - candidate);
-    if (currentDistance < distance) {
-      best = candidate;
-      distance = currentDistance;
-    }
-  }
-  return best;
-}
-
-function updateVisualEditorGeometry() {
-  if (!scriptureCompositionSelection || !scriptureEditorLayer) return;
+function editorGeometry() {
   const c = appState.scripture?.composition || {};
   const g = appState.scripture?.gradient || {};
-  const scale = scriptureEditorState.scale || 1;
   const width = Math.max(240, Math.min(1920, Number(c.width ?? 1660)));
   const height = Math.max(100, Math.min(1080, Number(g.height ?? 430)));
   const offsetX = Number(c.offsetX ?? 0);
   const bottom = Number(c.bottom ?? 28);
   const x = ((1920 - width) / 2) + offsetX;
   const y = 1080 - bottom - height;
+  return { x, y, width, height, bottom, offsetX };
+}
 
-  scriptureCompositionSelection.style.left = `${x * scale}px`;
-  scriptureCompositionSelection.style.top = `${Math.max(0, y) * scale}px`;
-  scriptureCompositionSelection.style.width = `${width * scale}px`;
-  scriptureCompositionSelection.style.height = `${Math.min(height, 1080) * scale}px`;
+// Compatibility helper retained for Update 027 extensions.
+function snapValue(value, points = []) {
+  const candidates = points.map(point => ({ value: point, type: "legacy" }));
+  if (scriptureEditorState.snapGrid) {
+    const grid = scriptureEditorState.gridSize || 32;
+    candidates.unshift({
+      value: Math.round(value / grid) * grid,
+      type: "grid"
+    });
+  }
+  return snapCoordinate(value, candidates).value;
+}
+
+function snapCoordinate(value, candidates, threshold = 12) {
+  let best = value;
+  let bestDistance = threshold;
+  let matched = null;
+
+  for (const candidate of candidates) {
+    const distance = Math.abs(value - candidate.value);
+    if (distance < bestDistance) {
+      best = candidate.value;
+      bestDistance = distance;
+      matched = candidate;
+    }
+  }
+
+  return { value: best, matched };
+}
+
+function snapPosition(x, y, width, height) {
+  const xCandidates = [];
+  const yCandidates = [];
+  const grid = scriptureEditorState.gridSize || 32;
+
+  if (scriptureEditorState.snapGrid) {
+    xCandidates.push({
+      value: Math.round(x / grid) * grid,
+      type: "grid"
+    });
+    yCandidates.push({
+      value: Math.round(y / grid) * grid,
+      type: "grid"
+    });
+  }
+
+  if (scriptureEditorState.snapCenter) {
+    xCandidates.push({
+      value: (1920 - width) / 2,
+      type: "center"
+    });
+    yCandidates.push({
+      value: (1080 - height) / 2,
+      type: "center"
+    });
+  }
+
+  if (scriptureEditorState.snapSafe) {
+    const action = 96;
+    const title = 192;
+    for (const edge of [action, title]) {
+      xCandidates.push(
+        { value: edge, type: "safe" },
+        { value: 1920 - edge - width, type: "safe" }
+      );
+      yCandidates.push(
+        { value: edge, type: "safe" },
+        { value: 1080 - edge - height, type: "safe" }
+      );
+    }
+  }
+
+  for (const guide of scriptureEditorState.guides) {
+    if (guide.axis === "x") {
+      xCandidates.push({ value: guide.position, type: "guide" });
+    } else {
+      yCandidates.push({ value: guide.position, type: "guide" });
+    }
+  }
+
+  return {
+    x: snapCoordinate(x, xCandidates),
+    y: snapCoordinate(y, yCandidates)
+  };
+}
+
+function renderRulers() {
+  if (!scriptureHorizontalRuler || !scriptureVerticalRuler) return;
+  const step = 100;
+  const scale = scriptureEditorState.scale;
+
+  scriptureHorizontalRuler.innerHTML = "";
+  scriptureVerticalRuler.innerHTML = "";
+
+  for (let value = 0; value <= 1920; value += step) {
+    const mark = document.createElement("span");
+    mark.style.left = `${value * scale}px`;
+    mark.textContent = value;
+    scriptureHorizontalRuler.append(mark);
+  }
+
+  for (let value = 0; value <= 1080; value += step) {
+    const mark = document.createElement("span");
+    mark.style.top = `${value * scale}px`;
+    mark.textContent = value;
+    scriptureVerticalRuler.append(mark);
+  }
+}
+
+function renderPersistentGuides() {
+  if (!scriptureGuides) return;
+  scriptureGuides.innerHTML = "";
+  const scale = scriptureEditorState.scale;
+
+  scriptureEditorState.guides.forEach((guide, index) => {
+    const line = document.createElement("button");
+    line.type = "button";
+    line.className = `persistent-guide ${guide.axis === "x" ? "vertical" : "horizontal"}`;
+    line.dataset.guideIndex = String(index);
+    line.title = "Doble clic para eliminar";
+
+    if (guide.axis === "x") {
+      line.style.left = `${guide.position * scale}px`;
+    } else {
+      line.style.top = `${guide.position * scale}px`;
+    }
+
+    line.addEventListener("dblclick", () => {
+      scriptureEditorState.guides.splice(index, 1);
+      persistEditorSettings({ guides: scriptureEditorState.guides });
+      renderPersistentGuides();
+    });
+
+    scriptureGuides.append(line);
+  });
+}
+
+function updateInspector(geometry, visible = false) {
+  if (!scriptureGeometryInspector) return;
+  $("#inspectorX").textContent = Math.round(geometry.x);
+  $("#inspectorY").textContent = Math.round(geometry.y);
+  $("#inspectorW").textContent = Math.round(geometry.width);
+  $("#inspectorH").textContent = Math.round(geometry.height);
+  scriptureGeometryInspector.classList.toggle("is-visible", visible);
+  scriptureGeometryInspector.setAttribute("aria-hidden", String(!visible));
+}
+
+function showSmartGuides(xMatch, yMatch) {
+  scriptureSmartGuideVertical?.classList.toggle(
+    "is-visible",
+    Boolean(xMatch && ["center", "safe", "guide"].includes(xMatch.type))
+  );
+  scriptureSmartGuideHorizontal?.classList.toggle(
+    "is-visible",
+    Boolean(yMatch && ["center", "safe", "guide"].includes(yMatch.type))
+  );
+
+  if (scriptureSmartGuideVertical && xMatch) {
+    scriptureSmartGuideVertical.style.left =
+      `${xMatch.value * scriptureEditorState.scale}px`;
+    scriptureSmartGuideVertical.querySelector("span").textContent =
+      xMatch.type === "center" ? "Centro" : "Snap";
+  }
+
+  if (scriptureSmartGuideHorizontal && yMatch) {
+    scriptureSmartGuideHorizontal.style.top =
+      `${yMatch.value * scriptureEditorState.scale}px`;
+    scriptureSmartGuideHorizontal.querySelector("span").textContent =
+      yMatch.type === "center" ? "Centro" : "Snap";
+  }
+}
+
+function updateNavigator() {
+  if (!scriptureNavigator || !scriptureNavigatorViewport) return;
+  const visible = scriptureEditorState.scale > 0.72;
+  scriptureNavigator.classList.toggle("is-visible", visible);
+  scriptureNavigator.setAttribute("aria-hidden", String(!visible));
+
+  if (!visible || !scripturePreviewViewport) return;
+
+  const sceneWidth = 1920 * scriptureEditorState.scale;
+  const sceneHeight = 1080 * scriptureEditorState.scale;
+  const viewportWidth = scripturePreviewViewport.clientWidth;
+  const viewportHeight = scripturePreviewViewport.clientHeight;
+
+  scriptureNavigatorViewport.style.width =
+    `${Math.min(100, viewportWidth / sceneWidth * 100)}%`;
+  scriptureNavigatorViewport.style.height =
+    `${Math.min(100, viewportHeight / sceneHeight * 100)}%`;
+  scriptureNavigatorViewport.style.left =
+    `${Math.max(0, scripturePreviewViewport.scrollLeft / sceneWidth * 100)}%`;
+  scriptureNavigatorViewport.style.top =
+    `${Math.max(0, scripturePreviewViewport.scrollTop / sceneHeight * 100)}%`;
+}
+
+function updateVisualEditorGeometry() {
+  if (!scriptureCompositionSelection || !scriptureEditorLayer) return;
+  const geometry = editorGeometry();
+  const scale = scriptureEditorState.scale || 1;
+
+  scriptureCompositionSelection.style.left = `${geometry.x * scale}px`;
+  scriptureCompositionSelection.style.top = `${Math.max(0, geometry.y) * scale}px`;
+  scriptureCompositionSelection.style.width = `${geometry.width * scale}px`;
+  scriptureCompositionSelection.style.height = `${Math.min(geometry.height, 1080) * scale}px`;
   scriptureEditorLayer.style.setProperty("--editor-scale", String(scale));
 
-  scriptureSafeArea?.classList.toggle("is-hidden", !scriptureEditorState.safeArea);
+  scriptureActionSafe?.classList.toggle(
+    "is-hidden",
+    !scriptureEditorState.actionSafe
+  );
+  scriptureTitleSafe?.classList.toggle(
+    "is-hidden",
+    !scriptureEditorState.titleSafe
+  );
   scriptureGrid?.classList.toggle("is-hidden", !scriptureEditorState.grid);
+  scriptureHorizontalRuler?.classList.toggle(
+    "is-hidden",
+    !scriptureEditorState.rulers
+  );
+  scriptureVerticalRuler?.classList.toggle(
+    "is-hidden",
+    !scriptureEditorState.rulers
+  );
+  $(".ruler-corner")?.classList.toggle(
+    "is-hidden",
+    !scriptureEditorState.rulers
+  );
+
   if (scriptureGrid) {
     scriptureGrid.style.setProperty(
       "--grid-size",
       `${scriptureEditorState.gridSize * scale}px`
     );
   }
+
+  renderRulers();
+  renderPersistentGuides();
+  updateInspector(geometry, Boolean(scriptureEditorState.interaction));
+  updateNavigator();
 }
 
 function beginVisualInteraction(event, handle = "move") {
   if (!scriptureCompositionSelection) return;
+  if (scriptureEditorState.spacePressed) return;
   event.preventDefault();
-  const c = appState.scripture?.composition || {};
-  const g = appState.scripture?.gradient || {};
+
+  const geometry = editorGeometry();
   pushScriptureHistory();
   scriptureEditorState.interaction = {
     handle,
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
-    width: Number(c.width ?? 1660),
-    height: Number(g.height ?? 430),
-    bottom: Number(c.bottom ?? 28),
-    offsetX: Number(c.offsetX ?? 0)
+    ...geometry
   };
+
   scriptureCompositionSelection.setPointerCapture(event.pointerId);
   scriptureCompositionSelection.classList.add("is-editing");
+  updateInspector(geometry, true);
 }
 
 function moveVisualInteraction(event) {
   const interaction = scriptureEditorState.interaction;
   if (!interaction) return;
+
   const scale = scriptureEditorState.scale || 1;
   const dx = (event.clientX - interaction.startX) / scale;
   const dy = (event.clientY - interaction.startY) / scale;
+
+  let x = interaction.x;
+  let y = interaction.y;
   let width = interaction.width;
   let height = interaction.height;
-  let bottom = interaction.bottom;
-  let offsetX = interaction.offsetX;
 
   if (interaction.handle === "move") {
-    offsetX = snapValue(interaction.offsetX + dx, [0]);
-    bottom = snapValue(interaction.bottom - dy, [0, 54, 108]);
+    x += dx;
+    y += dy;
   } else {
-    if (["left", "right", "corner"].includes(interaction.handle)) {
-      width = snapValue(
-        Math.max(240, Math.min(1920, interaction.width + (
-          interaction.handle === "left" ? -2 * dx : 2 * dx
-        ))),
-        [1280, 1440, 1660, 1728, 1920]
-      );
+    if (["left", "nw", "sw"].includes(interaction.handle)) {
+      x += dx;
+      width -= dx;
     }
-    if (interaction.handle === "top") {
-      height = snapValue(
-        Math.max(100, Math.min(1080, interaction.height - dy)),
-        [240, 320, 430, 540, 1080]
-      );
+    if (["right", "ne", "se"].includes(interaction.handle)) {
+      width += dx;
     }
-    if (["bottom", "corner"].includes(interaction.handle)) {
-      height = snapValue(
-        Math.max(100, Math.min(1080, interaction.height + dy)),
-        [240, 320, 430, 540, 1080]
-      );
-      bottom = snapValue(
-        Math.max(-200, Math.min(1080, interaction.bottom - dy)),
-        [0, 28, 54, 108]
-      );
+    if (["top", "nw", "ne"].includes(interaction.handle)) {
+      y += dy;
+      height -= dy;
+    }
+    if (["bottom", "sw", "se"].includes(interaction.handle)) {
+      height += dy;
     }
   }
+
+  width = Math.max(240, Math.min(1920, width));
+  height = Math.max(100, Math.min(1080, height));
+  x = Math.max(-960, Math.min(1920 - 120, x));
+  y = Math.max(-540, Math.min(1080 - 60, y));
+
+  const snapped = snapPosition(x, y, width, height);
+  x = snapped.x.value;
+  y = snapped.y.value;
+  showSmartGuides(snapped.x.matched, snapped.y.matched);
+
+  const offsetX = x - ((1920 - width) / 2);
+  const bottom = 1080 - y - height;
 
   appState.scripture = mergeScripturePatch(appState.scripture, {
     composition: { width, bottom, offsetX },
     gradient: { height }
   });
+
   renderScripture();
   updateVisualEditorGeometry();
   queueScriptureSave({
@@ -475,15 +720,44 @@ function moveVisualInteraction(event) {
 
 function endVisualInteraction(event) {
   if (!scriptureEditorState.interaction) return;
+
   try {
     scriptureCompositionSelection.releasePointerCapture(event.pointerId);
   } catch {}
+
   scriptureEditorState.interaction = null;
   scriptureCompositionSelection.classList.remove("is-editing");
+  showSmartGuides(null, null);
+  updateInspector(editorGeometry(), false);
   updateHistoryButtons();
 }
 
+function setCanvasZoom(nextScale, anchor = null) {
+  const clamped = Math.max(0.1, Math.min(2.5, nextScale));
+  const previous = scriptureEditorState.scale || 1;
+  scriptureEditorState.scale = clamped;
 
+  if ($("#scripturePreviewZoom")) {
+    $("#scripturePreviewZoom").value = "";
+  }
+
+  scripturePreviewFrame.style.setProperty(
+    "--scripture-preview-scale",
+    String(clamped)
+  );
+  scripturePreviewViewport.style.height = `${1080 * clamped}px`;
+  scripturePreviewViewport.style.overflow = "auto";
+
+  if (anchor && previous !== clamped) {
+    const ratio = clamped / previous;
+    scripturePreviewViewport.scrollLeft =
+      (scripturePreviewViewport.scrollLeft + anchor.x) * ratio - anchor.x;
+    scripturePreviewViewport.scrollTop =
+      (scripturePreviewViewport.scrollTop + anchor.y) * ratio - anchor.y;
+  }
+
+  updateVisualEditorGeometry();
+}
 
 function resizeScripturePreview() {
   if (!scripturePreviewFrame || !scripturePreviewViewport) return;
@@ -524,6 +798,56 @@ if (scripturePreviewFrame && scripturePreviewViewport) {
     }
   });
 
+  scripturePreviewViewport.addEventListener("wheel", event => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    event.preventDefault();
+    const rect = scripturePreviewViewport.getBoundingClientRect();
+    const anchor = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    const factor = event.deltaY < 0 ? 1.1 : 0.9;
+    setCanvasZoom(scriptureEditorState.scale * factor, anchor);
+  }, { passive: false });
+
+  scripturePreviewViewport.addEventListener("scroll", updateNavigator);
+  scripturePreviewViewport.addEventListener("dblclick", event => {
+    if (event.target.closest(".composition-selection")) return;
+    $("#scripturePreviewZoom").value = "fit";
+    resizeScripturePreview();
+  });
+
+  scripturePreviewViewport.addEventListener("pointerdown", event => {
+    if (!scriptureEditorState.spacePressed) return;
+    scriptureEditorState.panning = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: scripturePreviewViewport.scrollLeft,
+      scrollTop: scripturePreviewViewport.scrollTop
+    };
+    scripturePreviewViewport.setPointerCapture(event.pointerId);
+    scripturePreviewViewport.classList.add("is-panning");
+  });
+
+  scripturePreviewViewport.addEventListener("pointermove", event => {
+    const pan = scriptureEditorState.panning;
+    if (!pan) return;
+    scripturePreviewViewport.scrollLeft =
+      pan.scrollLeft - (event.clientX - pan.startX);
+    scripturePreviewViewport.scrollTop =
+      pan.scrollTop - (event.clientY - pan.startY);
+  });
+
+  scripturePreviewViewport.addEventListener("pointerup", event => {
+    if (!scriptureEditorState.panning) return;
+    try {
+      scripturePreviewViewport.releasePointerCapture(event.pointerId);
+    } catch {}
+    scriptureEditorState.panning = null;
+    scripturePreviewViewport.classList.remove("is-panning");
+  });
+
   resizeScripturePreview();
 }
 
@@ -551,31 +875,56 @@ document.addEventListener("fullscreenchange", () => {
   requestAnimationFrame(resizeScripturePreview);
 });
 
+function bindEditorToggle(id, stateKey, settingKey = stateKey) {
+  $(id)?.addEventListener("click", () => {
+    scriptureEditorState[stateKey] = !scriptureEditorState[stateKey];
+    setToolbarToggle(id, scriptureEditorState[stateKey]);
+    persistEditorSettings({ [settingKey]: scriptureEditorState[stateKey] });
+    updateVisualEditorGeometry();
+  });
+}
 
-$("#toggleSafeArea")?.addEventListener("click", () => {
-  scriptureEditorState.safeArea = !scriptureEditorState.safeArea;
-  setToolbarToggle("#toggleSafeArea", scriptureEditorState.safeArea);
-  persistEditorSettings({ safeArea: scriptureEditorState.safeArea });
-  updateVisualEditorGeometry();
-});
-
-$("#toggleGrid")?.addEventListener("click", () => {
-  scriptureEditorState.grid = !scriptureEditorState.grid;
-  setToolbarToggle("#toggleGrid", scriptureEditorState.grid);
-  persistEditorSettings({ grid: scriptureEditorState.grid });
-  updateVisualEditorGeometry();
-});
-
-$("#toggleSnap")?.addEventListener("click", () => {
-  scriptureEditorState.snap = !scriptureEditorState.snap;
-  setToolbarToggle("#toggleSnap", scriptureEditorState.snap);
-  persistEditorSettings({ snap: scriptureEditorState.snap });
-});
+bindEditorToggle("#toggleActionSafe", "actionSafe");
+bindEditorToggle("#toggleTitleSafe", "titleSafe");
+bindEditorToggle("#toggleGrid", "grid");
+bindEditorToggle("#toggleRulers", "rulers");
+bindEditorToggle("#toggleSnapGrid", "snapGrid");
+bindEditorToggle("#toggleSnapCenter", "snapCenter");
+bindEditorToggle("#toggleSnapSafe", "snapSafe");
 
 $("#scriptureGridSize")?.addEventListener("change", event => {
   scriptureEditorState.gridSize = Number(event.target.value || 32);
   persistEditorSettings({ gridSize: scriptureEditorState.gridSize });
   updateVisualEditorGeometry();
+});
+
+$("#clearScriptureGuides")?.addEventListener("click", () => {
+  scriptureEditorState.guides = [];
+  persistEditorSettings({ guides: [] });
+  renderPersistentGuides();
+});
+
+function createGuide(axis, event) {
+  if (!scriptureEditorLayer) return;
+  const rect = scriptureEditorLayer.getBoundingClientRect();
+  const scale = scriptureEditorState.scale || 1;
+  const position = axis === "x"
+    ? (event.clientX - rect.left) / scale
+    : (event.clientY - rect.top) / scale;
+
+  scriptureEditorState.guides.push({
+    axis,
+    position: Math.max(0, Math.round(position))
+  });
+  persistEditorSettings({ guides: scriptureEditorState.guides });
+  renderPersistentGuides();
+}
+
+scriptureHorizontalRuler?.addEventListener("dblclick", event => {
+  createGuide("x", event);
+});
+scriptureVerticalRuler?.addEventListener("dblclick", event => {
+  createGuide("y", event);
 });
 
 $("#scriptureUndo")?.addEventListener("click", async () => {
@@ -593,17 +942,41 @@ $("#scriptureRedo")?.addEventListener("click", async () => {
 });
 
 window.addEventListener("keydown", event => {
+  if (event.code === "Space" && !event.repeat) {
+    scriptureEditorState.spacePressed = true;
+    scripturePreviewViewport?.classList.add("can-pan");
+  }
+
   const modifier = event.ctrlKey || event.metaKey;
   if (!modifier || event.altKey) return;
+
   if (event.key.toLowerCase() === "z") {
     event.preventDefault();
     if (event.shiftKey) $("#scriptureRedo")?.click();
     else $("#scriptureUndo")?.click();
   }
+
   if (event.key.toLowerCase() === "y") {
     event.preventDefault();
     $("#scriptureRedo")?.click();
   }
+
+  if (event.key === "0") {
+    event.preventDefault();
+    $("#scripturePreviewZoom").value = "fit";
+    resizeScripturePreview();
+  }
+
+  if (event.key === "1") {
+    event.preventDefault();
+    setCanvasZoom(1);
+  }
+});
+
+window.addEventListener("keyup", event => {
+  if (event.code !== "Space") return;
+  scriptureEditorState.spacePressed = false;
+  scripturePreviewViewport?.classList.remove("can-pan", "is-panning");
 });
 
 const scripturePresets = {

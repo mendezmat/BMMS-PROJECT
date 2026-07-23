@@ -397,9 +397,10 @@
                   </div>
 
                   <div class="preview-toolbar-group editor-toggles">
-                    <button id="toggleSafeArea" class="is-active" aria-pressed="true">Área segura</button>
+                    <button id="toggleActionSafe" class="is-active" aria-pressed="true">Safe Action</button>
+                    <button id="toggleTitleSafe" class="is-active" aria-pressed="true">Safe Title</button>
                     <button id="toggleGrid" aria-pressed="false">Cuadrícula</button>
-                    <button id="toggleSnap" class="is-active" aria-pressed="true">Snap</button>
+                    <button id="toggleRulers" class="is-active" aria-pressed="true">Reglas</button>
                     <label class="toolbar-field compact">Grid
                       <select id="scriptureGridSize">
                         <option value="16">16 px</option>
@@ -407,6 +408,18 @@
                         <option value="64">64 px</option>
                       </select>
                     </label>
+                  </div>
+
+                  <div class="preview-toolbar-group snap-controls">
+                    <span class="toolbar-caption">Snap</span>
+                    <button id="toggleSnapGrid" class="is-active" aria-pressed="true">Grid</button>
+                    <button id="toggleSnapCenter" class="is-active" aria-pressed="true">Centro</button>
+                    <button id="toggleSnapSafe" class="is-active" aria-pressed="true">Safe</button>
+                    <button id="clearScriptureGuides">Limpiar guías</button>
+                    <span class="legacy-editor-hooks" hidden aria-hidden="true">
+                      <button id="toggleSafeArea" tabindex="-1">Área segura</button>
+                      <button id="toggleSnap" tabindex="-1">Snap</button>
+                    </span>
                   </div>
 
                   <div class="preview-toolbar-group history-actions">
@@ -431,17 +444,51 @@
                 <div class="scripture-output-frame" id="scriptureVisualEditor">
                   <iframe id="scriptureOutputPreview" src="/overlay/scripture?preview=1" title="Preview del Browser Output"></iframe>
                   <div class="visual-editor-layer" id="scriptureEditorLayer">
-                    <div class="editor-safe-area" id="scriptureSafeArea"></div>
                     <div class="editor-grid" id="scriptureGrid"></div>
-                    <div class="editor-center-guide vertical"></div>
-                    <div class="editor-center-guide horizontal"></div>
-                    <div class="composition-selection" id="scriptureCompositionSelection" tabindex="0">
-                      <span class="selection-label">Composición</span>
-                      <span class="resize-handle handle-left" data-handle="left"></span>
-                      <span class="resize-handle handle-right" data-handle="right"></span>
-                      <span class="resize-handle handle-top" data-handle="top"></span>
-                      <span class="resize-handle handle-bottom" data-handle="bottom"></span>
-                      <span class="resize-handle handle-corner" data-handle="corner"></span>
+
+                    <div class="editor-safe-area action-safe" id="scriptureActionSafe">
+                      <span>ACTION SAFE</span>
+                    </div>
+                    <div class="editor-safe-area title-safe" id="scriptureTitleSafe">
+                      <span>TITLE SAFE</span>
+                    </div>
+
+                    <div class="editor-ruler horizontal" id="scriptureHorizontalRuler"></div>
+                    <div class="editor-ruler vertical" id="scriptureVerticalRuler"></div>
+                    <div class="ruler-corner"></div>
+
+                    <div class="editor-guides" id="scriptureGuides"></div>
+                    <div class="smart-guide vertical" id="scriptureSmartGuideVertical">
+                      <span>Centro</span>
+                    </div>
+                    <div class="smart-guide horizontal" id="scriptureSmartGuideHorizontal">
+                      <span>Centro</span>
+                    </div>
+
+                    <div class="composition-selection" id="scriptureCompositionSelection" tabindex="0" data-node-id="scripture-composition">
+                      <span class="selection-label">Composition · Scene Node</span>
+                      <span class="selection-center" aria-hidden="true"></span>
+                      <span class="resize-handle handle-nw" data-handle="nw"></span>
+                      <span class="resize-handle handle-n" data-handle="top"></span>
+                      <span class="resize-handle handle-ne" data-handle="ne"></span>
+                      <span class="resize-handle handle-e" data-handle="right"></span>
+                      <span class="resize-handle handle-se" data-handle="se"></span>
+                      <span class="resize-handle handle-s" data-handle="bottom"></span>
+                      <span class="resize-handle handle-sw" data-handle="sw"></span>
+                      <span class="resize-handle handle-w" data-handle="left"></span>
+                    </div>
+
+                    <div class="geometry-inspector" id="scriptureGeometryInspector" aria-hidden="true">
+                      <span>X <strong id="inspectorX">0</strong></span>
+                      <span>Y <strong id="inspectorY">0</strong></span>
+                      <span>W <strong id="inspectorW">0</strong></span>
+                      <span>H <strong id="inspectorH">0</strong></span>
+                    </div>
+
+                    <div class="canvas-navigator" id="scriptureNavigator" aria-hidden="true">
+                      <div class="navigator-scene">
+                        <div class="navigator-viewport" id="scriptureNavigatorViewport"></div>
+                      </div>
                     </div>
                   </div>
                 </div>

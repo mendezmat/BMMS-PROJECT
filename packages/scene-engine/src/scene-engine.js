@@ -170,7 +170,15 @@ export function createScriptureScene(scripture = {}, overrides = {}) {
         },
         behavior: {
           layoutMode: composition.layoutMode || "automatic",
-          editor: clone(composition.editor || {})
+          editor: clone(composition.editor || {}),
+          constraints: {
+            horizontal: composition.editor?.constraints?.horizontal || "center",
+            vertical: composition.editor?.constraints?.vertical || "bottom",
+            resize: composition.editor?.constraints?.resize || "fixed",
+            preserveAspectRatio:
+              composition.editor?.constraints?.preserveAspectRatio !== false
+          },
+          guides: clone(composition.editor?.guides || [])
         },
         children: [
           createSceneComponent("text", {
