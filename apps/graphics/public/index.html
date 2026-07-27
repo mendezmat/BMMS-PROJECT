@@ -381,9 +381,8 @@
             <div>
               <div class="scripture-live-preview panel">
                 <div class="preview-panel-head">
-                  <div class="preview-title">
-                    <span class="eyebrow">PREVIEW DEL OUTPUT</span>
-                    <strong>Vista exacta 1920 × 1080</strong>
+                  <div class="preview-title compact-output-status">
+                    <strong>Output · 1920 × 1080</strong>
                     <small id="scripturePreviewStatus">Conectando…</small>
                   </div>
                 </div>
@@ -525,15 +524,6 @@
                 <button id="integratedAutoButton">AUTO: APAGADO</button>
               </div>
 
-              <div class="output-card">
-                <span class="eyebrow">BROWSER OUTPUT</span>
-                <code id="scriptureOutputUrl">Detectando dirección de red…</code>
-                <div class="output-actions">
-                  <button id="copyScriptureOutputUrl">Copiar URL</button>
-                  <a id="openScriptureOutputUrl" href="/overlay/scripture" target="_blank">Abrir output</a>
-                </div>
-                <small id="scriptureNetworkHelp">Use 1920 × 1080 en el Browser Input de vMix u OBS.</small>
-              </div>
 
               <details class="panel">
                 <summary>Diagnóstico en vivo</summary>
@@ -589,6 +579,25 @@
           <div class="button-row">
             <button id="testProPresenter">Probar conexión</button>
             <button id="saveProPresenter" class="primary">Guardar configuración</button>
+          </div>
+        </div>
+
+
+        <div class="integration-card output-settings-card">
+          <div class="integration-heading">
+            <div>
+              <span class="eyebrow">SALIDA DE SCRIPTURE</span>
+              <h2>Browser Output</h2>
+              <p>Dirección para vMix, OBS u otro equipo de la misma red.</p>
+            </div>
+          </div>
+          <div class="output-card configuration-output-card">
+            <code id="scriptureOutputUrl">Detectando dirección de red…</code>
+            <div class="output-actions">
+              <button id="copyScriptureOutputUrl">Copiar URL</button>
+              <a id="openScriptureOutputUrl" href="/overlay/scripture" target="_blank">Abrir output</a>
+            </div>
+            <small id="scriptureNetworkHelp">Use 1920 × 1080 en el Browser Input de vMix u OBS.</small>
           </div>
         </div>
 

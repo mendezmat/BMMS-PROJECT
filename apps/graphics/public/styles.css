@@ -1540,3 +1540,70 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
     overflow: auto;
   }
 }
+
+/* Update 035.0 — Broadcast Workspace
+   The output canvas owns the workspace. Network details live in Configuration,
+   while status and transport use the minimum vertical footprint. */
+@media (min-width: 901px) {
+  #scriptureAdvancedView .scripture-advanced-grid > div:last-child {
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  #scriptureAdvancedView .scripture-live-preview {
+    margin-bottom: 0;
+  }
+
+  #scriptureAdvancedView .preview-panel-head {
+    min-height: 34px;
+    padding: 5px 10px;
+  }
+
+  #scriptureAdvancedView .compact-output-status {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  #scriptureAdvancedView .compact-output-status strong {
+    font-size: 13px;
+  }
+
+  #scriptureAdvancedView .compact-output-status small {
+    font-size: 11px;
+  }
+
+  #scriptureAdvancedView .preview-toolbar {
+    min-height: 42px;
+    padding: 5px 8px !important;
+  }
+
+  #scriptureAdvancedView .scripture-preview-stage {
+    padding: 6px;
+  }
+
+  #scriptureAdvancedView .scripture-transport {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(120px, .85fr) minmax(140px, .85fr);
+    gap: 7px;
+    min-height: 0;
+  }
+
+  #scriptureAdvancedView .scripture-transport button {
+    min-height: 42px;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+}
+
+.configuration-output-card {
+  margin-top: 0;
+}
+
+.configuration-output-card code {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
