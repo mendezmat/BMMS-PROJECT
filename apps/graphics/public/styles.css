@@ -1630,3 +1630,65 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
 .animation-advanced{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.018)}
 .animation-advanced>summary{padding:10px 12px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:700}
 .animation-advanced-grid{padding:4px 12px 12px}
+
+
+/* Update 036.1 — Scripture Style Manager */
+.scripture-style-manager { display: grid; gap: 12px; }
+.style-profile-actions { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 8px; }
+.style-profile-actions button { min-width: 0; }
+.danger-subtle { border-color: rgba(255, 112, 112, .28) !important; color: #ffb2b2; }
+.danger-subtle:hover:not(:disabled) { background: rgba(255, 78, 78, .1); }
+#scriptureStyleFeedback { min-height: 18px; margin: 0; }
+#scriptureStyleFeedback[data-tone="success"] { color: #82e6ba; }
+#scriptureStyleFeedback[data-tone="error"] { color: #ff9d9d; }
+@media (max-width: 920px) { .style-profile-actions { grid-template-columns: 1fr; } }
+
+/* Update 036.2 — ProPresenter live diagnostics */
+.propresenter-live-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted, #9da7b3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.propresenter-live-telemetry span + span::before { content: "•"; margin-right: 10px; opacity: .5; }
+.ghost.compact { padding: 6px 9px; min-height: 0; }
+.propresenter-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(110px, 1fr));
+  gap: 1px;
+  margin: -1px 0 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+}
+.propresenter-diagnostics > div { padding: 10px 12px; background: #11161d; }
+.propresenter-diagnostics small { display: block; color: #85909d; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.propresenter-diagnostics strong { display: block; margin-top: 4px; font-size: 13px; }
+@media (max-width: 1100px) {
+  .propresenter-live-telemetry { width: 100%; order: 3; }
+  .propresenter-diagnostics { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Update 036.3 — resilient Live Engine diagnostics */
+.propresenter-diagnostics-panel {
+  margin: -1px 0 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #11161d;
+}
+.propresenter-diagnostics-panel > summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #aeb8c4;
+  font-size: 12px;
+  font-weight: 700;
+  user-select: none;
+}
+.propresenter-diagnostics-panel[open] > summary { border-bottom: 1px solid rgba(255,255,255,.08); }
+.propresenter-diagnostics-panel .propresenter-diagnostics { margin: 0; border: 0; border-radius: 0; }
+.propresenter-diagnostics .diagnostic-action { display: flex; align-items: center; justify-content: center; }
+.propresenter-diagnostics .diagnostic-action button { width: 100%; }

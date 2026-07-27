@@ -280,7 +280,8 @@ events.subscribe("propresenter.scripture.changed", async event => {
       text: verse.text,
       presentation: verse.presentationId,
       slideIndex: verse.slideIndex,
-      receivedAt: verse.receivedAt
+      receivedAt: verse.receivedAt,
+      transition: event.payload.transition || "full-change"
     }
   };
 
@@ -541,6 +542,10 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === "POST" && url.pathname === "/api/scripture/live/stop") {
     return json(response, 200, liveScripture.stop());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/scripture/live/restart") {
+    return json(response, 200, await liveScripture.restart());
   }
 
   if (request.method === "POST" && url.pathname === "/api/scripture/live/sync") {
@@ -806,7 +811,8 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/api/app-state") {
     return json(response, 200, {
       ...appState,
-      propresenterStatus: proPresenter.getStatus()
+      propresenterStatus: proPresenter.getStatus(),
+      scriptureLiveStatus: liveScripture.getStatus()
     });
   }
 
@@ -907,6 +913,7 @@ const server = http.createServer(async (request, response) => {
         appearance: { ...appState.scripture.appearance, ...(patch.appearance || {}) },
         gradient: { ...appState.scripture.gradient, ...(patch.gradient || {}) },
         animation: { ...appState.scripture.animation, ...(patch.animation || {}) },
+        styleProfiles: Array.isArray(patch.styleProfiles) ? patch.styleProfiles : (appState.scripture.styleProfiles || []),
         output: { ...appState.scripture.output, ...(patch.output || {}) },
         broadcast: scriptureBroadcast
       };

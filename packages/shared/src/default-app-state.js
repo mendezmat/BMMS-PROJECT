@@ -86,6 +86,7 @@ export const defaultAppState = Object.freeze({
       wordCascade: true,
       wordCascadeStepMs: 18
     },
+    styleProfiles: [],
     broadcast: {
       preview: null,
       program: null,

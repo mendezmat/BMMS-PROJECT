@@ -76,12 +76,35 @@
               <div id="scriptureConnectionDetail">Configure la integración para comenzar.</div>
             </div>
           </div>
+          <div class="propresenter-live-telemetry" id="proPresenterLiveTelemetry">
+            <span id="ppLiveEndpoint">—</span>
+            <span id="ppLiveLastEvent">Sin eventos</span>
+            
+          </div>
           <div class="grow"></div>
           <button id="integratedConnectButton">Conectar</button>
           <button data-open-integrations>Configurar</button>
           <button id="integratedLiveButton">Iniciar Live</button>
           <a href="/overlay/scripture" target="_blank">Abrir output</a>
         </div>
+
+        <details id="proPresenterDiagnostics" class="propresenter-diagnostics-panel">
+          <summary>Diagnóstico de ProPresenter</summary>
+          <section class="propresenter-diagnostics" aria-live="polite">
+            <div><small>Eventos recibidos</small><strong id="ppMetricCandidates">0</strong></div>
+            <div><small>Procesados</small><strong id="ppMetricProcessed">0</strong></div>
+            <div><small>Duplicados ignorados</small><strong id="ppMetricDuplicates">0</strong></div>
+            <div><small>Slides vacíos</small><strong id="ppMetricBlanks">0</strong></div>
+            <div><small>Sincronización</small><strong id="ppMetricLatency">—</strong></div>
+            <div><small>Última transición</small><strong id="ppMetricTransition">—</strong></div>
+            <div><small>Estado</small><strong id="ppMetricQueue">Libre</strong></div>
+            <div><small>Errores consecutivos</small><strong id="ppMetricErrors">0</strong></div>
+            <div><small>Reconexiones</small><strong id="ppMetricReconnects">0</strong></div>
+            <div><small>Última respuesta</small><strong id="ppMetricResponse">—</strong></div>
+            <div><small>Último timeout</small><strong id="ppMetricTimeout">—</strong></div>
+            <div class="diagnostic-action"><button id="restartProPresenterLive" class="danger-subtle" type="button">Reiniciar conexión</button></div>
+          </section>
+        </details>
 
         <section class="simple-only hidden" id="scriptureSimpleView">
           <div class="panel">
@@ -336,6 +359,27 @@
                     <label>Color versículo<input id="textColor" type="color"></label>
                     <label class="full">Color divisor<input id="lineColor" type="color"></label>
                   </div>
+                </div>
+              </details>
+
+              <details class="panel" open>
+                <summary>Estilos guardados</summary>
+                <div class="panel-body scripture-style-manager">
+                  <p class="field-help">Guarda la composición, tipografías, degradado y animación como un perfil reutilizable. El texto bíblico no se modifica.</p>
+                  <label>Perfil
+                    <select id="scriptureStyleProfile">
+                      <option value="">Seleccionar…</option>
+                    </select>
+                  </label>
+                  <label>Nombre del nuevo estilo
+                    <input id="scriptureStyleName" type="text" maxlength="48" placeholder="Ej. Domingo mañana">
+                  </label>
+                  <div class="style-profile-actions">
+                    <button id="saveScriptureStyle" class="primary">Guardar actual</button>
+                    <button id="applyScriptureStyle">Aplicar</button>
+                    <button id="deleteScriptureStyle" class="danger-subtle">Eliminar</button>
+                  </div>
+                  <p id="scriptureStyleFeedback" class="field-help" aria-live="polite"></p>
                 </div>
               </details>
 

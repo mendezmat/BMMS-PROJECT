@@ -1,23 +1,18 @@
-# Foco actual
+# Current Focus
 
-## Fase activa: Scripture — Production Ready
+## Active
 
-### Sprint actual: Update 036.0
+Scripture Production Ready.
 
-- Motor de animaciones reutilizable.
-- Presets de entrada y salida.
-- Duración y easing configurables.
-- Previsualización sin enviar a Program.
-- Transición inteligente entre versículos del mismo capítulo.
+Update 036.2 completed ProPresenter Live Link diagnostics and event classification.
 
-### Validación obligatoria
+## Next
 
-- Preview fijo y sin recortes.
-- Scroll de Scripture.
-- Scroll de Configuración.
-- ProPresenter.
-- Browser Output.
+Update 036.3 — Advanced Scripture Style Manager: rename, duplicate, import/export and active-style indication.
 
-## Próximo foco aprobado
+## Not in current scope
 
-Continuar cerrando pendientes de producción de Scripture. Smart Flyer comienza únicamente después de declarar Scripture estable para uso semanal.
+- Smart Flyer feature expansion
+- Lower Third redesign
+- Countdown
+- Advanced visual editor

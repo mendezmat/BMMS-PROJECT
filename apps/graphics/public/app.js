@@ -2,6 +2,8 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 
 let appState = {};
+let scriptureLiveStatus = null;
+let diagnosticsTimer = null;
 let saveTimer;
 const developerMode = new URLSearchParams(location.search).get("developer") === "1"
   || localStorage.getItem("bmms.developerMode") === "true";
@@ -49,7 +51,9 @@ async function api(path, options = {}) {
 
 async function loadState() {
   appState = await api("/api/app-state");
+  scriptureLiveStatus = appState.scriptureLiveStatus || null;
   renderAll();
+  renderProPresenterLiveStatus();
 }
 
 function switchView(name) {
@@ -139,6 +143,7 @@ async function refreshScriptureBroadcast() {
     $("#integratedScriptureDiagnostics").textContent = JSON.stringify({ broadcast: state, live }, null, 2);
     $("#integratedLiveButton").textContent = live.running ? "Detener Live" : "Iniciar Live";
     $("#integratedLiveButton").dataset.running = String(Boolean(live.running));
+    renderProPresenterLiveStatus(live);
   } catch (error) {
     $("#integratedScriptureDiagnostics").textContent = error.message;
   }
@@ -169,6 +174,7 @@ function renderScripture() {
   $$('[data-scripture-design]').forEach(card=>card.classList.toggle('active',card.dataset.scriptureDesign===(s.design||'classic')));
   const help={lower:'Composición inferior original con degradado adaptativo.','center-lower':'Versión inferior centrada y más contenida.','left-column':'Columna vertical anclada al lado izquierdo.','right-column':'Columna vertical anclada al lado derecho.',fullscreen:'Lectura amplia centrada dentro del área segura.',minimal:'Texto limpio con presencia gráfica reducida.'}; $("#scriptureFormatHelp").textContent=help[s.format||'lower'];
   const incoming=s.propresenter; $("#incomingReference").textContent=incoming.reference||"Sin contenido"; $("#incomingText").textContent=incoming.text||"Cuando llegue un cambio desde ProPresenter aparecerá aquí."; $("#incomingMeta").textContent=incoming.receivedAt?`${incoming.presentation||"Presentación"} · Slide ${incoming.slideIndex??"-"} · ${new Date(incoming.receivedAt).toLocaleTimeString()}`:"";
+  renderScriptureStyleProfiles();
   setScriptureMode(scriptureUiMode); renderConnection(); refreshScriptureBroadcast();
 }
 
@@ -176,18 +182,32 @@ let scriptureSaveTimer = null;
 let scriptureSaveQueue = {};
 let scriptureSaveSequence = 0;
 
-function mergeScripturePatch(current, patch) {
-  return {
+function mergeScripturePatch(current = {}, patch = {}) {
+  const merged = {
     ...current,
     ...patch,
-    manual: { ...current.manual, ...(patch.manual || {}) },
-    propresenter: { ...current.propresenter, ...(patch.propresenter || {}) },
-    composition: { ...current.composition, ...(patch.composition || {}) },
-    appearance: { ...current.appearance, ...(patch.appearance || {}) },
-    gradient: { ...current.gradient, ...(patch.gradient || {}) },
-    animation: { ...current.animation, ...(patch.animation || {}) },
-    output: { ...current.output, ...(patch.output || {}) }
+    manual: { ...(current.manual || {}), ...(patch.manual || {}) },
+    propresenter: { ...(current.propresenter || {}), ...(patch.propresenter || {}) },
+    composition: { ...(current.composition || {}), ...(patch.composition || {}) },
+    appearance: { ...(current.appearance || {}), ...(patch.appearance || {}) },
+    gradient: { ...(current.gradient || {}), ...(patch.gradient || {}) },
+    animation: { ...(current.animation || {}), ...(patch.animation || {}) },
+    output: { ...(current.output || {}), ...(patch.output || {}) }
   };
+
+  // styleProfiles is a collection, not a normal defaulted field. When this
+  // helper merges the debounce queue, an absent styleProfiles property must
+  // remain absent. Sending [] on every unrelated edit makes the server erase
+  // all saved profiles.
+  if (Object.prototype.hasOwnProperty.call(patch, "styleProfiles")) {
+    merged.styleProfiles = patch.styleProfiles;
+  } else if (Object.prototype.hasOwnProperty.call(current, "styleProfiles")) {
+    merged.styleProfiles = current.styleProfiles;
+  } else {
+    delete merged.styleProfiles;
+  }
+
+  return merged;
 }
 
 function queueScriptureSave(patch, delay = 90) {
@@ -256,12 +276,45 @@ async function restoreScriptureSnapshot(snapshot) {
   updateHistoryButtons();
 }
 
+async function persistScriptureImmediately(patch, { render = true } = {}) {
+  clearTimeout(scriptureSaveTimer);
+  scriptureSaveTimer = null;
+
+  // Include any edits that were still waiting in the debounce queue so an
+  // immediate profile operation cannot be overwritten by an older save.
+  const payload = mergeScripturePatch(scriptureSaveQueue, patch);
+  scriptureSaveQueue = {};
+  const sequence = ++scriptureSaveSequence;
+
+  try {
+    const saved = await api("/api/scripture", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    if (sequence === scriptureSaveSequence) {
+      appState.scripture = saved;
+      if (render) renderScripture();
+    }
+    $("#saveState").textContent = "Guardado";
+    return saved;
+  } catch (error) {
+    $("#saveState").textContent = "Error al guardar";
+    console.error(error);
+    throw error;
+  }
+}
+
 function updateScripture(patch, { render = true, immediate = false, history = true } = {}) {
   if (history) pushScriptureHistory();
   appState.scripture = mergeScripturePatch(appState.scripture, patch);
   markSaving();
   if (render) renderScripture();
-  queueScriptureSave(patch, immediate ? 0 : 90);
+
+  if (immediate) {
+    return persistScriptureImmediately(patch, { render });
+  }
+
+  queueScriptureSave(patch, 90);
   return Promise.resolve(appState.scripture);
 }
 
@@ -1019,6 +1072,116 @@ window.addEventListener("keyup", event => {
   scripturePreviewViewport?.classList.remove("can-pan", "is-panning");
 });
 
+
+function normalizeStyleProfileName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 48);
+}
+
+function captureScriptureStyle() {
+  const scripture = appState.scripture || {};
+  return {
+    design: scripture.design || "classic",
+    format: scripture.format || "lower",
+    composition: structuredClone(scripture.composition || {}),
+    appearance: structuredClone(scripture.appearance || {}),
+    gradient: structuredClone(scripture.gradient || {}),
+    animation: structuredClone(scripture.animation || {})
+  };
+}
+
+function renderScriptureStyleProfiles() {
+  const select = $("#scriptureStyleProfile");
+  if (!select) return;
+  const selected = select.value;
+  const profiles = appState.scripture?.styleProfiles || [];
+  select.innerHTML = '<option value="">Seleccionar…</option>';
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.name;
+    select.append(option);
+  }
+  if (profiles.some(profile => profile.id === selected)) select.value = selected;
+  const hasSelection = Boolean(select.value);
+  $("#applyScriptureStyle").disabled = !hasSelection;
+  $("#deleteScriptureStyle").disabled = !hasSelection;
+}
+
+function setScriptureStyleFeedback(message, tone = "") {
+  const target = $("#scriptureStyleFeedback");
+  if (!target) return;
+  target.textContent = message;
+  target.dataset.tone = tone;
+}
+
+$("#scriptureStyleProfile")?.addEventListener("change", renderScriptureStyleProfiles);
+
+$("#saveScriptureStyle")?.addEventListener("click", async () => {
+  const nameInput = $("#scriptureStyleName");
+  const name = normalizeStyleProfileName(nameInput.value);
+  if (!name) {
+    setScriptureStyleFeedback("Escribe un nombre para guardar el estilo.", "error");
+    nameInput.focus();
+    return;
+  }
+
+  const profiles = [...(appState.scripture.styleProfiles || [])];
+  const existingIndex = profiles.findIndex(profile => profile.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+  const existing = existingIndex >= 0 ? profiles[existingIndex] : null;
+  const profile = {
+    id: existing?.id || `style-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name,
+    updatedAt: new Date().toISOString(),
+    style: captureScriptureStyle()
+  };
+  if (existingIndex >= 0) profiles.splice(existingIndex, 1, profile);
+  else profiles.push(profile);
+
+  await updateScripture({ styleProfiles: profiles }, { immediate: true });
+  renderScriptureStyleProfiles();
+  $("#scriptureStyleProfile").value = profile.id;
+  nameInput.value = "";
+  renderScriptureStyleProfiles();
+  setScriptureStyleFeedback(existing ? `“${name}” fue actualizado.` : `“${name}” fue guardado.`, "success");
+});
+
+$("#applyScriptureStyle")?.addEventListener("click", async () => {
+  const select = $("#scriptureStyleProfile");
+  const id = select.value;
+  const profile = (appState.scripture.styleProfiles || []).find(item => item.id === id);
+  if (!profile?.style) {
+    setScriptureStyleFeedback("No se pudo cargar el perfil seleccionado.", "error");
+    return;
+  }
+
+  select.disabled = true;
+  $("#applyScriptureStyle").disabled = true;
+  try {
+    await updateScripture(structuredClone(profile.style), { immediate: true });
+    updateVisualEditorGeometry();
+    renderScriptureStyleProfiles();
+    select.value = id;
+    renderScriptureStyleProfiles();
+    setScriptureStyleFeedback(`“${profile.name}” aplicado sin cambiar el versículo.`, "success");
+  } catch (error) {
+    setScriptureStyleFeedback(`No se pudo aplicar “${profile.name}”.`, "error");
+  } finally {
+    select.disabled = false;
+    renderScriptureStyleProfiles();
+  }
+});
+
+$("#deleteScriptureStyle")?.addEventListener("click", async () => {
+  const id = $("#scriptureStyleProfile").value;
+  const profile = (appState.scripture.styleProfiles || []).find(item => item.id === id);
+  if (!profile) return;
+  if (!window.confirm(`¿Eliminar el estilo “${profile.name}”?`)) return;
+  const profiles = appState.scripture.styleProfiles.filter(item => item.id !== id);
+  await updateScripture({ styleProfiles: profiles }, { immediate: true });
+  renderScriptureStyleProfiles();
+  setScriptureStyleFeedback(`“${profile.name}” fue eliminado.`);
+});
+
 const scripturePresets = {
   lower: {
     format: "lower",
@@ -1149,6 +1312,78 @@ function renderConnection() {
   $("#scriptureConnectionDot").classList.toggle("connected", status.connected);
 }
 
+function renderProPresenterLiveStatus(live = scriptureLiveStatus) {
+  scriptureLiveStatus = live || scriptureLiveStatus || {};
+  const status = appState.propresenterStatus || {};
+  const config = appState.settings?.integrations?.propresenter || {};
+  const metrics = scriptureLiveStatus.metrics || {};
+
+  const endpoint = config.host ? `${config.host}:${config.port || "—"}` : "Sin configurar";
+  $("#ppLiveEndpoint").textContent = endpoint;
+
+  const lastEvent = metrics.lastEventAt ? new Date(metrics.lastEventAt) : null;
+  $("#ppLiveLastEvent").textContent = lastEvent
+    ? `Último evento ${formatElapsed(Date.now() - lastEvent.getTime())}`
+    : (status.connected ? "Esperando contenido" : "Sin eventos");
+
+  $("#ppMetricCandidates").textContent = String(metrics.candidates || 0);
+  $("#ppMetricProcessed").textContent = String(metrics.processed || 0);
+  $("#ppMetricDuplicates").textContent = String(metrics.duplicates || 0);
+  $("#ppMetricBlanks").textContent = String(metrics.blanks || 0);
+  $("#ppMetricErrors").textContent = String(scriptureLiveStatus.consecutiveErrors || 0);
+  $("#ppMetricReconnects").textContent = String(metrics.reconnects || 0);
+  $("#ppMetricResponse").textContent = scriptureLiveStatus.lastResponseAt
+    ? formatElapsed(Date.now() - new Date(scriptureLiveStatus.lastResponseAt).getTime())
+    : "—";
+  $("#ppMetricTimeout").textContent = metrics.lastTimeoutAt
+    ? formatElapsed(Date.now() - new Date(metrics.lastTimeoutAt).getTime())
+    : "—";
+  $("#ppMetricLatency").textContent = metrics.lastSyncMs == null
+    ? "—"
+    : `${metrics.lastSyncMs} ms · prom. ${metrics.averageSyncMs ?? metrics.lastSyncMs} ms`;
+  $("#ppMetricTransition").textContent = transitionLabel(metrics.lastTransition);
+  $("#ppMetricQueue").textContent = scriptureLiveStatus.reconnecting
+    ? "Reconectando"
+    : (scriptureLiveStatus.syncing ? "Procesando" : "Libre");
+}
+
+function transitionLabel(value) {
+  return ({
+    initial: "Inicial",
+    duplicate: "Duplicado",
+    "content-change": "Solo contenido",
+    "same-chapter": "Mismo capítulo",
+    "chapter-change": "Cambio de capítulo",
+    "book-change": "Cambio de libro",
+    "full-change": "Cambio completo",
+    cleared: "Contenido limpio",
+    none: "—"
+  })[value] || value || "—";
+}
+
+function formatElapsed(milliseconds) {
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "ahora";
+  const seconds = Math.floor(milliseconds / 1000);
+  if (seconds < 2) return "ahora";
+  if (seconds < 60) return `hace ${seconds} s`;
+  return `hace ${Math.floor(seconds / 60)} min`;
+}
+
+$("#restartProPresenterLive").addEventListener("click", async () => {
+  const button = $("#restartProPresenterLive");
+  button.disabled = true;
+  button.textContent = "Reiniciando…";
+  try {
+    scriptureLiveStatus = await api("/api/scripture/live/restart", { method: "POST", body: "{}" });
+    renderProPresenterLiveStatus(scriptureLiveStatus);
+  } catch (error) {
+    console.error("No fue posible reiniciar la conexión de ProPresenter", error);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Reiniciar conexión";
+  }
+});
+
 $("#saveProPresenter").addEventListener("click", async () => {
   try {
     const result = await api("/api/settings/propresenter", {
@@ -1251,11 +1486,14 @@ events.addEventListener("scripture-program", event => {
   renderBroadcastState();
 });
 
-events.addEventListener("scripture-live-status", () => refreshScriptureBroadcast());
+events.addEventListener("scripture-live-status", event => {
+  renderProPresenterLiveStatus(JSON.parse(event.data));
+});
 
 events.addEventListener("propresenter-status", event => {
   appState.propresenterStatus = JSON.parse(event.data);
   renderConnection();
+  renderProPresenterLiveStatus();
 });
 
 events.onerror = () => {
@@ -1263,6 +1501,9 @@ events.onerror = () => {
     refreshScriptureBroadcast();
   }, 500);
 };
+
+diagnosticsTimer = setInterval(() => renderProPresenterLiveStatus(), 1000);
+window.addEventListener("beforeunload", () => clearInterval(diagnosticsTimer));
 
 switchView("scripture");
 setScriptureMode("advanced");

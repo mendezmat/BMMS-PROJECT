@@ -40,3 +40,48 @@ Las transiciones se utilizan en cada servicio y tienen impacto directo en la cal
 ### Próximo foco
 
 Validar las animaciones en operación real y continuar con los pendientes de Scripture.
+
+## Sprint 036.1
+
+### Qué decidimos
+
+- Los perfiles de Scripture contienen solo configuración visual y de animación.
+- Los perfiles se persisten en el estado del servidor.
+
+### Por qué
+
+- El operador debe cambiar de identidad visual sin riesgo de reemplazar contenido o estado de emisión.
+
+### Qué descartamos
+
+- Guardar el versículo dentro del perfil.
+- Guardar perfiles únicamente en localStorage.
+
+### Próximo foco
+
+- ProPresenter Live Link: velocidad, deduplicación y diagnóstico.
+
+
+## Sprint 036.2
+
+### Qué decidimos
+
+- Mantener la deduplicación en el servicio antes de escribir estado.
+- Exponer métricas locales mediante el estado Live Scripture.
+- Mostrar diagnóstico plegable dentro de Scripture.
+
+### Por qué
+
+- Evita parpadeos y escrituras innecesarias.
+- Permite diagnosticar la integración durante una transmisión.
+- Mantiene el Preview como prioridad visual.
+
+### Qué descartamos
+
+- Telemetría remota.
+- Procesamiento paralelo de solicitudes a ProPresenter.
+- Rediseño general del workspace.
+
+### Próximo foco
+
+- Gestor avanzado de estilos.
