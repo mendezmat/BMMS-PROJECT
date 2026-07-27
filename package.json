@@ -1,6 +1,6 @@
 {
   "name": "bmms-project",
-  "version": "1.14.4-beta.15",
+  "version": "1.14.6-beta.17",
   "private": true,
   "type": "module",
   "scripts": {

@@ -23,6 +23,10 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
   #activePresentation = null;
   #slideIndex = null;
   #lastMetadataAt = 0;
+  #lastRawHash = null;
+  #lastContentChangeAt = Date.now();
+  #lastStatusPublishAt = 0;
+  #lastStatusSignature = null;
   #consecutiveErrors = 0;
   #lastErrorLogAt = 0;
   #metrics = {
@@ -37,7 +41,9 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
     lastSyncMs: null,
     lastEventAt: null,
     lastTimeoutAt: null,
-    lastTransition: "none"
+    lastTransition: "none",
+    hashSkips: 0,
+    currentPollingMs: 350
   };
 
   constructor({ adapter, events, logger, intervalMs = 350 }) {
@@ -60,6 +66,7 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
       connectionState: adapterStatus.state,
       connected: adapterStatus.connected,
       intervalMs: this.#intervalMs,
+      currentPollingMs: this.#currentPollingDelay(),
       lastVerseId: this.#lastVerseId,
       lastSuccessAt: this.#lastSuccessAt,
       lastResponseAt: this.#lastResponseAt,
@@ -87,7 +94,7 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
     if (this.#running) return this.getStatus();
     this.#running = true;
     this.#schedule(0);
-    this.#publishStatus();
+    this.#publishStatus(true);
     return this.getStatus();
   }
 
@@ -95,7 +102,7 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
     this.#running = false;
     if (this.#timer) clearTimeout(this.#timer);
     this.#timer = null;
-    this.#publishStatus();
+    this.#publishStatus(true);
     return this.getStatus();
   }
 
@@ -126,6 +133,15 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
       this.#metrics.polls += 1;
       const now = Date.now();
       this.#lastResponseAt = new Date(now).toISOString();
+
+      const rawHash = fastStableHash(statusSlide?.data ?? statusSlide);
+      if (rawHash === this.#lastRawHash) {
+        this.#metrics.duplicates += 1;
+        this.#metrics.hashSkips += 1;
+        return null;
+      }
+      this.#lastRawHash = rawHash;
+      this.#lastContentChangeAt = now;
 
       if (!this.#activePresentation || !this.#slideIndex || now - this.#lastMetadataAt >= 1500) {
         const [activePresentation, slideIndex] = await Promise.all([
@@ -253,6 +269,8 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
         this.#activePresentation = null;
         this.#slideIndex = null;
         this.#lastMetadataAt = 0;
+        this.#lastRawHash = null;
+        this.#lastContentChangeAt = Date.now();
       }
     } finally {
       this.#reconnecting = false;
@@ -269,13 +287,42 @@ export class ProPresenterLiveScriptureService extends EventEmitter {
     }, delayMs);
   }
 
-  #nextDelay() {
-    if (!this.#consecutiveErrors) return this.#intervalMs;
-    return Math.min(5000, this.#intervalMs * (2 ** Math.min(4, this.#consecutiveErrors)));
+  #currentPollingDelay() {
+    if (this.#consecutiveErrors) {
+      return Math.min(5000, this.#intervalMs * (2 ** Math.min(4, this.#consecutiveErrors)));
+    }
+    const idleMs = Math.max(0, Date.now() - this.#lastContentChangeAt);
+    if (idleMs < 5000) return 250;
+    if (idleMs < 30000) return 1000;
+    return 2000;
   }
 
-  #publishStatus() {
-    this.#events.publish("propresenter.scripture.status.changed", this.getStatus(), {
+  #nextDelay() {
+    const delay = this.#currentPollingDelay();
+    this.#metrics.currentPollingMs = delay;
+    return delay;
+  }
+
+  #publishStatus(force = false) {
+    const status = this.getStatus();
+    const signature = JSON.stringify({
+      running: status.running,
+      syncing: status.syncing,
+      reconnecting: status.reconnecting,
+      connected: status.connected,
+      consecutiveErrors: status.consecutiveErrors,
+      lastVerseId: status.lastVerseId,
+      processed: status.metrics.processed,
+      blanks: status.metrics.blanks,
+      reconnects: status.metrics.reconnects,
+      lastTransition: status.metrics.lastTransition,
+      currentPollingMs: status.currentPollingMs
+    });
+    const now = Date.now();
+    if (!force && signature === this.#lastStatusSignature && now - this.#lastStatusPublishAt < 2000) return;
+    this.#lastStatusSignature = signature;
+    this.#lastStatusPublishAt = now;
+    this.#events.publish("propresenter.scripture.status.changed", status, {
       source: "integration.propresenter.live-scripture"
     });
   }
@@ -285,6 +332,16 @@ function clampInterval(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return 350;
   return Math.max(250, Math.min(5000, Math.round(number)));
+}
+
+function fastStableHash(value) {
+  const input = typeof value === "string" ? value : JSON.stringify(value ?? null);
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
 }
 
 function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }

@@ -91,7 +91,7 @@
         <details id="proPresenterDiagnostics" class="propresenter-diagnostics-panel">
           <summary>Diagnóstico de ProPresenter</summary>
           <section class="propresenter-diagnostics" aria-live="polite">
-            <div><small>Eventos recibidos</small><strong id="ppMetricCandidates">0</strong></div>
+            <div><small>Consultas realizadas</small><strong id="ppMetricCandidates">0</strong></div>
             <div><small>Procesados</small><strong id="ppMetricProcessed">0</strong></div>
             <div><small>Duplicados ignorados</small><strong id="ppMetricDuplicates">0</strong></div>
             <div><small>Slides vacíos</small><strong id="ppMetricBlanks">0</strong></div>
@@ -102,7 +102,15 @@
             <div><small>Reconexiones</small><strong id="ppMetricReconnects">0</strong></div>
             <div><small>Última respuesta</small><strong id="ppMetricResponse">—</strong></div>
             <div><small>Último timeout</small><strong id="ppMetricTimeout">—</strong></div>
+            <div><small>Polling actual</small><strong id="ppMetricPolling">—</strong></div>
+            <div><small>Descartes rápidos</small><strong id="ppMetricHashSkips">0</strong></div>
             <div class="diagnostic-action"><button id="restartProPresenterLive" class="danger-subtle" type="button">Reiniciar conexión</button></div>
+            <div class="diagnostic-log-card">
+              <small>Últimos eventos</small>
+              <ol id="ppDiagnosticLog" class="diagnostic-log" aria-live="polite">
+                <li>Esperando actividad de ProPresenter…</li>
+              </ol>
+            </div>
           </section>
         </details>
 

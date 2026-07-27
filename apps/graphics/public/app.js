@@ -4,6 +4,9 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 let appState = {};
 let scriptureLiveStatus = null;
 let diagnosticsTimer = null;
+const proPresenterDiagnosticLog = [];
+let previousProPresenterDiagnosticSnapshot = null;
+let groupedDuplicateLog = null;
 let saveTimer;
 const developerMode = new URLSearchParams(location.search).get("developer") === "1"
   || localStorage.getItem("bmms.developerMode") === "true";
@@ -1312,6 +1315,70 @@ function renderConnection() {
   $("#scriptureConnectionDot").classList.toggle("connected", status.connected);
 }
 
+function renderProPresenterDiagnosticLog() {
+  const panel = $("#proPresenterDiagnostics");
+  const list = $("#ppDiagnosticLog");
+  if (!list || !panel?.open) return;
+  list.replaceChildren(...proPresenterDiagnosticLog.map((entry) => {
+    const item = document.createElement("li");
+    item.textContent = entry;
+    return item;
+  }));
+}
+
+function appendProPresenterDiagnosticLog(message, { duplicateCount = 0 } = {}) {
+  const timestamp = new Date().toLocaleTimeString("es-CL", { hour12: false });
+  if (duplicateCount > 0) {
+    if (groupedDuplicateLog) {
+      groupedDuplicateLog.count += duplicateCount;
+      groupedDuplicateLog.text = `${timestamp} · Sin cambios (${groupedDuplicateLog.count} respuestas consecutivas)`;
+      const index = proPresenterDiagnosticLog.findIndex(entry => entry === groupedDuplicateLog.previousText);
+      if (index >= 0) proPresenterDiagnosticLog[index] = groupedDuplicateLog.text;
+      else proPresenterDiagnosticLog.unshift(groupedDuplicateLog.text);
+      groupedDuplicateLog.previousText = groupedDuplicateLog.text;
+    } else {
+      const text = `${timestamp} · Sin cambios (${duplicateCount} respuestas consecutivas)`;
+      groupedDuplicateLog = { count: duplicateCount, text, previousText: text };
+      proPresenterDiagnosticLog.unshift(text);
+    }
+  } else {
+    groupedDuplicateLog = null;
+    proPresenterDiagnosticLog.unshift(`${timestamp} · ${message}`);
+  }
+  if (proPresenterDiagnosticLog.length > 20) proPresenterDiagnosticLog.length = 20;
+  renderProPresenterDiagnosticLog();
+}
+
+function captureProPresenterDiagnosticEvents(status, metrics) {
+  const snapshot = {
+    connected: Boolean(status.connected),
+    processed: Number(metrics.processed || 0),
+    duplicates: Number(metrics.duplicates || 0),
+    blanks: Number(metrics.blanks || 0),
+    reconnects: Number(metrics.reconnects || 0),
+    errors: Number(scriptureLiveStatus?.consecutiveErrors || 0),
+    transition: metrics.lastTransition || "none"
+  };
+
+  const previous = previousProPresenterDiagnosticSnapshot;
+  previousProPresenterDiagnosticSnapshot = snapshot;
+  if (!previous) {
+    appendProPresenterDiagnosticLog(snapshot.connected ? "Conexión detectada" : "Esperando conexión");
+    return;
+  }
+
+  if (snapshot.connected !== previous.connected) {
+    appendProPresenterDiagnosticLog(snapshot.connected ? "ProPresenter conectado" : "ProPresenter desconectado");
+  }
+  if (snapshot.processed > previous.processed) {
+    appendProPresenterDiagnosticLog(`Contenido procesado · ${transitionLabel(snapshot.transition)}`);
+  }
+  if (snapshot.duplicates > previous.duplicates) appendProPresenterDiagnosticLog("", { duplicateCount: snapshot.duplicates - previous.duplicates });
+  if (snapshot.blanks > previous.blanks) appendProPresenterDiagnosticLog("Slide vacío recibido");
+  if (snapshot.reconnects > previous.reconnects) appendProPresenterDiagnosticLog("Conexión reiniciada automáticamente");
+  if (snapshot.errors > previous.errors) appendProPresenterDiagnosticLog(`Error de conexión · intento ${snapshot.errors}`);
+}
+
 function renderProPresenterLiveStatus(live = scriptureLiveStatus) {
   scriptureLiveStatus = live || scriptureLiveStatus || {};
   const status = appState.propresenterStatus || {};
@@ -1326,7 +1393,12 @@ function renderProPresenterLiveStatus(live = scriptureLiveStatus) {
     ? `Último evento ${formatElapsed(Date.now() - lastEvent.getTime())}`
     : (status.connected ? "Esperando contenido" : "Sin eventos");
 
-  $("#ppMetricCandidates").textContent = String(metrics.candidates || 0);
+  captureProPresenterDiagnosticEvents(status, metrics);
+
+  const diagnosticsPanel = $("#proPresenterDiagnostics");
+  if (!diagnosticsPanel?.open) return;
+
+  $("#ppMetricCandidates").textContent = String(metrics.polls || 0);
   $("#ppMetricProcessed").textContent = String(metrics.processed || 0);
   $("#ppMetricDuplicates").textContent = String(metrics.duplicates || 0);
   $("#ppMetricBlanks").textContent = String(metrics.blanks || 0);
@@ -1338,6 +1410,8 @@ function renderProPresenterLiveStatus(live = scriptureLiveStatus) {
   $("#ppMetricTimeout").textContent = metrics.lastTimeoutAt
     ? formatElapsed(Date.now() - new Date(metrics.lastTimeoutAt).getTime())
     : "—";
+  $("#ppMetricPolling").textContent = `${scriptureLiveStatus.currentPollingMs ?? metrics.currentPollingMs ?? scriptureLiveStatus.intervalMs ?? "—"} ms`;
+  $("#ppMetricHashSkips").textContent = String(metrics.hashSkips || 0);
   $("#ppMetricLatency").textContent = metrics.lastSyncMs == null
     ? "—"
     : `${metrics.lastSyncMs} ms · prom. ${metrics.averageSyncMs ?? metrics.lastSyncMs} ms`;
@@ -1345,6 +1419,7 @@ function renderProPresenterLiveStatus(live = scriptureLiveStatus) {
   $("#ppMetricQueue").textContent = scriptureLiveStatus.reconnecting
     ? "Reconectando"
     : (scriptureLiveStatus.syncing ? "Procesando" : "Libre");
+  renderProPresenterDiagnosticLog();
 }
 
 function transitionLabel(value) {
@@ -1368,6 +1443,10 @@ function formatElapsed(milliseconds) {
   if (seconds < 60) return `hace ${seconds} s`;
   return `hace ${Math.floor(seconds / 60)} min`;
 }
+
+$("#proPresenterDiagnostics")?.addEventListener("toggle", () => {
+  if ($("#proPresenterDiagnostics").open) renderProPresenterLiveStatus();
+});
 
 $("#restartProPresenterLive").addEventListener("click", async () => {
   const button = $("#restartProPresenterLive");

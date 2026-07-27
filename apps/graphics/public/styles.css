@@ -1692,3 +1692,54 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
 .propresenter-diagnostics-panel .propresenter-diagnostics { margin: 0; border: 0; border-radius: 0; }
 .propresenter-diagnostics .diagnostic-action { display: flex; align-items: center; justify-content: center; }
 .propresenter-diagnostics .diagnostic-action button { width: 100%; }
+
+
+/* Update 036.3.1 — Diagnostics disclosure layout hotfix */
+@media (min-width: 901px) {
+  #view-scripture.active {
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+
+  #proPresenterDiagnostics {
+    min-height: 0;
+    max-height: min(38vh, 360px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  #proPresenterDiagnostics:not([open]) {
+    max-height: none;
+    overflow: hidden;
+  }
+}
+
+.propresenter-diagnostics-panel > summary {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #11161d;
+}
+
+.propresenter-diagnostics-panel > summary::marker { color: #aeb8c4; }
+.propresenter-diagnostics-panel[open] > summary { color: #fff; }
+.propresenter-diagnostics .diagnostic-log-card {
+  grid-column: 1 / -1;
+  padding: 12px;
+}
+.diagnostic-log {
+  display: grid;
+  gap: 6px;
+  max-height: 150px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  color: #b9c3cf;
+  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.diagnostic-log li {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.035);
+}

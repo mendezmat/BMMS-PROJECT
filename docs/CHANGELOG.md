@@ -24,3 +24,18 @@
 - Added automatic reconnection, progressive backoff and throttled error logging.
 - Replaced the diagnostics toggle with a native disclosure panel.
 - Added manual connection restart and additional recovery metrics.
+
+
+## 1.14.5-beta.16 — Update 036.3.1
+
+- Fixed the ProPresenter diagnostics panel being clipped by the fixed Scripture grid.
+- Added a bounded, scrollable native disclosure region.
+- Added a local rolling log of recent ProPresenter events.
+- Preserved the stable Live Engine from Update 036.3.
+
+## 036.4 — Performance Engine
+
+- Se añadió polling adaptativo para ProPresenter.
+- Se descartaron respuestas idénticas mediante hash antes del procesamiento completo.
+- Se redujeron eventos de telemetría y actualizaciones del DOM.
+- Los duplicados del diagnóstico ahora se agrupan.
