@@ -1,3 +1,11 @@
+## 1.10.4-beta.10 — Update 033.4
+
+- Oculta las tarjetas PROGRAM y PREVIEW sin eliminar sus hooks internos.
+- Mantiene el Preview del output visible mientras se desplaza el panel de configuración.
+- Limita el scroll principal al panel lateral de ajustes en escritorio.
+- Mantiene fija la barra ENVIAR / LIMPIAR / AUTO.
+- Compacta el header y recupera espacio vertical para el monitor.
+
 # Changelog
 
 ## [1.6.7-beta.10] - 2026-07-22

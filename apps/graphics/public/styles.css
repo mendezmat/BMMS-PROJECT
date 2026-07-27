@@ -1222,3 +1222,321 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
   .preview-toolbar { margin-top: 7px; margin-bottom: 8px; }
   .broadcast-bus { min-height: 104px; }
 }
+
+
+/* Update 033.4 — fixed Scripture workspace */
+@media (min-width: 901px) {
+  /* The application shell remains fixed; only the settings column scrolls. */
+  .workspace {
+    overflow: hidden;
+  }
+
+  #view-scripture.active {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #view-scripture > .section-title {
+    flex: 0 0 auto;
+  }
+
+  #view-scripture > .scripture-toolbar {
+    flex: 0 0 auto;
+  }
+
+  .scripture-advanced-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    align-items: stretch;
+  }
+
+  .settings-stack {
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .scripture-advanced-grid > div:last-child {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  .scripture-live-preview {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    margin-bottom: 8px;
+    background: var(--panel);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .24);
+  }
+
+  .scripture-transport {
+    position: sticky;
+    bottom: 0;
+    z-index: 13;
+    margin-top: 8px;
+    padding: 8px 0 2px;
+    background: linear-gradient(180deg, rgba(9, 11, 14, 0), #090b0e 24%);
+  }
+}
+
+/* Program/Preview buses are preserved for compatibility but hidden from production UI. */
+.broadcast-console {
+  display: none !important;
+}
+
+/* A slightly denser production header gives the output monitor more room. */
+.topbar {
+  height: 50px;
+}
+.layout {
+  height: calc(100vh - 50px);
+}
+#view-scripture > .section-title {
+  margin-bottom: 8px;
+}
+.scripture-toolbar {
+  margin-bottom: 10px;
+}
+
+/* Update 033.4.1 — restore independent settings scrolling */
+@media (min-width: 901px) {
+  /* Every flex/grid ancestor must allow its scrollable child to shrink. */
+  #view-scripture.active,
+  .scripture-advanced-grid,
+  .scripture-advanced-grid > .settings-stack,
+  .scripture-advanced-grid > div:last-child {
+    min-height: 0;
+  }
+
+  /* Only the configuration column scrolls. */
+  .scripture-advanced-grid > .settings-stack {
+    height: auto;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 18px;
+  }
+
+  /* The preview column stays fixed and never becomes the page scroller. */
+  .scripture-advanced-grid > div:last-child {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    overflow: hidden;
+  }
+
+  .scripture-live-preview {
+    position: relative;
+    top: auto;
+    flex: 0 0 auto;
+  }
+
+  .scripture-transport {
+    position: relative;
+    bottom: auto;
+    flex: 0 0 auto;
+    margin-top: auto;
+  }
+}
+
+/* Update 034.0 — Workspace layout rewrite
+   Desktop uses a strict three-row application shell:
+   title, connection toolbar, and a bounded editor area. Only the settings
+   column owns vertical scrolling; the output preview remains stationary. */
+@media (min-width: 901px) {
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .layout {
+    width: 100%;
+    height: calc(100dvh - 50px);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-scripture.active {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-scripture > .section-title,
+  #view-scripture > .scripture-toolbar {
+    min-height: 0;
+  }
+
+  #scriptureAdvancedView:not(.hidden) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #scriptureAdvancedView > .scripture-advanced-grid {
+    display: grid;
+    grid-template-columns: clamp(390px, 29vw, 480px) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #scriptureAdvancedView .settings-stack {
+    display: grid;
+    grid-auto-rows: max-content;
+    align-content: start;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 7px;
+    padding-bottom: 28px;
+    touch-action: pan-y;
+  }
+
+  #scriptureAdvancedView .settings-stack > * {
+    min-width: 0;
+  }
+
+  #scriptureAdvancedView .scripture-advanced-grid > div:last-child {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  #scriptureAdvancedView .scripture-live-preview {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-height: 100%;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  #scriptureAdvancedView .scripture-output-frame {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #scriptureAdvancedView .scripture-transport {
+    position: static;
+    margin: 8px 0 0;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+/* On compact screens the document resumes normal page scrolling. */
+@media (max-width: 900px) {
+  #scriptureAdvancedView,
+  #scriptureAdvancedView > .scripture-advanced-grid,
+  #scriptureAdvancedView .settings-stack,
+  #scriptureAdvancedView .scripture-advanced-grid > div:last-child {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+
+/* Update 034.1 — Preview Engine
+   A dedicated stage owns the available space. The 1920x1080 canvas is
+   scaled against the stage dimensions, so Fit never clips. */
+@media (min-width: 901px) {
+  #scriptureAdvancedView .scripture-advanced-grid > div:last-child {
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: 8px;
+  }
+
+  #scriptureAdvancedView .scripture-live-preview {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  #scriptureAdvancedView .scripture-preview-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 8px;
+    box-sizing: border-box;
+  }
+
+  #scriptureAdvancedView .scripture-output-frame {
+    flex: 0 0 auto;
+    max-width: none;
+    max-height: none;
+  }
+
+  #scriptureAdvancedView .preview-panel-head {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  #scriptureAdvancedView .preview-toolbar {
+    margin: 0;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+  #scriptureAdvancedView .scripture-transport {
+    margin: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .scripture-preview-stage {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 240px;
+    overflow: auto;
+  }
+}

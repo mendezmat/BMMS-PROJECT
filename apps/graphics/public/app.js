@@ -767,14 +767,13 @@ function resizeScripturePreview() {
   if (!scripturePreviewFrame || !scripturePreviewViewport) return;
 
   const zoomValue = $("#scripturePreviewZoom")?.value || "fit";
-  const previewPanel = scripturePreviewViewport.closest(".scripture-live-preview");
-  const panelWidth = previewPanel?.clientWidth || scripturePreviewViewport.parentElement?.clientWidth || 960;
-  const frameTop = scripturePreviewViewport.getBoundingClientRect().top;
-  const availableWidth = Math.max(320, panelWidth - 2);
-  const availableHeight = Math.max(240, window.innerHeight - frameTop - 92);
+  const previewStage = $("#scripturePreviewStage") || scripturePreviewViewport.parentElement;
+  const stageRect = previewStage?.getBoundingClientRect();
+  const availableWidth = Math.max(1, Math.floor(stageRect?.width || previewStage?.clientWidth || 960));
+  const availableHeight = Math.max(1, Math.floor(stageRect?.height || previewStage?.clientHeight || 540));
   const fitScale = Math.min(availableWidth / 1920, availableHeight / 1080);
   const scale = zoomValue === "fit"
-    ? Math.max(0.1, fitScale)
+    ? Math.max(0.05, fitScale)
     : Math.max(0.1, Number(zoomValue));
 
   scriptureEditorState.scale = scale;
@@ -783,22 +782,20 @@ function resizeScripturePreview() {
     String(scale)
   );
 
-  if (zoomValue === "fit") {
-    const renderedWidth = Math.floor(1920 * scale);
-    const renderedHeight = Math.floor(1080 * scale);
-    scripturePreviewViewport.style.width = `${renderedWidth}px`;
-    scripturePreviewViewport.style.height = `${renderedHeight}px`;
-    scripturePreviewViewport.style.maxWidth = "100%";
-    scripturePreviewViewport.style.minHeight = "0";
-    scripturePreviewViewport.style.marginInline = "auto";
-    scripturePreviewViewport.style.overflow = "hidden";
-  } else {
-    scripturePreviewViewport.style.width = "100%";
-    scripturePreviewViewport.style.height = `${Math.min(1080 * scale, availableHeight)}px`;
-    scripturePreviewViewport.style.maxWidth = "100%";
-    scripturePreviewViewport.style.minHeight = "240px";
-    scripturePreviewViewport.style.marginInline = "0";
-    scripturePreviewViewport.style.overflow = "auto";
+  const renderedWidth = Math.max(1, Math.round(1920 * scale));
+  const renderedHeight = Math.max(1, Math.round(1080 * scale));
+
+  scripturePreviewViewport.style.width = `${renderedWidth}px`;
+  scripturePreviewViewport.style.height = `${renderedHeight}px`;
+  scripturePreviewViewport.style.maxWidth = "none";
+  scripturePreviewViewport.style.minHeight = "0";
+  scripturePreviewViewport.style.margin = "0";
+  scripturePreviewViewport.style.overflow = "hidden";
+
+  if (previewStage) {
+    previewStage.style.overflow = zoomValue === "fit" ? "hidden" : "auto";
+    previewStage.style.alignItems = zoomValue === "fit" ? "center" : "flex-start";
+    previewStage.style.justifyContent = zoomValue === "fit" ? "center" : "flex-start";
   }
 
   updateVisualEditorGeometry();
@@ -809,7 +806,7 @@ if (scripturePreviewFrame && scripturePreviewViewport) {
     const scripturePreviewObserver = new ResizeObserver(() => {
       resizeScripturePreview();
     });
-    scripturePreviewObserver.observe(scripturePreviewViewport);
+    scripturePreviewObserver.observe($("#scripturePreviewStage") || scripturePreviewViewport);
   } else {
     window.addEventListener("resize", resizeScripturePreview);
   }
