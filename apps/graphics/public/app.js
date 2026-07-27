@@ -3,6 +3,10 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 
 let appState = {};
 let saveTimer;
+const developerMode = new URLSearchParams(location.search).get("developer") === "1"
+  || localStorage.getItem("bmms.developerMode") === "true";
+document.documentElement.classList.toggle("developer-mode", developerMode);
+
 
 const lowerThirdFields = {
   primary: $("#primary"),
@@ -89,7 +93,7 @@ function getActiveScriptureContent() {
     : appState.scripture.manual;
 }
 
-let scriptureUiMode = localStorage.getItem("bmms.scripture.mode") || "simple";
+let scriptureUiMode = "advanced";
 let scriptureBroadcast = {
   preview: null,
   program: null,
@@ -763,8 +767,11 @@ function resizeScripturePreview() {
   if (!scripturePreviewFrame || !scripturePreviewViewport) return;
 
   const zoomValue = $("#scripturePreviewZoom")?.value || "fit";
-  const availableWidth = scripturePreviewViewport.clientWidth || 960;
-  const availableHeight = Math.max(320, window.innerHeight - 210);
+  const previewPanel = scripturePreviewViewport.closest(".scripture-live-preview");
+  const panelWidth = previewPanel?.clientWidth || scripturePreviewViewport.parentElement?.clientWidth || 960;
+  const frameTop = scripturePreviewViewport.getBoundingClientRect().top;
+  const availableWidth = Math.max(320, panelWidth - 2);
+  const availableHeight = Math.max(240, window.innerHeight - frameTop - 92);
   const fitScale = Math.min(availableWidth / 1920, availableHeight / 1080);
   const scale = zoomValue === "fit"
     ? Math.max(0.1, fitScale)
@@ -775,9 +782,25 @@ function resizeScripturePreview() {
     "--scripture-preview-scale",
     String(scale)
   );
-  scripturePreviewViewport.style.height = `${1080 * scale}px`;
-  scripturePreviewViewport.style.overflow =
-    scale > availableWidth / 1920 ? "auto" : "hidden";
+
+  if (zoomValue === "fit") {
+    const renderedWidth = Math.floor(1920 * scale);
+    const renderedHeight = Math.floor(1080 * scale);
+    scripturePreviewViewport.style.width = `${renderedWidth}px`;
+    scripturePreviewViewport.style.height = `${renderedHeight}px`;
+    scripturePreviewViewport.style.maxWidth = "100%";
+    scripturePreviewViewport.style.minHeight = "0";
+    scripturePreviewViewport.style.marginInline = "auto";
+    scripturePreviewViewport.style.overflow = "hidden";
+  } else {
+    scripturePreviewViewport.style.width = "100%";
+    scripturePreviewViewport.style.height = `${Math.min(1080 * scale, availableHeight)}px`;
+    scripturePreviewViewport.style.maxWidth = "100%";
+    scripturePreviewViewport.style.minHeight = "240px";
+    scripturePreviewViewport.style.marginInline = "0";
+    scripturePreviewViewport.style.overflow = "auto";
+  }
+
   updateVisualEditorGeometry();
 }
 
@@ -1224,6 +1247,8 @@ events.onerror = () => {
   }, 500);
 };
 
+switchView("scripture");
+setScriptureMode("advanced");
 loadNetworkInfo();
 loadState();
 
