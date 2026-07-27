@@ -65,6 +65,12 @@ function applyConfig(nextScripture) {
   const composition = scripture.composition || {};
   const appearance = scripture.appearance || {};
   const gradient = scripture.gradient || {};
+  const animation = scripture.animation || {};
+
+  root.setProperty("--animation-duration", `${Math.max(0, animation.durationMs ?? 360)}ms`);
+  root.setProperty("--animation-easing", animation.easing || "cubic-bezier(.22,.8,.28,1)");
+  bible.dataset.animationIn = animation.in || "fade";
+  bible.dataset.animationOut = animation.out || "fade";
 
   root.setProperty("--bottom", `${composition.bottom ?? 28}px`);
   root.setProperty("--offset-x", `${composition.offsetX ?? 0}px`);
@@ -415,20 +421,18 @@ async function renderVerse(verse, replay = false) {
 
   if (replay) transitionKind = "book";
 
-  if (transitionKind === "same") {
+  const smartSameChapter = transitionKind === "same" && animation.smartTransitions !== false;
+
+  if (smartSameChapter) {
+    bible.classList.add("verse-out");
+    await sleep(animation.sameChapterOutMs ?? 100);
+  } else if (transitionKind === "same") {
     bible.classList.add("soft-out");
     await sleep(animation.sameChapterOutMs ?? 100);
   } else if (!first || replay) {
-    bible.classList.add(
-      transitionKind === "chapter" ? "chapter-out" : "book-out"
-    );
+    bible.classList.add("is-leaving");
     bible.classList.remove("visible");
-
-    await sleep(
-      transitionKind === "chapter"
-        ? animation.chapterChangeMs ?? 320
-        : animation.bookChangeMs ?? 420
-    );
+    await sleep(animation.durationMs ?? (transitionKind === "chapter" ? 320 : 420));
   }
 
   referenceEl.textContent = reference;
@@ -441,10 +445,15 @@ async function renderVerse(verse, replay = false) {
 
   bible.classList.toggle("no-reference", !reference);
   bible.classList.toggle("no-version", !verse.version);
-  bible.classList.remove("soft-out", "chapter-out", "book-out");
+  bible.classList.remove("soft-out", "chapter-out", "book-out", "is-leaving", "verse-out", "verse-in");
 
   void bible.offsetWidth;
   bible.classList.add("visible");
+  if (smartSameChapter) {
+    bible.classList.add("verse-in");
+    await sleep(animation.sameChapterInMs ?? 170);
+    bible.classList.remove("verse-in");
+  }
 
   currentBook = parsed.book;
   currentChapter = parsed.chapter;

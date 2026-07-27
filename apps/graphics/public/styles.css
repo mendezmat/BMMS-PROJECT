@@ -1625,3 +1625,8 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
     padding-bottom: 32px;
   }
 }
+
+/* Update 036.0 — Scripture animation controls */
+.animation-advanced{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.018)}
+.animation-advanced>summary{padding:10px 12px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:700}
+.animation-advanced-grid{padding:4px 12px 12px}

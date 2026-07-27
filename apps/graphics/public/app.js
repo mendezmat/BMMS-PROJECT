@@ -25,6 +25,8 @@ const scriptureControls = {
   titleFont: $("#titleFont"), bodyFont: $("#bodyFont"), titleSize: $("#titleSize"), bodySize: $("#bodySize"),
   titleWeight: $("#titleWeight"), bodyWeight: $("#bodyWeight"), lineHeight: $("#lineHeight"), letterSpacing: $("#letterSpacing"),
   titleColor: $("#titleColor"), textColor: $("#textColor"), lineColor: $("#lineColor"),
+  animationPreset: $("#scriptureAnimationPreset"), animationIn: $("#scriptureAnimationIn"), animationOut: $("#scriptureAnimationOut"),
+  animationDurationMs: $("#scriptureAnimationDuration"), animationEasing: $("#scriptureAnimationEasing"), smartTransitions: $("#smartScriptureTransitions"),
   wordCascade: $("#wordCascade"), wordCascadeStepMs: $("#wordCascadeStep"), sameChapterOutMs: $("#sameChapterOutMs"),
   sameChapterInMs: $("#sameChapterInMs"), chapterChangeMs: $("#chapterChangeMs"), bookChangeMs: $("#bookChangeMs")
 };
@@ -160,8 +162,9 @@ function renderScripture() {
   $("#gradientMode").value=g.mode||"adaptive"; $("#gradientColor").value=g.color||"#000000"; $("#gradientOpacity").value=g.opacity??.96; $("#gradientHeight").value=g.height??430; $("#gradientTopOffset").value=g.topOffset??0; $("#gradientBottomExtension").value=g.bottomExtension??0; $("#gradientExtendToBottom").checked=g.extendToBottom!==false; $("#gradientSoftness").value=g.softness??58; $("#edgeFadeEnabled").checked=g.edgeFadeEnabled!==false; $("#edgeFade").value=g.edgeFade??150;
   $("#gradientOpacityValue").value=`${Math.round((g.opacity??.96)*100)}%`; $("#gradientHeightValue").value=`${g.height??430}px`; $("#gradientTopOffsetValue").value=`${g.topOffset??0}px`; $("#gradientBottomExtensionValue").value=`${g.bottomExtension??0}px`; $("#gradientSoftnessValue").value=`${g.softness??58}%`; $("#edgeFadeValue").value=`${g.edgeFade??150}px`;
   $("#titleFont").value=a.titleFont||"Montserrat"; $("#bodyFont").value=a.bodyFont||"Montserrat"; $("#titleSize").value=a.titleSize??44; $("#bodySize").value=a.bodySize??72; $("#titleWeight").value=String(a.titleWeight??800); $("#bodyWeight").value=String(a.bodyWeight??500); $("#lineHeight").value=a.lineHeight??1.16; $("#letterSpacing").value=a.letterSpacing??-.01; $("#titleColor").value=a.titleColor||"#ffffff"; $("#textColor").value=a.textColor||"#ffffff"; $("#lineColor").value=rgbaToHex(a.lineColor||"rgba(255,255,255,.90)");
+  $("#scriptureAnimationPreset").value=an.preset||"clean"; $("#scriptureAnimationIn").value=an.in||"fade"; $("#scriptureAnimationOut").value=an.out||"fade"; $("#scriptureAnimationDuration").value=an.durationMs??360; $("#scriptureAnimationEasing").value=an.easing||"cubic-bezier(.22,.8,.28,1)"; $("#smartScriptureTransitions").checked=an.smartTransitions!==false;
   $("#wordCascade").checked=an.wordCascade!==false; $("#wordCascadeStep").value=an.wordCascadeStepMs??18; $("#sameChapterOutMs").value=an.sameChapterOutMs??100; $("#sameChapterInMs").value=an.sameChapterInMs??170; $("#chapterChangeMs").value=an.chapterChangeMs??320; $("#bookChangeMs").value=an.bookChangeMs??420;
-  $("#wordCascadeStepValue").value=`${an.wordCascadeStepMs??18} ms/palabra`; $("#sameChapterOutValue").value=`${an.sameChapterOutMs??100} ms`; $("#sameChapterInValue").value=`${an.sameChapterInMs??170} ms`; $("#chapterChangeValue").value=`${an.chapterChangeMs??320} ms`; $("#bookChangeValue").value=`${an.bookChangeMs??420} ms`;
+  $("#scriptureAnimationDurationValue").value=`${an.durationMs??360} ms`; $("#wordCascadeStepValue").value=`${an.wordCascadeStepMs??18} ms/palabra`; $("#sameChapterOutValue").value=`${an.sameChapterOutMs??100} ms`; $("#sameChapterInValue").value=`${an.sameChapterInMs??170} ms`; $("#chapterChangeValue").value=`${an.chapterChangeMs??320} ms`; $("#bookChangeValue").value=`${an.bookChangeMs??420} ms`;
   $$(".source-option").forEach(o=>o.classList.toggle("active",o.dataset.source===s.source)); $("#manualContent").classList.toggle("hidden",s.source!=="manual"); $("#propresenterContent").classList.toggle("hidden",s.source!=="propresenter"); $("#scriptureSourceBadge").textContent=s.source==="manual"?"MANUAL":"PROPRESENTER";
   $$('[data-scripture-design]').forEach(card=>card.classList.toggle('active',card.dataset.scriptureDesign===(s.design||'classic')));
   const help={lower:'Composición inferior original con degradado adaptativo.','center-lower':'Versión inferior centrada y más contenida.','left-column':'Columna vertical anclada al lado izquierdo.','right-column':'Columna vertical anclada al lado derecho.',fullscreen:'Lectura amplia centrada dentro del área segura.',minimal:'Texto limpio con presencia gráfica reducida.'}; $("#scriptureFormatHelp").textContent=help[s.format||'lower'];
@@ -283,7 +286,7 @@ const scriptureBindings = [
  ["format",null,"format"],["alignment","composition","alignment"],["maxLines","composition","maxLines",Number],["bottom","composition","bottom",Number],["width","composition","width",Number],["horizontalPadding","composition","horizontalPadding",Number],["scaleX","composition","scaleX",Number],["scaleY","composition","scaleY",Number],
  ["gradientMode","gradient","mode"],["gradientColor","gradient","color"],["gradientOpacity","gradient","opacity",Number],["gradientHeight","gradient","height",Number],["gradientTopOffset","gradient","topOffset",Number],["gradientBottomExtension","gradient","bottomExtension",Number],["gradientSoftness","gradient","softness",Number],["edgeFade","gradient","edgeFade",Number],
  ["titleFont","appearance","titleFont"],["bodyFont","appearance","bodyFont"],["titleSize","appearance","titleSize",Number],["bodySize","appearance","bodySize",Number],["titleWeight","appearance","titleWeight",Number],["bodyWeight","appearance","bodyWeight",Number],["lineHeight","appearance","lineHeight",Number],["letterSpacing","appearance","letterSpacing",Number],["titleColor","appearance","titleColor"],["textColor","appearance","textColor"],["lineColor","appearance","lineColor"],
- ["wordCascadeStepMs","animation","wordCascadeStepMs",Number],["sameChapterOutMs","animation","sameChapterOutMs",Number],["sameChapterInMs","animation","sameChapterInMs",Number],["chapterChangeMs","animation","chapterChangeMs",Number],["bookChangeMs","animation","bookChangeMs",Number]
+ ["animationIn","animation","in"],["animationOut","animation","out"],["animationDurationMs","animation","durationMs",Number],["animationEasing","animation","easing"],["wordCascadeStepMs","animation","wordCascadeStepMs",Number],["sameChapterOutMs","animation","sameChapterOutMs",Number],["sameChapterInMs","animation","sameChapterInMs",Number],["chapterChangeMs","animation","chapterChangeMs",Number],["bookChangeMs","animation","bookChangeMs",Number]
 ];
 for (const [controlKey, group, key, cast = value => value] of scriptureBindings) {
   const control = scriptureControls[controlKey];
@@ -302,7 +305,24 @@ for (const [controlKey, group, key, cast = value => value] of scriptureBindings)
 scriptureControls.balance.addEventListener("change",()=>updateScripture({composition:{balance:scriptureControls.balance.checked}}));
 scriptureControls.edgeFadeEnabled.addEventListener("change",()=>updateScripture({gradient:{edgeFadeEnabled:scriptureControls.edgeFadeEnabled.checked}}));
 scriptureControls.gradientExtendToBottom.addEventListener("change",()=>updateScripture({gradient:{extendToBottom:scriptureControls.gradientExtendToBottom.checked}}));
-scriptureControls.wordCascade.addEventListener("change",()=>updateScripture({animation:{wordCascade:scriptureControls.wordCascade.checked}}));
+scriptureControls.wordCascade.addEventListener("change",()=>updateScripture({animation:{wordCascade:scriptureControls.wordCascade.checked,preset:"custom"}}));
+scriptureControls.smartTransitions.addEventListener("change",()=>updateScripture({animation:{smartTransitions:scriptureControls.smartTransitions.checked,preset:"custom"}}));
+
+const scriptureAnimationPresets = {
+  clean: { in:"fade", out:"fade", durationMs:360, easing:"cubic-bezier(.22,.8,.28,1)", smartTransitions:true, wordCascade:true, wordCascadeStepMs:18 },
+  broadcast: { in:"slide-up", out:"slide-down", durationMs:420, easing:"cubic-bezier(.22,.8,.28,1)", smartTransitions:true, wordCascade:false },
+  minimal: { in:"fade", out:"fade", durationMs:240, easing:"ease-out", smartTransitions:true, wordCascade:false },
+  typewriter: { in:"fade", out:"fade", durationMs:300, easing:"ease-out", smartTransitions:true, wordCascade:true, wordCascadeStepMs:28 },
+  instant: { in:"none", out:"none", durationMs:0, easing:"linear", smartTransitions:false, wordCascade:false }
+};
+scriptureControls.animationPreset.addEventListener("change",()=>{
+  const preset=scriptureControls.animationPreset.value;
+  if(preset==="custom") return;
+  updateScripture({animation:{preset,...scriptureAnimationPresets[preset]}},{immediate:true});
+});
+for (const control of [scriptureControls.animationIn,scriptureControls.animationOut,scriptureControls.animationDurationMs,scriptureControls.animationEasing]) {
+  control.addEventListener("change",()=>updateScripture({animation:{preset:"custom"}}));
+}
 
 $("#testScriptureAnimation").addEventListener("click", async () => { await api("/api/scripture/replay",{method:"POST"}); $("#scriptureOutputPreview").contentWindow?.postMessage({type:"bmms-scripture-replay"},"*"); });
 const scripturePreviewFrame = $("#scriptureOutputPreview");

@@ -73,9 +73,12 @@ export const defaultAppState = Object.freeze({
       edgeFadeEnabled: true
     },
     animation: {
-      in: "legacy",
-      out: "legacy",
+      preset: "clean",
+      in: "fade",
+      out: "fade",
       durationMs: 360,
+      easing: "cubic-bezier(.22,.8,.28,1)",
+      smartTransitions: true,
       sameChapterOutMs: 100,
       sameChapterInMs: 170,
       chapterChangeMs: 320,

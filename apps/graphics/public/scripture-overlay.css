@@ -4,6 +4,7 @@
   --title-size:44px;--body-size:36px;--title-weight:800;--body-weight:500;
   --line-height:1.16;--title-color:#fff;--text-color:#fff;
   --line-color:rgba(255,255,255,.9);--gradient-strength:.96;--gradient-color:0,0,0;--gradient-height:430px;--gradient-top-offset:0px;--gradient-bottom-extension:0px;--gradient-extend-to-bottom:1;--gradient-softness:58%;--edge-fade:150px;
+  --animation-duration:360ms;--animation-easing:cubic-bezier(.22,.8,.28,1);
 }
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent}
@@ -14,11 +15,27 @@ body.debug #status{display:block}
 .graphic.active{display:block}
 
 /* Biblia */
-#bibleBanner{position:absolute;left:50%;bottom:var(--bottom);width:calc(var(--width) * var(--geometry-scale-x));min-height:calc(250px * var(--geometry-scale-y));transform:translate(-50%,18px);opacity:0;pointer-events:none}
-#bibleBanner.visible{opacity:1;transform:translate(-50%,0);transition:opacity .36s ease,transform .36s cubic-bezier(.22,.8,.28,1)}
+#bibleBanner{position:absolute;left:50%;bottom:var(--bottom);width:calc(var(--width) * var(--geometry-scale-x));min-height:calc(250px * var(--geometry-scale-y));opacity:0;pointer-events:none;transition:opacity var(--animation-duration) var(--animation-easing),transform var(--animation-duration) var(--animation-easing),filter var(--animation-duration) var(--animation-easing)}
+#bibleBanner[data-animation-in="fade"]{transform:translate(-50%,0)}
+#bibleBanner[data-animation-in="slide-up"]{transform:translate(-50%,28px)}
+#bibleBanner[data-animation-in="slide-left"]{transform:translate(calc(-50% - 34px),0)}
+#bibleBanner[data-animation-in="scale"]{transform:translate(-50%,0) scale(.96)}
+#bibleBanner[data-animation-in="blur"]{transform:translate(-50%,0);filter:blur(12px)}
+#bibleBanner[data-animation-in="none"]{transform:translate(-50%,0);transition-duration:0ms}
+#bibleBanner.visible{opacity:1;transform:translate(-50%,0) scale(1);filter:none}
+#bibleBanner.is-leaving[data-animation-out="fade"]{opacity:0;transform:translate(-50%,0)}
+#bibleBanner.is-leaving[data-animation-out="slide-down"]{opacity:0;transform:translate(-50%,28px)}
+#bibleBanner.is-leaving[data-animation-out="slide-right"]{opacity:0;transform:translate(calc(-50% + 34px),0)}
+#bibleBanner.is-leaving[data-animation-out="scale"]{opacity:0;transform:translate(-50%,0) scale(.96)}
+#bibleBanner.is-leaving[data-animation-out="blur"]{opacity:0;transform:translate(-50%,0);filter:blur(12px)}
+#bibleBanner.is-leaving[data-animation-out="none"]{opacity:0;transition-duration:0ms}
 #bibleBanner.soft-out{opacity:.78;transform:translate(-50%,4px)}
-#bibleBanner.chapter-out{opacity:0;transform:translate(-50%,20px);transition:.22s ease}
-#bibleBanner.book-out{opacity:0;transform:translate(-50%,28px) scale(.985);transition:.26s ease}
+#bibleBanner.chapter-out{opacity:0;transform:translate(-50%,20px)}
+#bibleBanner.book-out{opacity:0;transform:translate(-50%,28px) scale(.985)}
+#bibleBanner .content{transition:opacity 170ms ease,transform 170ms ease,filter 170ms ease}
+#bibleBanner.verse-out .content{opacity:0;transform:translateY(7px);filter:blur(2px)}
+#bibleBanner.verse-in .content{animation:bmmsVerseIn 170ms var(--animation-easing) both}
+@keyframes bmmsVerseIn{from{opacity:0;transform:translateY(7px);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
 .gradient{position:absolute;left:calc(-1 * var(--edge-fade));right:calc(-1 * var(--edge-fade));bottom:calc(-1 * var(--bottom));height:calc(var(--gradient-height) * var(--geometry-scale-y));background:linear-gradient(to bottom,rgba(var(--gradient-color),0) 0%,rgba(var(--gradient-color),.08) calc(var(--gradient-softness) * .30),rgba(var(--gradient-color),.48) var(--gradient-softness),rgba(var(--gradient-color),var(--gradient-strength)) 100%);opacity:0;transform:translateY(12px);pointer-events:none}
 #bibleBanner.visible .gradient{opacity:1;transform:translateY(0);transition:.34s ease}
 .content{position:relative;z-index:2;width:100%;padding:calc(26px * var(--geometry-scale-y)) calc(var(--padding-x) * var(--geometry-scale-x)) calc(34px * var(--geometry-scale-y));text-align:center;text-shadow:0 2px 10px #000b}

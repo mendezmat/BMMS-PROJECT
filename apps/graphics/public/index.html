@@ -340,40 +340,87 @@
               </details>
 
               <details class="panel" open>
-                <summary>Animaciones originales</summary>
+                <summary>Animaciones</summary>
                 <div class="panel-body">
+                  <label>Preset
+                    <select id="scriptureAnimationPreset">
+                      <option value="clean">Clean · suave</option>
+                      <option value="broadcast">Broadcast · dinámico</option>
+                      <option value="minimal">Minimal · fade</option>
+                      <option value="typewriter">Typewriter · escritura</option>
+                      <option value="instant">Sin animación</option>
+                      <option value="custom">Personalizado</option>
+                    </select>
+                  </label>
+
+                  <div class="form-grid two">
+                    <label>Entrada
+                      <select id="scriptureAnimationIn">
+                        <option value="fade">Fade</option>
+                        <option value="slide-up">Slide arriba</option>
+                        <option value="slide-left">Slide lateral</option>
+                        <option value="scale">Scale</option>
+                        <option value="blur">Blur</option>
+                        <option value="none">Ninguna</option>
+                      </select>
+                    </label>
+                    <label>Salida
+                      <select id="scriptureAnimationOut">
+                        <option value="fade">Fade</option>
+                        <option value="slide-down">Slide abajo</option>
+                        <option value="slide-right">Slide lateral</option>
+                        <option value="scale">Scale</option>
+                        <option value="blur">Blur</option>
+                        <option value="none">Ninguna</option>
+                      </select>
+                    </label>
+                    <label>Duración
+                      <input id="scriptureAnimationDuration" type="range" min="0" max="1200" step="20">
+                      <output id="scriptureAnimationDurationValue"></output>
+                    </label>
+                    <label>Curva
+                      <select id="scriptureAnimationEasing">
+                        <option value="ease">Suave</option>
+                        <option value="ease-out">Salida suave</option>
+                        <option value="ease-in-out">Entrada y salida</option>
+                        <option value="cubic-bezier(.22,.8,.28,1)">Broadcast</option>
+                        <option value="linear">Lineal</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <label class="check-row"><input id="smartScriptureTransitions" type="checkbox"> Transición inteligente entre versículos</label>
+                  <p class="field-help">Dentro del mismo capítulo cambia solo el contenido, evitando que el gráfico completo desaparezca.</p>
+
                   <h3 class="subsection-title">Escritura progresiva</h3>
                   <label class="check-row"><input id="wordCascade" type="checkbox"> Animación de escritura por palabra</label>
                   <label>Velocidad de escritura
                     <input id="wordCascadeStep" type="range" min="5" max="60" step="1">
                     <output id="wordCascadeStepValue"></output>
                   </label>
-                  <p class="field-help">Se aplica cada vez que aparece un texto nuevo, incluida la transición entre versos del mismo capítulo.</p>
 
-                  <h3 class="subsection-title">Transiciones automáticas</h3>
-                  <div class="form-grid two">
-                    <label>Mismo capítulo · salida
-                      <input id="sameChapterOutMs" type="range" min="40" max="500" step="10">
-                      <output id="sameChapterOutValue"></output>
-                    </label>
-                    <label>Mismo capítulo · entrada
-                      <input id="sameChapterInMs" type="range" min="60" max="700" step="10">
-                      <output id="sameChapterInValue"></output>
-                    </label>
-                    <label>Cambio de capítulo
-                      <input id="chapterChangeMs" type="range" min="100" max="1000" step="10">
-                      <output id="chapterChangeValue"></output>
-                    </label>
-                    <label>Cambio de libro
-                      <input id="bookChangeMs" type="range" min="150" max="1400" step="10">
-                      <output id="bookChangeValue"></output>
-                    </label>
-                  </div>
-                  <div class="preserved-note">
-                    <strong>Lógica original restaurada</strong>
-                    <span>Mismo capítulo: transición sutil · Nuevo capítulo: salida media · Nuevo libro: salida completa.</span>
-                  </div>
-                  <button id="testScriptureAnimation" class="full">Probar animación y escritura</button>
+                  <details class="animation-advanced">
+                    <summary>Tiempos avanzados</summary>
+                    <div class="form-grid two animation-advanced-grid">
+                      <label>Mismo capítulo · salida
+                        <input id="sameChapterOutMs" type="range" min="40" max="500" step="10">
+                        <output id="sameChapterOutValue"></output>
+                      </label>
+                      <label>Mismo capítulo · entrada
+                        <input id="sameChapterInMs" type="range" min="60" max="700" step="10">
+                        <output id="sameChapterInValue"></output>
+                      </label>
+                      <label>Cambio de capítulo
+                        <input id="chapterChangeMs" type="range" min="100" max="1000" step="10">
+                        <output id="chapterChangeValue"></output>
+                      </label>
+                      <label>Cambio de libro
+                        <input id="bookChangeMs" type="range" min="150" max="1400" step="10">
+                        <output id="bookChangeValue"></output>
+                      </label>
+                    </div>
+                  </details>
+                  <button id="testScriptureAnimation" class="full primary">Previsualizar animación</button>
                 </div>
               </details>
             </div>

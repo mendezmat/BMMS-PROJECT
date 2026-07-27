@@ -1,3 +1,9 @@
+# Update 036.0 — Scripture Animation Engine
+
+- Added reusable Scripture animation presets and independent entry/exit controls.
+- Added smart same-chapter content transitions.
+- Added authoritative product-direction documentation.
+
 ## 1.10.4-beta.10 — Update 033.4
 
 - Oculta las tarjetas PROGRAM y PREVIEW sin eliminar sus hooks internos.
