@@ -1607,3 +1607,21 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
   width: 100%;
   box-sizing: border-box;
 }
+
+/* Update 035.1 — Configuration Scroll Fix
+   Configuration owns an independent vertical scroll area on desktop.
+   Scripture layout and preview behavior remain unchanged. */
+@media (min-width: 901px) {
+  #view-integrations.active {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 32px;
+  }
+}
