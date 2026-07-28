@@ -1,3 +1,9 @@
+# 037.0 — Smart Flyer Foundation
+
+- Activado Smart Flyer.
+- Añadido análisis local de imagen y propuestas base.
+- Añadida arquitectura OCR por proveedores.
+
 ## 1.14.3-beta.14 — Update 036.2
 
 - Optimized ProPresenter Live Scripture diagnostics.
@@ -39,3 +45,9 @@
 - Se descartaron respuestas idénticas mediante hash antes del procesamiento completo.
 - Se redujeron eventos de telemetría y actualizaciones del DOM.
 - Los duplicados del diagnóstico ahora se agrupan.
+
+## 1.15.1-beta.19 — Update 037.1
+
+- Fixed Smart Flyer scrolling and sticky preview behavior.
+- Added editable content extraction model and reactive preview.
+- Added native local OCR/QR provider adapters with transparent fallbacks.

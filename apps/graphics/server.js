@@ -199,6 +199,7 @@ let scriptureBroadcast = {
   ),
   autoTake: Boolean(persistedState.scripture?.autoTake?.enabled)
 };
+let smartFlyerProgram = persistedState.smartFlyerProgram || null;
 let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
 let templates = Array.isArray(persistedState.templates) ? persistedState.templates : [];
 const appClients = new Set();
@@ -343,8 +344,14 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/app.js") {
     return serveFile(response, "app.js", "text/javascript; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-vision.js") {
+    return serveFile(response, "smart-flyer-vision.js", "text/javascript; charset=utf-8");
+  }
   if (request.method === "GET" && url.pathname === "/styles.css") {
     return serveFile(response, "styles.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-v2.css") {
+    return serveFile(response, "smart-flyer-v2.css", "text/css; charset=utf-8");
   }
   if (request.method === "GET" && url.pathname === "/overlay/scripture") {
     return serveFile(response, "scripture-overlay.html", "text/html; charset=utf-8");
@@ -360,6 +367,15 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "GET" && url.pathname === "/scripture-balance.js") {
     return serveFile(response, "scripture-balance.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/overlay/smart-flyer") {
+    return serveFile(response, "smart-flyer-overlay.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-overlay.js") {
+    return serveFile(response, "smart-flyer-overlay.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-overlay.css") {
+    return serveFile(response, "smart-flyer-overlay.css", "text/css; charset=utf-8");
   }
   if (request.method === "GET" && url.pathname === "/scripture") {
     return serveFile(response, "scripture.html", "text/html; charset=utf-8");
@@ -806,6 +822,24 @@ const server = http.createServer(async (request, response) => {
       editorUrl: `http://${preferredAddress}:${port}`,
       scriptureOutputUrl: `http://${preferredAddress}:${port}/overlay/scripture`
     });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/smart-flyer/program") {
+    return json(response, 200, { scene: smartFlyerProgram });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/smart-flyer/take") {
+    try {
+      const scene = await readJson(request);
+      if (!scene || !scene.template || !scene.document) return json(response, 400, { error: "Invalid Smart Flyer scene." });
+      smartFlyerProgram = scene;
+      await saveState({ ...appState, smartFlyerProgram: scene });
+      broadcast("smart-flyer-program", scene);
+      return json(response, 200, { ok: true, scene });
+    } catch (error) {
+      logger.error("Invalid Smart Flyer TAKE", { error: error.message });
+      return json(response, 400, { error: "Invalid JSON payload." });
+    }
   }
 
   if (request.method === "GET" && url.pathname === "/api/app-state") {

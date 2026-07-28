@@ -1,3 +1,9 @@
+# Update 037.0
+
+- Smart Flyer comienza con capacidades verificables, no con OCR simulado.
+- El OCR será intercambiable mediante proveedores.
+- El análisis local será el comportamiento predeterminado.
+
 # Registro de decisiones de producto
 
 ## 2026-07-27 — Prioridad producto antes que editor avanzado

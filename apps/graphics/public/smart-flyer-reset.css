@@ -1,0 +1,205 @@
+/* BMMS 038.3 — Smart Flyer hard reset.
+   This file intentionally overrides the accumulated experimental Smart Flyer rules. */
+#view-smart-flyer.active{
+  height:calc(100dvh - 64px)!important;
+  min-height:0!important;
+  padding:10px!important;
+  overflow:hidden!important;
+}
+#view-smart-flyer .sf38-shell{
+  height:100%!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:248px minmax(0,1fr) 270px!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+#view-smart-flyer .sf38-source,
+#view-smart-flyer .sf38-inspector{
+  min-height:0!important;
+  overflow:auto!important;
+  scrollbar-width:thin;
+}
+#view-smart-flyer .sf38-main{
+  height:100%!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:minmax(0,1fr) 156px!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+#view-smart-flyer .sf38-canvas-panel{
+  height:100%!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:38px minmax(0,1fr)!important;
+  overflow:hidden!important;
+  padding:10px!important;
+}
+#view-smart-flyer .sf38-toolbar{min-height:0!important;padding:0 0 8px!important}
+#view-smart-flyer .sf38-original-stage{
+  min-height:0!important;
+  height:100%!important;
+  overflow:hidden!important;
+  display:grid!important;
+  place-items:center!important;
+  background:#080b10!important;
+}
+#view-smart-flyer .sf38-original-stage>img{
+  display:block!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+}
+#view-smart-flyer .sf38-cg-panel{
+  height:156px!important;
+  min-height:156px!important;
+  max-height:156px!important;
+  display:grid!important;
+  grid-template-rows:24px minmax(0,1fr)!important;
+  overflow:hidden!important;
+  padding:8px 10px!important;
+}
+#view-smart-flyer .sf38-cg-head{height:24px!important;margin:0!important}
+#view-smart-flyer .sf38-output-fit,
+#view-smart-flyer .smart-flyer-output-stage{
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+  overflow:hidden!important;
+  display:block!important;
+  background:transparent!important;
+  border-radius:8px!important;
+}
+#view-smart-flyer .smart-flyer-live-preview{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  aspect-ratio:auto!important;
+  display:grid!important;
+  grid-template-columns:minmax(82px,12%) minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:10px 12px!important;
+  overflow:hidden!important;
+  border-radius:10px!important;
+  background:linear-gradient(135deg,rgba(20,24,31,.98),rgba(8,10,14,.98))!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-sizing:border-box!important;
+}
+#view-smart-flyer .smart-flyer-render-shade,
+#view-smart-flyer #smartFlyerRenderImage{display:none!important}
+#view-smart-flyer .sf38-info-stack{
+  position:relative!important;
+  inset:auto!important;
+  display:grid!important;
+  gap:5px!important;
+  margin:0!important;
+  padding:0!important;
+  min-width:0!important;
+  align-self:center!important;
+}
+#view-smart-flyer .sf38-info-stack span{
+  display:block!important;
+  min-width:0!important;
+  padding:4px 6px!important;
+  border-radius:4px!important;
+  background:rgba(255,255,255,.94)!important;
+  color:#111827!important;
+  font-size:10px!important;
+  line-height:1.1!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#view-smart-flyer .smart-flyer-render-content,
+#view-smart-flyer .smart-flyer-live-preview[class*="format-"] .smart-flyer-render-content{
+  position:relative!important;
+  inset:auto!important;
+  transform:none!important;
+  margin:0!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  height:auto!important;
+  padding:10px 16px!important;
+  border-radius:10px!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+#view-smart-flyer .smart-flyer-render-content h3{
+  margin:0!important;
+  font-size:clamp(21px,2.25vw,38px)!important;
+  line-height:1!important;
+  max-width:100%!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#view-smart-flyer .smart-flyer-render-content p{
+  margin:4px 0 0!important;
+  font-size:clamp(13px,1.2vw,20px)!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#view-smart-flyer .smart-flyer-render-content #smartFlyerLiveMeta{
+  margin-top:5px!important;
+  font-size:10px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+#view-smart-flyer .smart-flyer-live-title-graphic{
+  display:block!important;
+  width:auto!important;
+  max-width:100%!important;
+  height:auto!important;
+  max-height:70px!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  margin:0!important;
+}
+#view-smart-flyer .sf38-qr-slot{
+  position:relative!important;
+  inset:auto!important;
+  width:78px!important;
+  height:78px!important;
+  margin:0!important;
+  padding:6px!important;
+  align-self:center!important;
+}
+/* Formats are intrinsic lower-third variants, never full-frame canvases. */
+#view-smart-flyer .smart-flyer-live-preview.format-left{grid-template-columns:minmax(0,1fr) 110px!important}
+#view-smart-flyer .smart-flyer-live-preview.format-left .sf38-info-stack{grid-column:2;grid-row:1}
+#view-smart-flyer .smart-flyer-live-preview.format-left .smart-flyer-render-content{grid-column:1;grid-row:1}
+#view-smart-flyer .smart-flyer-live-preview.format-right{grid-template-columns:110px minmax(0,1fr)!important}
+#view-smart-flyer .smart-flyer-live-preview.format-right .sf38-info-stack{grid-column:1;grid-row:1}
+#view-smart-flyer .smart-flyer-live-preview.format-right .smart-flyer-render-content{grid-column:2;grid-row:1}
+#view-smart-flyer .smart-flyer-live-preview.format-compact .smart-flyer-render-content{max-width:72%!important}
+#view-smart-flyer .smart-flyer-live-preview.format-fullscreen,
+#view-smart-flyer .smart-flyer-live-preview.format-full,
+#view-smart-flyer .smart-flyer-live-preview.format-minimal,
+#view-smart-flyer .smart-flyer-live-preview.format-square,
+#view-smart-flyer .smart-flyer-live-preview.format-portrait,
+#view-smart-flyer .smart-flyer-live-preview.format-vertical,
+#view-smart-flyer .smart-flyer-live-preview.format-story,
+#view-smart-flyer .smart-flyer-live-preview.format-ultrawide{
+  grid-template-columns:minmax(82px,12%) minmax(0,1fr) auto!important;
+}
+#view-smart-flyer .sf40-sidebar-library{display:grid!important;gap:9px!important;margin-top:10px!important;padding-top:10px!important}
+#view-smart-flyer .sf-simple-picker select{height:34px!important}
+@media(max-width:1450px){
+  #view-smart-flyer .sf38-shell{grid-template-columns:220px minmax(0,1fr) 240px!important}
+  #view-smart-flyer .sf38-main{grid-template-rows:minmax(0,1fr) 144px!important}
+  #view-smart-flyer .sf38-cg-panel{height:144px!important;min-height:144px!important;max-height:144px!important}
+}

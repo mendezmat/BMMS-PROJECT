@@ -1,5 +1,9 @@
 # Current Focus
 
+Smart Flyer es el foco activo. Scripture queda congelado para mantenimiento y correcciones.
+
+# Current Focus
+
 ## Active
 
 Scripture Production Ready.

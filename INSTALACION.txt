@@ -1,0 +1,5 @@
+1. Cierra BMMS.
+2. Copia el contenido de esta carpeta sobre BMMS-PROJECT.
+3. Acepta reemplazar los archivos existentes.
+4. Ejecuta npm run check y npm start.
+5. En Chrome usa Ctrl + Shift + R.

@@ -1,3 +1,91 @@
+## 1.23.3-beta.37 — Update 038.3 Smart Flyer Hard Reset
+
+- Rebuilt Smart Flyer sizing with a dedicated final override stylesheet.
+- Kept the flyer viewport fully contained at 100% browser zoom.
+- Replaced the CG monitor canvas with an intrinsic lower-third strip.
+- Rebuilt Browser Output as a transparent broadcast lower third instead of a full-screen flyer.
+- Simplified template and format behavior so all variants remain inside their bounds.
+
+## 1.23.2-beta.36 — Update 038.2
+
+- Restored a permanently visible intrinsic CG result beneath the flyer.
+- Replaced large template and format card libraries with compact sidebar selectors.
+- Template and format changes update the real CG preview immediately.
+- Preserved the full flyer workspace without clipping.
+
+# 1.23.1-beta.35 — Update 038.1
+
+- El resultado del CG deja de simular una salida 16:9 dentro del operador y se muestra con su altura intrínseca de banner.
+- El flyer utiliza todo el espacio vertical restante sin depender del zoom del navegador.
+- Se eliminan las reglas conflictivas de altura y aspect-ratio acumuladas en Smart Flyer.
+- Plantillas y formatos permanecen en la barra lateral y solo modifican la distribución interna del CG.
+- El overlay de salida no fue modificado.
+
+## 1.22.2-beta.33 — Update 037.8.2
+
+- El preview del CG mantiene 16:9 completo y deja de recortarse.
+- “Volver a analizar” usa primero las áreas ajustadas manualmente.
+- OCR independiente por título, subtítulo, fecha, hora, lugar e información adicional.
+- Los campos manuales ya no son sobrescritos por OCR global de baja confianza.
+- Las variantes de formato permanecen contenidas dentro del canvas de salida.
+
+## 1.22.0-beta.31 — Update 037.8
+
+- Rebuilt Smart Flyer as a clean three-column Studio workspace.
+- Fixed title selection so the full visible flyer width can be used.
+- Enlarged the original flyer canvas and the CG result preview.
+- Added assisted detected-block navigation and manual-first editing.
+- Reworked templates and formats into compact functional libraries.
+- Added adaptive CG distribution for date, time, location and QR presence.
+
+## 1.21.0-beta.30 — Update 037.7
+- Vision Assist permite seleccionar manualmente la región del título directamente sobre el flyer.
+- El título seleccionado se recorta como recurso gráfico y conserva tipografía, color, textura y composición del flyer original.
+- Modo “Usar título original del flyer” con texto manual como respaldo.
+- El título gráfico se conserva en Preview, TAKE, PROGRAM y Browser Output.
+- Selección automática inicial basada en el bloque OCR de mayor presencia visual, con corrección manual no destructiva.
+- No se modificó Scripture ni la integración ProPresenter.
+
+# Changelog
+
+## 1.20.1-beta.29 — Update 037.6.1
+
+- Fixed the missing `/smart-flyer-vision.js` static route.
+- Restored application bootstrap and all global UI interactions.
+- Scripture, Smart Flyer, Settings and navigation controls are clickable again.
+- No changes to Vision Engine classification logic.
+
+## 1.20.0-beta.28 — Update 037.6: Vision Engine 1.0
+
+- Added deterministic OCR cleanup to reject symbol-heavy and low-confidence text.
+- Added semantic classification for title, subtitle, date, time, location and additional information.
+- Tesseract now uses sparse-text segmentation and preserves line confidence/bounding boxes.
+- Restored nine visual templates and ten independent composition formats.
+- Added OCR confidence and analysis reasons to the operator recommendation.
+- Kept Scripture, ProPresenter and Smart Flyer output endpoints unchanged.
+
+## 1.18.0-beta.26 — Update 037.4
+
+- Added automatic template recommendation based on flyer orientation and content density.
+- Added Smart Crop X/Y framing controls shared by Preview and Browser Output.
+- Added optional title/action safe-area guides in Preview.
+- Added a compact PROGRAM monitor that restores the current server scene on load.
+- Preserved Smart Flyer overlay API and Scripture behavior.
+
+## 1.17.1-beta.25 — Update 037.3.1
+
+- Corrige la desaparición del preview causada por una fila faltante en la cuadrícula del panel Smart Flyer.
+- El canvas 16:9 vuelve a ocupar el área flexible entre el selector de plantillas y la nota inferior.
+- Sincroniza la versión visible de BMMS Graphics con la versión del paquete.
+
+# Update 037.3 — Smart Flyer Operator Workspace
+
+- Added collapsible Source and Inspector panels with persisted workspace preferences.
+- Added a compact template switcher synchronized with proposal cards and the live renderer.
+- Added operator shortcuts for templates (`1`, `2`, `3`) and TAKE (`Enter`).
+- Expanded the 16:9 preview automatically when side panels are hidden.
+- Preserved the Smart Flyer overlay contract and left Scripture unchanged.
+
 # Update 036.0 — Scripture Animation Engine
 
 - Added reusable Scripture animation presets and independent entry/exit controls.
@@ -414,3 +502,15 @@
 - Repository governance, testing and release documentation.
 - Historical documentation archive.
 - Consolidated archive of previous BMMS artifacts.
+
+## 1.19.0-beta.27 — Update 037.5
+- Eliminados los selectores superiores redundantes de plantillas.
+- OCR reforzado: TextDetector cuando está disponible y Tesseract.js como respaldo en español/inglés.
+- Recuperados seis formatos de composición: Banner, Barra izquierda, Barra derecha, Compacto TV, Pantalla completa y Minimal.
+- El formato seleccionado se conserva en Preview, TAKE y Browser Output.
+
+## 1.22.1-beta.32 — Update 037.8.1
+- Recuperada la interacción completa de Vision Assist para múltiples bloques.
+- Corregido el recorte del preview mediante un canvas 16:9 contenido.
+- Activadas las herramientas Seleccionar, Mover y Ajustar.
+- Plantillas y formatos ahora producen cambios visuales y estructurales diferenciados.
