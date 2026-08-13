@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BMMS Graphics</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/smart-flyer-v2.css">
+  <link rel="stylesheet" href="/visual-cg-broadcast.css?v=0412">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <strong>BMMS Graphics</strong>
-      <span class="version">v1.24.2 beta 40</span>
+      <span class="version">v1.24.18 beta 56</span>
     </div>
     <nav class="module-tabs" aria-label="Módulos BMMS">
       <button class="nav active" data-view="scripture">Scripture</button>
-      <button class="nav" data-view="smart-flyer">Smart Flyer</button>
+      <button class="nav" data-view="smart-flyer">Figma CG</button>
       <button class="nav" disabled>Lower Third</button>
       <button class="nav" disabled>Countdown</button>
       <button class="nav settings-tab" data-view="integrations">Configuración</button>
@@ -31,7 +31,7 @@
       <div class="nav-group-label">GRÁFICOS</div>
       <button class="nav" data-view="lower-third">Lower Third</button>
       <button class="nav active" data-view="scripture">Scripture</button>
-      <button class="nav" data-view="smart-flyer">Smart Flyer <span>Foundation</span></button>
+      <button class="nav" data-view="smart-flyer">Figma CG <span>8 originales</span></button>
       <button class="nav" disabled>Countdown <span>Próximo</span></button>
       <div class="nav-spacer"></div>
       <div class="nav-group-label">SISTEMA</div>
@@ -62,12 +62,35 @@
             <small id="smartFlyerFileMeta">Sin archivo cargado.</small>
             <button id="smartFlyerAnalyze" class="primary" disabled>Analizar flyer</button>
             <div class="sfv2-divider"></div>
-            <label>Bloque a marcar<select id="smartFlyerBlockType"><option value="title">Título</option><option value="subtitle">Subtítulo</option><option value="date">Fecha</option><option value="time">Hora</option><option value="location">Lugar</option><option value="additionalInfo">Información adicional</option><option value="qr">QR</option><option value="logo">Logo</option><option value="image">Imagen principal</option></select></label>
-            <div class="sfv2-actions"><button id="smartFlyerSelectTitle" disabled>Marcar</button><button id="smartFlyerClearTitle" disabled>Eliminar</button></div>
+            <label class="sfv2-block-select">Bloque a marcar
+              <select id="smartFlyerBlockPicker" disabled>
+                <option value="" selected>Selecciona un bloque…</option>
+                <option value="title">Título</option>
+                <option value="subtitle">Subtítulo</option>
+                <option value="date">Fecha</option>
+                <option value="time">Hora</option>
+                <option value="location">Lugar</option>
+                <option value="additionalInfo">Información adicional</option>
+                <option value="qr">Código QR</option>
+                <option value="logo">Logo</option>
+                <option value="image">Imagen principal</option>
+              </select>
+              <small>Al elegir un tipo, arrastra inmediatamente sobre el flyer.</small>
+            </label>
+            <div id="smartFlyerMarkingStatus" class="sfv2-marking-status" hidden><b>Marcando: TÍTULO</b><span>Arrastra sobre el flyer · Esc para cancelar</span></div>
+            <button id="smartFlyerClearTitle" disabled>Eliminar bloque seleccionado</button>
             <div id="smartFlyerBlockList" class="sfv2-blocks"><small>Carga un flyer para comenzar.</small></div>
             <button id="smartFlyerReanalyze" disabled>Reanalizar áreas marcadas</button>
             <div class="sfv2-divider"></div>
-            <label>Plantilla<select id="smartFlyerTemplateSelect"><option value="modern">Modern</option><option value="clean">Clean</option><option value="glass">Glass</option><option value="news">News</option></select></label>
+            <div class="sfv2-template-section">
+              <span>Plantilla</span>
+              <div id="smartFlyerTemplateSelect" class="sfv2-template-grid" role="radiogroup" aria-label="Plantilla del CG">
+                <button type="button" class="active" data-template="modern"><i></i><b>Studio</b><small>Claro</small></button>
+                <button type="button" data-template="broadcast"><i></i><b>Carbon</b><small>Broadcast</small></button>
+                <button type="button" data-template="glass"><i></i><b>Frost</b><small>Translúcido</small></button>
+                <button type="button" data-template="compact"><i></i><b>Mono</b><small>Compacto</small></button>
+              </div>
+            </div>
             <label>Formato<select id="smartFlyerFormatSelect"><option value="banner">Banner inferior</option><option value="compact">Compacto</option><option value="left">Panel izquierdo</option><option value="right">Panel derecho</option></select></label>
             <div id="smartFlyerAnalysis" class="sfv2-status">OCR pendiente</div>
           </aside>
@@ -89,13 +112,32 @@
           </main>
 
           <aside class="sfv2-inspector card">
-            <header><span class="eyebrow">CONTENIDO</span><strong>Edición rápida</strong></header>
-            <label class="sfv2-check"><input id="smartFlyerUseOriginalTitle" type="checkbox" disabled> Usar arte original del título</label>
-            <label>Título<input data-smart-field="title" placeholder="Título principal"></label>
-            <label>Subtítulo<input data-smart-field="subtitle" placeholder="Subtítulo"></label>
-            <div class="sfv2-two"><label>Fecha<input data-smart-field="date" placeholder="Fecha"></label><label>Hora<input data-smart-field="time" placeholder="Hora"></label></div>
-            <label>Lugar<input data-smart-field="location" placeholder="Lugar"></label>
-            <label>Información adicional<textarea data-smart-field="additionalInfo" rows="3"></textarea></label>
+            <header><div><span class="eyebrow">CONTENIDO</span><strong>Edición del CG</strong></div><span id="smartFlyerContentPercent" class="sfv2-content-percent">0%</span></header>
+            <div class="sfv2-content-progress" aria-hidden="true"><i id="smartFlyerContentProgress"></i></div>
+
+            <section class="sfv2-inspector-section">
+              <div class="sfv2-section-title"><b>Identidad</b><small>Título y mensaje principal</small></div>
+              <label class="sfv2-check sfv2-original-toggle"><input id="smartFlyerUseOriginalTitle" type="checkbox" disabled> Usar arte original del título</label>
+              <small id="smartFlyerOriginalTitleHint" class="sfv2-inline-hint">Marca el bloque Título para habilitar esta opción.</small>
+              <label class="sfv2-field"><span>Título <em id="smartFlyerTitleCount">0/80</em></span><input data-smart-field="title" maxlength="80" placeholder="Título principal"></label>
+              <label class="sfv2-field"><span>Subtítulo <em id="smartFlyerSubtitleCount">0/100</em></span><input data-smart-field="subtitle" maxlength="100" placeholder="Slogan o frase secundaria"></label>
+            </section>
+
+            <section class="sfv2-inspector-section">
+              <div class="sfv2-section-title"><b>Datos del evento</b><small>Información operativa</small></div>
+              <div class="sfv2-two"><label class="sfv2-field"><span>Fecha</span><input data-smart-field="date" placeholder="10 de julio"></label><label class="sfv2-field"><span>Hora</span><input data-smart-field="time" placeholder="19:30 hrs."></label></div>
+              <label class="sfv2-field"><span>Lugar</span><input data-smart-field="location" placeholder="Lugar o dirección"></label>
+            </section>
+
+            <section class="sfv2-inspector-section sfv2-inspector-grow">
+              <div class="sfv2-section-title"><b>Elementos opcionales</b><small>Se ocultan si están vacíos</small></div>
+              <label class="sfv2-check sfv2-qr-toggle"><input id="smartFlyerShowQr" type="checkbox" disabled> Mostrar código QR</label>
+              <small id="smartFlyerQrHint" class="sfv2-inline-hint">No hay un QR detectado o marcado.</small>
+              <div class="sfv2-section-title sfv2-additional-title"><b>Información adicional</b><small>Opcional</small></div>
+              <label class="sfv2-field"><textarea data-smart-field="additionalInfo" maxlength="220" rows="4" placeholder="Indicaciones, contacto o llamado a la acción"></textarea><em id="smartFlyerAdditionalCount">0/220</em></label>
+            </section>
+
+            <div id="smartFlyerContentHint" class="sfv2-content-hint">Completa al menos el título para preparar el CG.</div>
             <div class="sfv2-program"><span class="eyebrow">PROGRAM</span><div id="smartFlyerProgramMonitor">Sin composición al aire.</div><span id="smartFlyerProgramStatus">PROGRAM vacío</span></div>
             <button id="smartFlyerTake" class="primary sfv2-take" disabled>TAKE · PREVIEW → PROGRAM</button>
           </aside>
@@ -778,6 +820,9 @@
     </aside>
   </main>
 
+  <script src="/visual-cg-renderer.js?v=0412"></script>
+  <script src="/visual-qr.js?v=0399"></script>
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/visual-cg-app.js?v=0412"></script>
 </body>
 </html>

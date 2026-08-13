@@ -1,0 +1,12 @@
+const fs = require("fs");
+const assert = require("assert");
+const html = fs.readFileSync("apps/graphics/public/index.html","utf8");
+const js = fs.readFileSync("apps/graphics/public/app.js","utf8");
+const css = fs.readFileSync("apps/graphics/public/smart-flyer-v2.css","utf8");
+assert(html.includes('id="smartFlyerBlockPicker"'));
+assert(html.includes('<option value="title">Título</option>'));
+assert(js.includes("function sfArmRegion"));
+assert(js.includes("picker.onchange"));
+assert(css.includes("template-broadcast"));
+assert(css.includes("template-compact"));
+console.log("Smart Flyer region/template checks: OK");

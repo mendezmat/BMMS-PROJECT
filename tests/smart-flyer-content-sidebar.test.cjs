@@ -1,0 +1,12 @@
+const fs = require("fs");
+const assert = require("assert");
+const html = fs.readFileSync("apps/graphics/public/index.html","utf8");
+const js = fs.readFileSync("apps/graphics/public/app.js","utf8");
+const css = fs.readFileSync("apps/graphics/public/smart-flyer-v2.css","utf8");
+assert(html.includes("Edición del CG"));
+assert(html.includes("smartFlyerContentProgress"));
+assert(html.includes("Datos del evento"));
+assert(js.includes("function sfUpdateContentPanel"));
+assert(css.includes(".sfv2-inspector-section"));
+assert(css.includes(".sfv2-block-select"));
+console.log("Smart Flyer 038.4.4 content sidebar checks: OK");

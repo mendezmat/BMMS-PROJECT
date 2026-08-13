@@ -1,0 +1,14 @@
+BMMS 040.0 - Paquete completo de reparacion
+
+Este paquete restaura el runtime completo de BMMS Graphics 1.24.18-beta.56.
+Incluye la aplicacion, los modulos compartidos, el validador y las pruebas.
+
+La carpeta data no se incluye para no sobrescribir configuraciones ni estado local.
+Al iniciar, BMMS la crea automaticamente si no existe.
+
+Instalacion:
+1. Detener el servidor con Ctrl+C.
+2. Fusionar BMMS-PROJECT sobre la carpeta local y aceptar reemplazar.
+3. Ejecutar npm.cmd run check.
+4. Ejecutar npm.cmd start.
+5. Recargar el navegador con Ctrl+Shift+R.

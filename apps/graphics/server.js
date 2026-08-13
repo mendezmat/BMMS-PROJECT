@@ -200,6 +200,7 @@ let scriptureBroadcast = {
   autoTake: Boolean(persistedState.scripture?.autoTake?.enabled)
 };
 let smartFlyerProgram = persistedState.smartFlyerProgram || null;
+let visualCgProgram = persistedState.visualCgProgram || null;
 let graphicsDocument = persistedState.graphicsDocument || defaultGraphicsDocument;
 let templates = Array.isArray(persistedState.templates) ? persistedState.templates : [];
 const appClients = new Set();
@@ -352,6 +353,68 @@ const server = http.createServer(async (request, response) => {
   }
   if (request.method === "GET" && url.pathname === "/smart-flyer-v2.css") {
     return serveFile(response, "smart-flyer-v2.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-renderer.js") {
+    return serveFile(response, "smart-flyer-renderer.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-app.js") {
+    return serveFile(response, "smart-flyer-app.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-detection.js") {
+    return serveFile(response, "smart-flyer-detection.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-extraction.js") {
+    return serveFile(response, "smart-flyer-extraction.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/smart-flyer-renderer.css") {
+    return serveFile(response, "smart-flyer-renderer.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-intent-engine.js") {
+    return serveFile(response, "visual-intent-engine.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-renderer.js") {
+    return serveFile(response, "visual-cg-renderer.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-app.js") {
+    return serveFile(response, "visual-cg-app.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg.css") {
+    return serveFile(response, "visual-cg.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-pro.css") {
+    return serveFile(response, "visual-cg-pro.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-editor.css") {
+    return serveFile(response, "visual-cg-editor.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-broadcast.css") {
+    return serveFile(response, "visual-cg-broadcast.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname.startsWith("/visual-cg-assets/")) {
+    const assetName = url.pathname.slice("/visual-cg-assets/".length);
+    const contentTypes = {
+      "instrument-sans-latin.woff2": "font/woff2",
+      "instrument-sans-latin-ext.woff2": "font/woff2",
+      "outfit-latin.woff2": "font/woff2",
+      "outfit-latin-ext.woff2": "font/woff2",
+      "pulse-dot.svg": "image/svg+xml",
+      "separator-dot.svg": "image/svg+xml",
+      "qr-glyph.svg": "image/svg+xml"
+    };
+    if (!Object.prototype.hasOwnProperty.call(contentTypes, assetName)) {
+      response.writeHead(404);
+      return response.end("Not found");
+    }
+    return serveFile(response, path.join("visual-cg-assets", assetName), contentTypes[assetName]);
+  }
+  if (request.method === "GET" && url.pathname === "/visual-qr.js") {
+    return serveFile(response, "visual-qr.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/overlay/visual-cg") {
+    return serveFile(response, "visual-cg-overlay.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/visual-cg-overlay.js") {
+    return serveFile(response, "visual-cg-overlay.js", "text/javascript; charset=utf-8");
   }
   if (request.method === "GET" && url.pathname === "/overlay/scripture") {
     return serveFile(response, "scripture-overlay.html", "text/html; charset=utf-8");
@@ -826,6 +889,24 @@ const server = http.createServer(async (request, response) => {
 
   if (request.method === "GET" && url.pathname === "/api/smart-flyer/program") {
     return json(response, 200, { scene: smartFlyerProgram });
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/visual-cg/program") {
+    return json(response, 200, { scene: visualCgProgram });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/visual-cg/take") {
+    try {
+      const scene = await readJson(request);
+      if (!scene || scene.kind !== "visual-intent" || !scene.profile || !scene.document?.title) return json(response, 400, { error: "Invalid Visual CG scene." });
+      visualCgProgram = scene;
+      await saveState({ ...appState, visualCgProgram: scene });
+      broadcast("visual-cg-program", scene);
+      return json(response, 200, { ok: true, scene });
+    } catch (error) {
+      logger.error("Invalid Visual CG TAKE", { error: error.message });
+      return json(response, 400, { error: "Invalid JSON payload." });
+    }
   }
 
   if (request.method === "POST" && url.pathname === "/api/smart-flyer/take") {

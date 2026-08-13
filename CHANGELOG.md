@@ -1,3 +1,29 @@
+# 1.24.9-beta.47 — Update 038.4.9
+
+- Unifica Preview, PROGRAM y Browser Output sobre un único renderer de Smart Flyer.
+- El monitor PROGRAM ahora muestra la composición completa escalada proporcionalmente, incluido el arte original del título.
+- Elimina el renderer alternativo de PROGRAM que producía recortes y deformaciones.
+- Mantiene el comportamiento Preview/Program: PROGRAM solo cambia después de TAKE.
+
+# BMMS Update 038.4.4 — Content Sidebar Foundation
+
+- Replaced the stacked custom block menu with a stable native selector.
+- Selecting a block type immediately arms region marking.
+- Prevented detected block cards from collapsing into unreadable rows.
+- Rebuilt the right content sidebar into Identity, Event Data and Additional Information sections.
+- Added completion progress, character counters and contextual readiness feedback.
+- Preserved the stable preview and CG sizing from Update 038.4.2.
+
+## 1.24.3-beta.41 — Update 038.4.3
+
+- Selección inmediata de regiones desde el selector de bloque.
+- Nuevo selector de bloques compacto, sin desbordes ni texto superpuesto.
+- Lista de regiones simplificada y legible.
+- Escape cancela el marcado y Delete elimina la región activa.
+- Plantillas Modern, Broadcast, Glass y Compact con composiciones diferenciadas.
+- Paridad visual entre Preview y Browser Output.
+- El layout estable del preview 038.4.2 no fue modificado.
+
 ## 1.23.3-beta.37 — Update 038.3 Smart Flyer Hard Reset
 
 - Rebuilt Smart Flyer sizing with a dedicated final override stylesheet.
@@ -514,3 +540,71 @@
 - Corregido el recorte del preview mediante un canvas 16:9 contenido.
 - Activadas las herramientas Seleccionar, Mover y Ajustar.
 - Plantillas y formatos ahora producen cambios visuales y estructurales diferenciados.
+
+## 1.24.8-beta.46
+- Rebuilt Smart Flyer PROGRAM monitor using the shared CG structure.
+- Fixed source-title artwork scaling in PROGRAM.
+- Reset inspector bottom flow to prevent overlapping status, PROGRAM and TAKE controls.
+
+## 1.24.10-beta.48 — Update 038.4.10
+- Recupera el flujo de análisis cuando TextDetector o Tesseract no responden.
+- Añade límites de tiempo y restauración garantizada del botón de análisis.
+- Mantiene disponible el flujo manual aunque el OCR no esté disponible.
+# 1.24.11-beta.49 — Update 038.4.11
+
+- Reescribe Smart Flyer sobre una escena estable de 1920 × 1080.
+- Preview, PROGRAM y Browser Output comparten el mismo renderer, estructura y estilos.
+- Elimina las implementaciones duplicadas del monitor PROGRAM y las reglas CSS superpuestas.
+- Mantiene selección manual inmediata para título, subtítulo, fecha, hora, lugar, información, QR, logo e imagen.
+- Trata título, subtítulo, datos, información adicional, arte original y QR como contenido opcional.
+- Incluye cuatro plantillas base profesionales: Modern, Broadcast, Glass y Compact.
+- Incluye Banner inferior, Compacto, Panel izquierdo y Panel derecho.
+- Publica explícitamente los recursos compartidos del renderer desde el servidor.
+# 1.24.12-beta.50 — Smart Flyer Clean Rewrite
+
+- Separa Smart Flyer del controlador monolítico de BMMS mediante `smart-flyer-app.js`.
+- Introduce un contrato de escena v2 con lienzo fijo de 1920 × 1080.
+- Preview y PROGRAM amplían la composición sin alterar el HTML ni el diseño emitido.
+- Browser Output renderiza el mismo contenido dentro del cuadro completo y transparente.
+- Elimina el flyer fuente del payload de PROGRAM para evitar escenas de varios megabytes.
+- Reconstruye carga, selección, movimiento, ajuste, recorte, OCR, QR, edición y TAKE.
+- Corrige elementos ocultos que seguían ocupando espacio y botones que desbordaban su altura.
+- Actualiza la versión visible de BMMS Graphics.
+- Valida las 16 combinaciones de plantilla y formato.
+# 1.24.13-beta.51 — Program Information Fit
+
+- Aumenta el área segura vertical del banner para evitar cortes inferiores.
+- Permite que lugar e información adicional ocupen varias líneas.
+- Reduce automáticamente la tipografía cuando el título o el lugar son largos.
+- Mejora contraste y tamaño de la información adicional.
+- Mantiene paridad exacta entre Preview, PROGRAM y Browser Output.
+# 1.24.14-beta.52 — Non-blocking Analysis
+
+- Convierte el análisis completo en una operación cancelable y no bloqueante.
+- Mantiene habilitado el botón como `Cancelar análisis` durante OCR.
+- Reduce la imagen a un máximo de 1280 px y usa OCR rápido para la primera pasada.
+- Limita el reconocimiento completo a 20 segundos.
+- Mantiene selección manual, edición y preparación del CG disponibles durante el análisis.
+- Reduce RESULTADO DEL CG a un estado compacto mientras no existe contenido.
+# 1.24.15-beta.53 — Trusted OCR Fields
+
+- Evita que el OCR completo copie texto corrupto directamente al CG.
+- Rechaza títulos cortos o dudosos como `Ti FESR`.
+- Extrae fecha y hora con patrones independientes aunque aparezcan en una línea combinada.
+- Solo acepta lugares que aparezcan como líneas independientes con indicadores reconocibles.
+- Deja vacíos los campos sin confianza en vez de producir una composición cortada.
+- Aplica límites defensivos a todos los campos recibidos por el renderer.
+# 1.24.16-beta.54 — Regional Extraction Engine
+
+- Segunda pasada OCR en la zona inferior del título para conservar composiciones de dos líneas; fallback seguro al arte original si la lectura queda incompleta.
+
+- Añade un motor independiente de extracción geométrica.
+- Localiza el título por posición, altura, confianza y proximidad entre líneas.
+- Agrupa títulos divididos en varias líneas.
+- Recorta automáticamente la región del título y ejecuta una segunda pasada OCR aislada.
+- Excluye fecha, hora y ubicación de los candidatos de título.
+- Habilita el arte original cuando localiza la región, incluso si el texto aislado no es fiable.
+- Reduce la primera pasada OCR a 16 segundos y limita la segunda a 12 segundos.
+- Expande horizontalmente títulos dominantes para evitar recortes parciales.
+- Rechaza fragmentos de título que comienzan en conectores y usa el arte original como fallback.
+- Prioriza ubicaciones limpias e independientes sobre líneas inferiores contaminadas.
