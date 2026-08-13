@@ -50,6 +50,19 @@ test("QR is optional and its content can be generated or loaded", () => {
   assert.match(app, /currentStyle\(\)\.showQr = true/);
 });
 
+test("Glass announcement switches to the Figma QR V2 only when QR is active", () => {
+  const renderer = read("../apps/graphics/public/visual-cg-renderer.js");
+  const css = read("../apps/graphics/public/visual-cg-broadcast.css");
+  assert.match(renderer, /usesQrAnnouncementV2 = scene\.design\.type === "announcement" && scene\.style\.showQr/);
+  assert.match(renderer, /"46:4"/);
+  assert.match(renderer, /"46:11"/);
+  assert.match(css, /\.figma-cg-glass-panel\.figma-cg-announcement-qr-v2[\s\S]*left: 94px;[\s\S]*width: 1519px;/);
+  assert.match(css, /\.figma-cg-qr-announcement-v2[\s\S]*left: 1665px;[\s\S]*top: 830px;[\s\S]*width: 160px;[\s\S]*height: 190px;/);
+  assert.match(css, /\.figma-cg-qr-announcement-v2 \.figma-cg-qr-frame[\s\S]*width: 100px;[\s\S]*height: 100px;/);
+  assert.match(css, /motion-qr-announcement-v2[\s\S]*2s linear 1 both/);
+  assert.doesNotMatch(css, /motion-qr-announcement-v2[^\n]*infinite/);
+});
+
 test("every CG exposes visual, typography and visibility controls", () => {
   const renderer = read("../apps/graphics/public/visual-cg-renderer.js");
   const app = read("../apps/graphics/public/visual-cg-app.js");
@@ -72,13 +85,13 @@ test("banner presets persist and restore a complete composition", () => {
   assert.match(app, /window\.localStorage\.setItem/);
 });
 
-test("Preview, PROGRAM and output share version 0412 renderer", () => {
+test("Preview, PROGRAM and output share version 0413 renderer", () => {
   const index = read("../apps/graphics/public/index.html");
   const overlay = read("../apps/graphics/public/visual-cg-overlay.html");
   const app = read("../apps/graphics/public/visual-cg-app.js");
   const server = read("../apps/graphics/server.js");
-  assert.match(index, /visual-cg-renderer\.js\?v=0412/);
-  assert.match(overlay, /visual-cg-renderer\.js\?v=0412/);
+  assert.match(index, /visual-cg-renderer\.js\?v=0413/);
+  assert.match(overlay, /visual-cg-renderer\.js\?v=0413/);
   assert.match(app, /\/api\/visual-cg\/take/);
   assert.match(server, /\/overlay\/scripture/);
   assert.match(server, /\/overlay\/visual-cg/);

@@ -190,15 +190,15 @@
     return image("figma-cg-separator-dot", `${ASSET_ROOT}/separator-dot.svg`, "");
   }
 
-  function qrModule(scene, surface) {
-    const module = create("div", `figma-cg-qr figma-cg-qr-${surface}`);
+  function qrModule(scene, surface, variant) {
+    const module = create("div", `figma-cg-qr figma-cg-qr-${surface}${variant ? ` ${variant}` : ""}`);
     const qrFrame = create("div", "figma-cg-qr-frame");
     const source = scene.assets.qr || `${ASSET_ROOT}/qr-glyph.svg`;
     qrFrame.appendChild(image("figma-cg-qr-image", source, scene.assets.qr ? "Código QR" : ""));
 
     const copy = create("div", "figma-cg-qr-copy");
     if (scene.style.showQrCopy) {
-      copy.appendChild(create("span", "figma-cg-qr-title", "ESCANEA"));
+      copy.appendChild(create("span", "figma-cg-qr-title", variant === "figma-cg-qr-announcement-v2" ? "ESCANEA AQUÍ" : "ESCANEA"));
       copy.appendChild(create("span", "figma-cg-qr-label", scene.assets.qrLabel));
     }
 
@@ -212,7 +212,11 @@
   }
 
   function buildGlass(scene, canvas) {
-    const panel = withNodeId(create("div", `figma-cg-panel figma-cg-glass-panel figma-cg-${scene.design.type}`), scene.design.panelNode);
+    const usesQrAnnouncementV2 = scene.design.type === "announcement" && scene.style.showQr;
+    const panel = withNodeId(
+      create("div", `figma-cg-panel figma-cg-glass-panel figma-cg-${scene.design.type}${usesQrAnnouncementV2 ? " figma-cg-announcement-qr-v2" : ""}`),
+      usesQrAnnouncementV2 ? "46:4" : scene.design.panelNode
+    );
 
     if (scene.design.type === "speaker") {
       const profile = create("div", "figma-cg-speaker-profile motion-glass-content");
@@ -234,7 +238,7 @@
     }
 
     if (scene.design.type === "verse" || scene.design.type === "announcement") {
-      const content = create("div", "figma-cg-copy-row motion-glass-content");
+      const content = create("div", `figma-cg-copy-row${usesQrAnnouncementV2 ? "" : " motion-glass-content"}`);
       if (scene.style.showAccent) content.appendChild(create("span", "figma-cg-accent-line"));
       const copy = create("div", "figma-cg-inline-copy");
       if (scene.style.showKicker && scene.document.date) copy.appendChild(create("span", `figma-cg-kicker figma-cg-kicker-${scene.design.type}`, scene.document.date));
@@ -242,7 +246,7 @@
       content.appendChild(copy);
 
       panel.appendChild(content);
-      if (scene.style.showQr) {
+      if (scene.style.showQr && !usesQrAnnouncementV2) {
         const qr = qrModule(scene, "glass");
         qr.classList.add("motion-glass-qr");
         panel.appendChild(qr);
@@ -262,6 +266,11 @@
     }
 
     canvas.appendChild(panel);
+    if (usesQrAnnouncementV2) {
+      const qr = withNodeId(qrModule(scene, "glass", "figma-cg-qr-announcement-v2"), "46:11");
+      qr.classList.add("motion-qr-announcement-v2");
+      canvas.appendChild(qr);
+    }
   }
 
   function buildSolid(scene, canvas) {
@@ -347,8 +356,21 @@
 
   function boundsFor(sceneOrCanvas) {
     let surface = "glass";
-    if (sceneOrCanvas && sceneOrCanvas.dataset) surface = sceneOrCanvas.dataset.surface || surface;
-    else surface = normalize(sceneOrCanvas).design.surface;
+    let type = "speaker";
+    let hasQr = false;
+    if (sceneOrCanvas && sceneOrCanvas.dataset) {
+      surface = sceneOrCanvas.dataset.surface || surface;
+      type = sceneOrCanvas.dataset.type || type;
+      hasQr = sceneOrCanvas.dataset.hasQr === "true";
+    } else {
+      const normalized = normalize(sceneOrCanvas);
+      surface = normalized.design.surface;
+      type = normalized.design.type;
+      hasQr = normalized.style.showQr;
+    }
+    if (surface === "glass" && type === "announcement" && hasQr) {
+      return { x: 94, y: 830, width: 1731, height: 190 };
+    }
     return surface === "solid"
       ? { x: 0, y: 1000, width: 1920, height: 80 }
       : { x: 40, y: 940, width: 1840, height: 80 };
