@@ -45,7 +45,7 @@ function renderCard(app) {
   const pill = card.querySelector(".pill");
   const detail = card.querySelector(".detail");
   const actions = card.querySelector(".actions");
-  const task = app.busy || progress.get(app.id);
+  const task = progress.get(app.id) || app.busy;
 
   if (app.status !== "available") {
     pill.textContent = "Próximamente";
