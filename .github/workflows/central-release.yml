@@ -1,0 +1,42 @@
+# Publica los instaladores de BMMS Central (Windows y Mac) en GitHub Releases.
+# Central se actualiza solo desde ahí (electron-updater). Las apps (TB Tool) NO usan esto:
+# se actualizan por archivos con central/channel/stable.json.
+# Se dispara al subir una etiqueta: git tag central-v0.1.0 && git push origin central-v0.1.0
+name: BMMS Central release
+
+on:
+  push:
+    tags: ["central-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: apps/central
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/central/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Build and publish (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish (Mac)
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac dmg zip --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"

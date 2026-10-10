@@ -15,7 +15,7 @@ test("full analysis is cancellable and never disables manual operation", () => {
 test("full OCR uses a smaller image and a strict deadline", () => {
   assert.match(app, /const maximumWidth = 1280/);
   assert.match(app, /prepareOcrSource\(state\.image\)/);
-  assert.match(app, /language: "eng", maxMs: 16000/);
+  assert.match(app, /language: OCR_LANGUAGE, maxMs: 16000/);
 });
 
 test("empty result no longer reserves a large black area", () => {

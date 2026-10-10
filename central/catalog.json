@@ -1,0 +1,93 @@
+{
+  "repository": "mendezmat/BMMS-PROJECT",
+  "apps": [
+    {
+      "id": "tb-tool",
+      "name": "TB Tool",
+      "status": "available",
+      "version": "1.0.0",
+      "category": "Comunicación",
+      "color": "#ff3b30",
+      "summary": "Alerta visual de talkback. Se enciende solo cuando reconoce voz, con ventana flotante siempre encima y transcripción sin internet.",
+      "entry": "/tb",
+      "package": {
+        "tb-api.js": "apps/graphics/tb-api.js",
+        "public/tb.html": "apps/graphics/public/tb.html",
+        "public/tb.js": "apps/graphics/public/tb.js",
+        "public/tb.css": "apps/graphics/public/tb.css",
+        "public/tb-detector.js": "apps/graphics/public/tb-detector.js",
+        "public/tb-vad.js": "apps/graphics/public/tb-vad.js",
+        "public/tb-worklet.js": "apps/graphics/public/tb-worklet.js",
+        "public/tb-whisper-worker.js": "apps/graphics/public/tb-whisper-worker.js",
+        "public/vendor/ort/": "apps/graphics/public/vendor/ort/",
+        "public/vendor/vad/": "apps/graphics/public/vendor/vad/",
+        "public/vendor/transformers/": "apps/graphics/public/vendor/transformers/"
+      },
+      "assets": {
+        "localRoot": "apps/graphics/public/vendor/models",
+        "models": [
+          {
+            "repo": "onnx-community/whisper-base",
+            "revision": "1846881b6b3a3024392c1eea3ad983695bc23925",
+            "label": "Transcripción rápida (base)",
+            "files": ["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/decoder_model_merged_q4.onnx", "onnx/encoder_model_quantized.onnx"]
+          },
+          {
+            "repo": "onnx-community/whisper-small",
+            "revision": "36050c46d777d46dc4b5f43f6d90574fc38f8732",
+            "label": "Transcripción precisa (small)",
+            "files": ["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/decoder_model_merged_q4.onnx", "onnx/encoder_model_quantized.onnx", "onnx/encoder_model_fp16.onnx"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "graphics",
+      "name": "BMMS Graphics",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#0a84ff",
+      "summary": "Gráficos en vivo para vMix y OBS. Reúne Scripture, Smart Flyer, Visual CG, Lower Third y Countdown."
+    },
+    {
+      "id": "scripture",
+      "name": "Scripture",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#bf5af2",
+      "summary": "Versículos en pantalla sincronizados con ProPresenter: vista previa, programa y estilos de transmisión."
+    },
+    {
+      "id": "smart-flyer",
+      "name": "Smart Flyer",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#30d158",
+      "summary": "Convierte un flyer en un gráfico de transmisión: detecta título, fecha, lugar y QR automáticamente."
+    },
+    {
+      "id": "visual-cg",
+      "name": "Visual CG",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#ff9f0a",
+      "summary": "Anuncios y banners con presets de diseño y código QR, listos para salir al aire."
+    },
+    {
+      "id": "lower-third",
+      "name": "Lower Third",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#64d2ff",
+      "summary": "Rótulos de nombre y cargo para predicadores, invitados y anuncios."
+    },
+    {
+      "id": "countdown",
+      "name": "Countdown",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#ffd60a",
+      "summary": "Cuenta regresiva para el inicio del servicio y los segmentos del programa."
+    }
+  ]
+}

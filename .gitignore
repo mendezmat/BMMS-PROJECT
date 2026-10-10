@@ -10,3 +10,11 @@ coverage/
 Thumbs.db
 data/*.json
 !data/.gitkeep
+
+# Modelos de Whisper del TB Tool (cientos de MB): se descargan con node scripts/download-tb-model.mjs
+apps/graphics/public/vendor/models/
+
+# Datos del usuario del TB Tool (sesiones guardadas): nunca al repositorio
+data/tb-sessions/
+data/**/*.json
+data/**/*.txt

@@ -1,0 +1,6 @@
+BMMS 041.4 + 041.5 - OCR en espanol y TB Tool
+
+1. Deten BMMS con Ctrl+C.
+2. Copia la carpeta BMMS-PROJECT de este ZIP sobre tu BMMS-PROJECT y acepta reemplazar.
+3. Ejecuta npm.cmd start
+4. Abre http://localhost:4173/tb en Chrome o Edge.

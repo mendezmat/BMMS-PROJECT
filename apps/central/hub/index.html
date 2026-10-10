@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+  <title>BMMS Central</title>
+  <link rel="stylesheet" href="hub.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">B</div>
+      <div><strong>BMMS Central</strong><span>Aplicaciones de producción</span></div>
+    </div>
+    <div class="top-actions">
+      <span class="channel" id="channel">Conectando…</span>
+      <button id="refresh">Buscar actualizaciones</button>
+    </div>
+  </header>
+
+  <div class="banner" id="selfUpdate" hidden></div>
+  <div class="banner banner-warn" id="channelError" hidden></div>
+
+  <main>
+    <section>
+      <h1>Aplicaciones</h1>
+      <p class="lead">Instala una app una vez. Cuando haya una corrección, Central baja solo lo que cambió.</p>
+      <div class="grid" id="apps"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="centralVersion"></span>
+    <button class="link" id="dataFolder">Abrir carpeta de datos</button>
+  </footer>
+
+  <template id="cardTemplate">
+    <article class="card">
+      <div class="card-head">
+        <div class="icon"></div>
+        <div class="card-title"><h2></h2><span class="category"></span></div>
+        <span class="pill"></span>
+      </div>
+      <p class="summary"></p>
+      <p class="detail"></p>
+      <div class="progress" hidden><div class="progress-bar"></div><span class="progress-label"></span></div>
+      <div class="actions"></div>
+    </article>
+  </template>
+
+  <script src="hub.js"></script>
+</body>
+</html>

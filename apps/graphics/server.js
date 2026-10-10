@@ -1,5 +1,6 @@
 import http from "node:http";
 import fs from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,7 @@ import { buildGraphicsDataContext } from "../../packages/shared/src/build-graphi
 import { resolveDocument, createBroadcastComponent, listBroadcastComponents, createTemplate, duplicateTemplate, instantiateTemplate, updateTemplateMetadata } from "../../packages/graphics-engine/src/index.js";
 import { ProPresenterAdapter, ProPresenterLiveScriptureService } from "../../packages/integrations/src/propresenter/index.js";
 import { ScriptureController } from "../../packages/scripture-core/src/index.js";
+import { createTbApi } from "./tb-api.js";
 import {
   createScriptureScene,
   synchronizeScriptureScene,
@@ -48,6 +50,7 @@ const projectRoot = path.resolve(__dirname, "../..");
 const publicDir = path.join(__dirname, "public");
 const configPath = path.join(projectRoot, "data", "bmms-state.json");
 const connectionsPath = path.join(projectRoot, "data", "bmms-connections.json");
+const tbApi = createTbApi({ dataDir: path.join(projectRoot, "data") });
 
 async function loadGlobalConnections() {
   try {
@@ -322,12 +325,13 @@ async function readJson(request) {
   return JSON.parse(raw || "{}");
 }
 
-async function serveFile(response, filename, contentType) {
+async function serveFile(response, filename, contentType, headers = {}) {
   try {
     const content = await fs.readFile(path.join(publicDir, filename));
     response.writeHead(200, {
       "Content-Type": contentType,
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      ...headers
     });
     response.end(content);
   } catch {
@@ -336,8 +340,72 @@ async function serveFile(response, filename, contentType) {
   }
 }
 
+// Archivos locales de terceros (OCR, detector de voz y Whisper sin internet). Solo se sirven archivos dentro de public/vendor.
+const vendorDir = path.join(publicDir, "vendor");
+const VENDOR_TYPES = Object.freeze({
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".wasm": "application/wasm",
+  ".onnx": "application/octet-stream",
+  ".gz": "application/octet-stream",
+  ".json": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8"
+});
+
+async function serveVendorFile(response, pathname) {
+  let filename;
+  try {
+    filename = path.resolve(publicDir, `.${decodeURIComponent(pathname)}`);
+  } catch {
+    filename = "";
+  }
+  const contentType = VENDOR_TYPES[path.extname(filename).toLowerCase()];
+  if (!filename.startsWith(vendorDir + path.sep) || !contentType) {
+    response.writeHead(404);
+    response.end("Not found");
+    return;
+  }
+  try {
+    const { size } = await fs.stat(filename);
+    // En streaming: los modelos de Whisper pesan cientos de MB y no deben cargarse enteros en memoria.
+    response.writeHead(200, { "Content-Type": contentType, "Content-Length": size, "Cache-Control": "public, max-age=604800" });
+    createReadStream(filename).on("error", () => response.destroy()).pipe(response);
+  } catch {
+    response.writeHead(404);
+    response.end("Not found");
+  }
+}
+
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host}`);
+
+  if (request.method === "GET" && url.pathname.startsWith("/vendor/")) {
+    return serveVendorFile(response, url.pathname);
+  }
+
+  // BMMS TB Tool: alerta visual de talkback, independiente de Graphics.
+  if (request.method === "GET" && (url.pathname === "/tb" || url.pathname === "/tb/")) {
+    return serveFile(response, "tb.html", "text/html; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb.js") {
+    return serveFile(response, "tb.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb-detector.js") {
+    return serveFile(response, "tb-detector.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb-worklet.js") {
+    return serveFile(response, "tb-worklet.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb-whisper-worker.js") {
+    return serveFile(response, "tb-whisper-worker.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb-vad.js") {
+    return serveFile(response, "tb-vad.js", "text/javascript; charset=utf-8");
+  }
+  if (request.method === "GET" && url.pathname === "/tb.css") {
+    return serveFile(response, "tb.css", "text/css; charset=utf-8");
+  }
+  if (url.pathname.startsWith("/api/tb/") && await tbApi.handle(request, response, url)) return;
 
   if (request.method === "GET" && url.pathname === "/") {
     return serveFile(response, "index.html", "text/html; charset=utf-8");

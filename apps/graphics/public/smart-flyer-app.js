@@ -88,13 +88,13 @@ if (root) {
 
   async function extractRegionTitle(region, run) {
     const graphic = crop(region);
-    const lines = await ocr(graphic, { language: "eng", maxMs: 11000, run });
+    const lines = await ocr(graphic, { language: OCR_LANGUAGE, maxMs: 11000, run });
     let title = extractTitleFromRegion(lines);
     const cropHeight = Math.max(1, state.image.naturalHeight * region.height);
     if (title && titleVerticalCoverage(lines, cropHeight) < .62) {
       const lowerY = region.y + region.height * .36;
       const lowerRegion = { x: region.x, y: lowerY, width: region.width, height: Math.min(region.height * .64, 1 - lowerY) };
-      const continuation = extractTitleContinuation(await ocr(crop(lowerRegion), { language: "eng", maxMs: 9000, run }));
+      const continuation = extractTitleContinuation(await ocr(crop(lowerRegion), { language: OCR_LANGUAGE, maxMs: 9000, run }));
       if (continuation && !title.toLocaleLowerCase("es").includes(continuation.toLocaleLowerCase("es"))) title = `${title} ${continuation}`.slice(0, 80);
       else title = "";
     }
@@ -272,6 +272,7 @@ if (root) {
     byId("smartFlyerUseOriginalTitle").disabled = true;
     byId("smartFlyerUseOriginalTitle").checked = false;
     setStatus("Imagen lista. Analiza el flyer o marca áreas manualmente.");
+    ocrWorker().catch(error => console.warn("OCR no precargado", error));
     setTool("select");
     renderAll();
     requestAnimationFrame(renderRegions);
@@ -282,36 +283,88 @@ if (root) {
     return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label}: tiempo agotado`)), milliseconds); })]).finally(() => clearTimeout(timer));
   }
 
+  // OCR en español. Se carga desde /vendor/tesseract para funcionar sin internet;
+  // si esos archivos no están instalados, se usa el CDN como antes.
+  const OCR_LANGUAGE = "spa";
+  const OCR_LOCAL = Object.freeze({
+    script: "/vendor/tesseract/tesseract.min.js",
+    workerPath: "/vendor/tesseract/worker.min.js",
+    corePath: "/vendor/tesseract/core",
+    langPath: "/vendor/tesseract/lang"
+  });
+  const OCR_CDN_SCRIPT = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  const absolute = value => new URL(value, window.location.origin).href;
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("Tesseract no disponible"));
+      script.onerror = () => { script.remove(); reject(new Error(`No se pudo cargar ${src}`)); };
+      document.head.append(script);
+    });
+  }
+
   let tesseractPromise;
   async function tesseract() {
-    if (window.Tesseract) return window.Tesseract;
-    if (!tesseractPromise) tesseractPromise = timeout(new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-      script.onload = () => window.Tesseract ? resolve(window.Tesseract) : reject(new Error("Tesseract no disponible"));
-      script.onerror = () => reject(new Error("No se pudo cargar Tesseract"));
-      document.head.append(script);
-    }), 12000, "Carga OCR");
+    if (!tesseractPromise) tesseractPromise = (async () => {
+      if (window.Tesseract) return { engine: window.Tesseract, local: false };
+      try {
+        return { engine: await timeout(loadScript(OCR_LOCAL.script), 8000, "Carga OCR local"), local: true };
+      } catch (error) {
+        console.warn("OCR local no instalado; se usará internet", error);
+        return { engine: await timeout(loadScript(OCR_CDN_SCRIPT), 12000, "Carga OCR"), local: false };
+      }
+    })().catch(error => { tesseractPromise = undefined; throw error; });
     return tesseractPromise;
   }
 
-  async function ocr(dataUrl, { language = "spa+eng", maxMs = 30000, run = analysisToken } = {}) {
+  // Un solo worker por idioma, reutilizado entre análisis: el modelo se carga una vez.
+  let ocrProgress = null;
+  const ocrWorkers = new Map();
+  function ocrWorker(language = OCR_LANGUAGE) {
+    if (!ocrWorkers.has(language)) {
+      const pending = (async () => {
+        const { engine, local } = await tesseract();
+        const options = { logger: progress => ocrProgress?.(progress) };
+        if (local) Object.assign(options, { workerPath: absolute(OCR_LOCAL.workerPath), corePath: absolute(OCR_LOCAL.corePath), langPath: absolute(OCR_LOCAL.langPath) });
+        return timeout(engine.createWorker(language, 1, options), 45000, "Preparación OCR");
+      })().catch(error => { ocrWorkers.delete(language); throw error; });
+      ocrWorkers.set(language, pending);
+    }
+    return ocrWorkers.get(language);
+  }
+
+  function discardOcrWorker(language) {
+    const pending = ocrWorkers.get(language);
+    ocrWorkers.delete(language);
+    pending?.then(worker => worker.terminate()).catch(() => {});
+  }
+
+  async function ocr(dataUrl, { language = OCR_LANGUAGE, maxMs = 30000, run = analysisToken } = {}) {
     if (!dataUrl) return [];
     try {
       if ("TextDetector" in window) {
         const blob = await (await fetch(dataUrl)).blob();
         const bitmap = await createImageBitmap(blob);
         const rows = await timeout(new TextDetector().detect(bitmap), 12000, "TextDetector");
-        return rows.map(item => ({ text: item.rawValue || "", confidence: 85, bbox: item.boundingBox }));
+        if (rows.length) return rows.map(item => ({ text: item.rawValue || "", confidence: 85, bbox: item.boundingBox }));
       }
     } catch (error) { console.warn("TextDetector omitido", error); }
     try {
-      const engine = await tesseract();
-      const result = await timeout(engine.recognize(dataUrl, language, { logger: progress => {
+      const worker = await ocrWorker(language);
+      if (run !== analysisToken) return [];
+      ocrProgress = progress => {
         if (run === analysisToken && progress.status === "recognizing text") setStatus(`OCR ${Math.round((progress.progress || 0) * 100)}% · Puedes cancelar o marcar áreas manualmente.`);
-      } }), maxMs, "Reconocimiento OCR");
+      };
+      const result = await timeout(worker.recognize(dataUrl), maxMs, "Reconocimiento OCR").catch(error => {
+        // Un reconocimiento colgado bloquearía la cola del worker: se descarta y el siguiente crea uno nuevo.
+        discardOcrWorker(language);
+        throw error;
+      });
       return (result?.data?.lines || []).map(line => ({ text: line.text || "", confidence: line.confidence || 0, bbox: line.bbox }));
     } catch (error) { console.warn("OCR omitido", error); return []; }
+    finally { ocrProgress = null; }
   }
 
   function prepareOcrSource(image) {
@@ -365,7 +418,7 @@ if (root) {
       await detectQr();
       if (run !== analysisToken) return;
       const prepared = prepareOcrSource(state.image);
-      const lines = await ocr(prepared.dataUrl, { language: "eng", maxMs: 16000, run });
+      const lines = await ocr(prepared.dataUrl, { language: OCR_LANGUAGE, maxMs: 16000, run });
       if (run !== analysisToken) return;
       const analysis = classifyVisionLines(lines);
       const detected = trustedDetection(lines, analysis);

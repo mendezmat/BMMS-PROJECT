@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BMMS TB Tool</title>
+  <link rel="stylesheet" href="/tb.css">
+</head>
+<body>
+  <div class="tb-alert" id="tbAlert" aria-hidden="true">
+    <div class="tb-alert-labels" id="tbAlertLabels"></div>
+  </div>
+
+  <header class="tb-top">
+    <div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback</span></div>
+    <div class="tb-top-actions">
+      <span class="tb-state" id="tbState">Detenido</span>
+      <button class="primary" id="tbStart">Iniciar monitoreo</button>
+      <button id="tbFloat" title="Ventana pequeña que queda encima de todas las aplicaciones">Ventana flotante</button>
+      <button id="tbAlertMode" title="Solo alerta y transcripción, a pantalla completa">Modo alerta</button>
+      <a href="/">Volver a BMMS</a>
+    </div>
+  </header>
+
+  <main class="tb-layout">
+    <section class="tb-channels">
+      <div class="tb-section-head">
+        <div><h1>Canales</h1><p>Cada canal tiene su color. Elige la entrada de audio y el canal físico.</p></div>
+        <button id="tbAddChannel">Añadir canal</button>
+      </div>
+      <p class="tb-notice" id="tbNotice" hidden></p>
+      <div id="tbChannelList" class="tb-channel-list"></div>
+
+      <details class="tb-panel" open>
+        <summary>Alerta</summary>
+        <div class="tb-grid">
+          <label>Grosor del borde <output id="tbThicknessValue"></output><input type="range" id="tbThickness" min="8" max="300" step="2"></label>
+          <label>Opacidad <output id="tbOpacityValue"></output><input type="range" id="tbOpacity" min="0.1" max="1" step="0.05"></label>
+          <label class="tb-check"><input type="checkbox" id="tbPulse"> Pulso</label>
+          <label class="tb-check"><input type="checkbox" id="tbFlash"> Destello</label>
+          <label>Dónde se ve<select id="tbEdge"><option value="top">Solo arriba</option><option value="all">Todo el borde</option></select></label>
+        </div>
+      </details>
+    </section>
+
+    <section class="tb-transcript">
+      <div class="tb-section-head">
+        <div><h1>Transcripción</h1><p id="tbTranscriptHint">Lo que se dice por talkback aparece aquí.</p></div>
+        <div class="tb-viewing" id="tbViewing" hidden>
+          <span>Viendo: <strong id="tbViewingName"></strong></span>
+          <button id="tbViewingExport">Exportar</button>
+          <button class="primary" id="tbViewingBack">Volver a en vivo</button>
+        </div>
+        <span class="tb-save-state" id="tbSaveState" role="status"></span>
+        <button class="tb-exit" id="tbExitAlertMode">Salir del modo alerta</button>
+        <div class="tb-transcript-actions">
+          <label class="tb-check"><input type="checkbox" id="tbTranscribe"> Transcribir</label>
+          <select id="tbEngine" aria-label="Motor de transcripción">
+            <option value="local">Sin internet (Whisper)</option>
+            <option value="browser">Navegador (requiere internet)</option>
+          </select>
+          <select id="tbModel" aria-label="Modelo de transcripción">
+            <option value="auto">Modelo automático</option>
+            <option value="small">Preciso (small)</option>
+            <option value="base">Rápido (base)</option>
+          </select>
+          <select id="tbLanguage" aria-label="Idioma">
+            <option value="es-US">Español (Latinoamérica)</option>
+            <option value="es-MX">Español (México)</option>
+            <option value="es-ES">Español (España)</option>
+            <option value="en-US">Inglés (EE. UU.)</option>
+          </select>
+          <button id="tbFontDown" title="Texto más pequeño">A−</button>
+          <button id="tbFontUp" title="Texto más grande">A+</button>
+          <button id="tbSave" title="Guardar esta transcripción como sesión (Cmd+S)">Guardar</button>
+          <button id="tbSessions" title="Ver sesiones guardadas">Guardadas</button>
+          <button id="tbExport">Exportar</button>
+          <button id="tbClear">Limpiar</button>
+        </div>
+      </div>
+      <ol class="tb-lines" id="tbLines"></ol>
+      <div class="tb-live" id="tbLive" hidden></div>
+    </section>
+  </main>
+
+  <dialog class="tb-dialog" id="tbSessionsDialog">
+    <div class="tb-dialog-head"><h2>Sesiones guardadas</h2><button id="tbSessionsClose" aria-label="Cerrar">✕</button></div>
+    <ul class="tb-session-list" id="tbSessionList"></ul>
+  </dialog>
+
+  <template id="tbChannelTemplate">
+    <article class="tb-channel">
+      <div class="tb-channel-head">
+        <input type="color" data-field="color" aria-label="Color">
+        <input type="text" data-field="name" maxlength="40" aria-label="Nombre">
+        <label class="tb-check"><input type="checkbox" data-field="enabled"> Activo</label>
+        <button data-action="remove" title="Eliminar canal">✕</button>
+      </div>
+      <div class="tb-channel-row">
+        <label>Entrada<select data-field="deviceId"></select></label>
+        <label>Canal físico<select data-field="channelIndex"></select></label>
+      </div>
+      <div class="tb-channel-row">
+        <label>Detección<select data-field="detection"><option value="voice">Solo voz (ignora el ruido)</option><option value="level">Nivel de audio</option></select></label>
+        <label data-role="sensitivity">Sensibilidad <output data-out="voiceSensitivity"></output><input type="range" data-field="voiceSensitivity" min="0" max="1" step="0.05"></label>
+      </div>
+      <div class="tb-meter" data-role="meter"><span class="tb-meter-fill"></span><span class="tb-meter-voice"></span><span class="tb-meter-threshold"></span></div>
+      <div class="tb-channel-row tb-channel-row-3">
+        <label>Umbral <output data-out="thresholdDb"></output><input type="range" data-field="thresholdDb" min="-90" max="0" step="1"></label>
+        <label>Ataque (ms)<input type="number" data-field="attackMs" min="0" max="2000" step="10"></label>
+        <label>Retención (ms)<input type="number" data-field="holdMs" min="0" max="10000" step="50"></label>
+      </div>
+      <div class="tb-channel-foot">
+        <label class="tb-check"><input type="checkbox" data-field="transcribe"> Transcribir este canal</label>
+        <span class="tb-voice-chip" data-role="voice">VOZ</span>
+        <span class="tb-channel-status" data-role="status"></span>
+        <button data-action="calibrate">Calibrar ruido</button>
+        <button data-action="test">Probar alerta</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="/tb.js"></script>
+</body>
+</html>
