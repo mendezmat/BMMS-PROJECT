@@ -1,0 +1,287 @@
+{
+  "schema": 1,
+  "channel": "stable",
+  "publishedAt": "2026-10-10T23:18:58.745Z",
+  "commit": "45e9159b9c5dbef2312995b050ee98ce97de9a9c",
+  "apps": [
+    {
+      "id": "tb-tool",
+      "name": "TB Tool",
+      "status": "available",
+      "category": "Comunicación",
+      "color": "#ff3b30",
+      "summary": "Alerta visual de talkback. Se enciende solo cuando reconoce voz, con ventana flotante siempre encima y transcripción sin internet.",
+      "version": "1.0.0",
+      "entry": "/tb",
+      "files": [
+        {
+          "path": "public/tb-detector.js",
+          "src": "apps/graphics/public/tb-detector.js",
+          "size": 9924,
+          "sha256": "5ccb3114156420efe5f5b9857744faf0d04111503a678c38c26c34c517fe5f46",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb-detector.js"
+        },
+        {
+          "path": "public/tb-vad.js",
+          "src": "apps/graphics/public/tb-vad.js",
+          "size": 2487,
+          "sha256": "dbbd4a52ca8ec3d036f52088cc5219eae07a55cb45233b7193b1c1150fb722a5",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb-vad.js"
+        },
+        {
+          "path": "public/tb-whisper-worker.js",
+          "src": "apps/graphics/public/tb-whisper-worker.js",
+          "size": 3223,
+          "sha256": "b10bb41b41482f2abbc3ac9f03fe346cbe5f7ab3afe45f7527b67ade2492a87d",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb-whisper-worker.js"
+        },
+        {
+          "path": "public/tb-worklet.js",
+          "src": "apps/graphics/public/tb-worklet.js",
+          "size": 2641,
+          "sha256": "3a195dfa6d863e9ec2c2b7a4c905f4b9350da9ef7085cf262b7039fb6be1362e",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb-worklet.js"
+        },
+        {
+          "path": "public/tb.css",
+          "src": "apps/graphics/public/tb.css",
+          "size": 11195,
+          "sha256": "e1924db57509147ac528a092595f477182997d5dc3d6e0f2995cd3e6e5d3e326",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb.css"
+        },
+        {
+          "path": "public/tb.html",
+          "src": "apps/graphics/public/tb.html",
+          "size": 6629,
+          "sha256": "c6082d1812e73cc23a037573d4f1b5388f8b7297847b7d2886e36e1c1813290d",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb.html"
+        },
+        {
+          "path": "public/tb.js",
+          "src": "apps/graphics/public/tb.js",
+          "size": 40591,
+          "sha256": "263fe767ad8dc050f181c720173e928ed10cd4d99971172275ccd5cc26c75f8a",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/tb.js"
+        },
+        {
+          "path": "public/vendor/ort/ort-wasm-simd-threaded.mjs",
+          "src": "apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.mjs",
+          "size": 20856,
+          "sha256": "30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.mjs"
+        },
+        {
+          "path": "public/vendor/ort/ort-wasm-simd-threaded.wasm",
+          "src": "apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.wasm",
+          "size": 11210254,
+          "sha256": "71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.wasm"
+        },
+        {
+          "path": "public/vendor/ort/ort.wasm.min.js",
+          "src": "apps/graphics/public/vendor/ort/ort.wasm.min.js",
+          "size": 48327,
+          "sha256": "65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/ort/ort.wasm.min.js"
+        },
+        {
+          "path": "public/vendor/transformers/LICENSE",
+          "src": "apps/graphics/public/vendor/transformers/LICENSE",
+          "size": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/transformers/LICENSE"
+        },
+        {
+          "path": "public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs",
+          "src": "apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs",
+          "size": 44484,
+          "sha256": "08fb86ec433c78bfb032c5d84a68b8e8e5a8d81268fa39e24314179a5767a5b9",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs"
+        },
+        {
+          "path": "public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm",
+          "src": "apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm",
+          "size": 21596019,
+          "sha256": "c46655e8a94afc45338d4cb2b840475f88e5012d524509916e505079c00bfa39",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm"
+        },
+        {
+          "path": "public/vendor/transformers/transformers.min.js",
+          "src": "apps/graphics/public/vendor/transformers/transformers.min.js",
+          "size": 888173,
+          "sha256": "aa5002b70e789798da263f5f99c62bd3e8fcd0c119258a493c40c180648365fa",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/transformers/transformers.min.js"
+        },
+        {
+          "path": "public/vendor/vad/silero_vad_v5.onnx",
+          "src": "apps/graphics/public/vendor/vad/silero_vad_v5.onnx",
+          "size": 2327524,
+          "sha256": "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/public/vendor/vad/silero_vad_v5.onnx"
+        },
+        {
+          "path": "tb-api.js",
+          "src": "apps/graphics/tb-api.js",
+          "size": 7187,
+          "sha256": "44a69ef5f5d40a620a41d64e4affa923caaaa3cf4b989c57f9beab8405554770",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/45e9159b9c5dbef2312995b050ee98ce97de9a9c/apps/graphics/tb-api.js"
+        }
+      ],
+      "assets": [
+        {
+          "path": "models/onnx-community/whisper-base/config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/config.json",
+          "size": 2243,
+          "sha256": "f4d0608f7d918166da7edb3e188de5ef1bfe70d9802e785d271fd88111e9cf4b",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/generation_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/generation_config.json",
+          "size": 3832,
+          "sha256": "61070cf8de25b1e9256e8e102ded49d8d24a8369ed36ef84fdf21549e68125a0",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/preprocessor_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/preprocessor_config.json",
+          "size": 339,
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/tokenizer.json",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/tokenizer.json",
+          "size": 2480466,
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/tokenizer_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/tokenizer_config.json",
+          "size": 282682,
+          "sha256": "2e036e4dbacfdeb7242c7d4ec4149f4a16e86026048f94d1637e3a8ee9c6a573",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/onnx/decoder_model_merged_q4.onnx",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/onnx/decoder_model_merged_q4.onnx",
+          "size": 123602419,
+          "sha256": "09f83b71ceedc97dab1d90b914715dc532a646a147abda11d83c64867b7c319c",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-base/onnx/encoder_model_quantized.onnx",
+          "url": "https://huggingface.co/onnx-community/whisper-base/resolve/1846881b6b3a3024392c1eea3ad983695bc23925/onnx/encoder_model_quantized.onnx",
+          "size": 23201314,
+          "sha256": "5862993336bf33acd23736071aae2b32261d3b1b2f37780194460d4ef974dd46",
+          "group": "Transcripción rápida (base)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/config.json",
+          "size": 2227,
+          "sha256": "457854d452f17661e197d74aee12b8e74fb75ba30ebfaa7426d0d61ea1e08a18",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/generation_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/generation_config.json",
+          "size": 3893,
+          "sha256": "f538b28220c6a6d6f1af1458d4141cacb4ef4963df3de98a19490440c412ddf0",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/preprocessor_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/preprocessor_config.json",
+          "size": 339,
+          "sha256": "a6a76d28c93edb273669eb9e0b0636a2bddbb1272c3261e47b7ca6dfdbac1b8d",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/tokenizer.json",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/tokenizer.json",
+          "size": 2480466,
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/tokenizer_config.json",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/tokenizer_config.json",
+          "size": 282683,
+          "sha256": "2a4c4281cf9f51ac6ccc406fdc711a087afe6530f671fa7b80953edc498275ce",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/onnx/decoder_model_merged_q4.onnx",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/onnx/decoder_model_merged_q4.onnx",
+          "size": 233149327,
+          "sha256": "795c61b344576719c2b249cc9911c78b4cc552c8c6a5407be21a3380a0791b13",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/onnx/encoder_model_quantized.onnx",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/onnx/encoder_model_quantized.onnx",
+          "size": 92326160,
+          "sha256": "a43a83f3c5361cd591cfa7c36f14b43cf7cb22f47a415cc14a8d557be800fa92",
+          "group": "Transcripción precisa (small)"
+        },
+        {
+          "path": "models/onnx-community/whisper-small/onnx/encoder_model_fp16.onnx",
+          "url": "https://huggingface.co/onnx-community/whisper-small/resolve/36050c46d777d46dc4b5f43f6d90574fc38f8732/onnx/encoder_model_fp16.onnx",
+          "size": 176607756,
+          "sha256": "5549cd8666ff4b694ceb128bfa48b95bdcceec29075cf2c2212f90002cc058de",
+          "group": "Transcripción precisa (small)"
+        }
+      ]
+    },
+    {
+      "id": "graphics",
+      "name": "BMMS Graphics",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#0a84ff",
+      "summary": "Gráficos en vivo para vMix y OBS. Reúne Scripture, Smart Flyer, Visual CG, Lower Third y Countdown."
+    },
+    {
+      "id": "scripture",
+      "name": "Scripture",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#bf5af2",
+      "summary": "Versículos en pantalla sincronizados con ProPresenter: vista previa, programa y estilos de transmisión."
+    },
+    {
+      "id": "smart-flyer",
+      "name": "Smart Flyer",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#30d158",
+      "summary": "Convierte un flyer en un gráfico de transmisión: detecta título, fecha, lugar y QR automáticamente."
+    },
+    {
+      "id": "visual-cg",
+      "name": "Visual CG",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#ff9f0a",
+      "summary": "Anuncios y banners con presets de diseño y código QR, listos para salir al aire."
+    },
+    {
+      "id": "lower-third",
+      "name": "Lower Third",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#64d2ff",
+      "summary": "Rótulos de nombre y cargo para predicadores, invitados y anuncios."
+    },
+    {
+      "id": "countdown",
+      "name": "Countdown",
+      "status": "coming-soon",
+      "category": "Gráficos",
+      "color": "#ffd60a",
+      "summary": "Cuenta regresiva para el inicio del servicio y los segmentos del programa."
+    }
+  ]
+}

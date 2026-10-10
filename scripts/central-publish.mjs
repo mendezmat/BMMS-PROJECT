@@ -83,7 +83,9 @@ async function modelAssets(assets) {
       if (localBase) { list.push({ path: `models/${model.repo}/${file}`, url, size: content.length, sha256, group: model.label }); continue; }
       // Comprobar que la revisión fijada tiene exactamente este archivo.
       const head = await fetch(url, { method: "HEAD", redirect: "manual" });
-      const remoteSha = (head.headers.get("x-linked-etag") || "").replace(/"/g, "");
+      // x-linked-etag es el sha256 solo en archivos LFS (64 hex); en los demás es un sha1 de git.
+      const linked = (head.headers.get("x-linked-etag") || head.headers.get("etag") || "").replace(/^W\//, "").replace(/"/g, "");
+      const remoteSha = /^[0-9a-f]{64}$/.test(linked) ? linked : "";
       const remoteSize = Number(head.headers.get("x-linked-size") || head.headers.get("content-length"));
       if (remoteSha && remoteSha !== sha256) throw new Error(`${model.repo}/${file}: el archivo local no coincide con la revisión ${model.revision}.`);
       if (!remoteSha) {
