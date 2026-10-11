@@ -24,12 +24,64 @@
   "build": {
     "appId": "com.bmms.central",
     "productName": "BMMS Central",
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["src/**/*", "hub/**/*", "package.json"],
-    "extraResources": [{ "from": "../../central/channel", "to": "channel", "filter": ["stable.json", "stable.json.sig"] }],
-    "publish": [{ "provider": "github", "owner": "mendezmat", "repo": "BMMS-PROJECT", "releaseType": "release" }],
-    "win": { "target": ["nsis"], "artifactName": "BMMS-Central-Setup-${version}.${ext}" },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "BMMS Central" },
-    "mac": { "category": "public.app-category.utilities", "target": ["dmg", "zip"], "artifactName": "BMMS-Central-${version}-${arch}.${ext}", "extendInfo": { "NSMicrophoneUsageDescription": "BMMS TB Tool usa el micrófono para detectar el talkback." } }
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "hub/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../central/channel",
+        "to": "channel",
+        "filter": [
+          "stable.json",
+          "stable.json.sig"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mendezmat",
+        "repo": "BMMS-PROJECT",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "BMMS-Central-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "BMMS Central"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "BMMS-Central-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "BMMS TB Tool usa el micrófono para detectar el talkback."
+      }
+    },
+    "protocols": [
+      {
+        "name": "BMMS Central",
+        "schemes": [
+          "bmms-central"
+        ]
+      }
+    ]
   }
 }

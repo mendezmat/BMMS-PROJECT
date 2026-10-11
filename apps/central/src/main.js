@@ -1,13 +1,14 @@
 // BMMS Central — proceso principal (Electron).
 // Hub de aplicaciones: lee el manifiesto firmado, instala/actualiza apps por archivos y las abre.
-import { app, BrowserWindow, dialog, ipcMain, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, session, shell, systemPreferences } from "electron";
 import electronUpdater from "electron-updater";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
-import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, verifyManifest } from "./updater.js";
+import { createLauncher, launcherExists, PROTOCOL, removeLauncher, targetFromArgs, targetFromUrl } from "./launchers.js";
+import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
 
 const { autoUpdater } = electronUpdater;
 if (process.env.BMMS_CENTRAL_USERDATA) app.setPath("userData", process.env.BMMS_CENTRAL_USERDATA); // pruebas
@@ -28,6 +29,8 @@ const busy = new Map(); // appId -> tarea en curso
 const hosts = new Map(); // appId -> { dir, host }
 const appWindows = new Map(); // appId -> BrowserWindow
 let selfUpdate = { status: "idle" };
+const UI_ID = "central-ui"; // diseño de Central (HTML/CSS/JS del hub): se actualiza por el canal como una app
+const osTools = () => ({ electronApp: app, shell, BrowserWindow });
 
 /* ---------- Manifiesto ---------- */
 
@@ -67,13 +70,16 @@ async function loadManifest() {
 async function catalog() {
   if (!manifest) await loadManifest();
   const apps = [];
+  let ui = null;
   for (const entry of manifest?.apps || []) {
+    if (entry.id === UI_ID) { ui = await uiStatus(entry); continue; }
+    if (entry.hidden) continue;
     const state = entry.status === "available" ? await readInstallState(root(), entry.id) : null;
     const missing = state && entry.assets ? await missingAssets(root(), entry.assets) : [];
     const installedHash = state?.current?.files ? JSON.stringify(state.current.files.map(file => [file.path, file.sha256])) : null;
     const latestHash = entry.files ? JSON.stringify(entry.files.map(file => [file.path, file.sha256])) : null;
     apps.push({
-      id: entry.id, name: entry.name, status: entry.status, category: entry.category, color: entry.color, summary: entry.summary,
+      id: entry.id, name: entry.name, short: entry.short || null, status: entry.status, category: entry.category, color: entry.color, summary: entry.summary,
       version: entry.version || null,
       installed: state?.current ? { version: state.current.version, installedAt: state.current.installedAt } : null,
       previous: state?.previous ? { version: state.previous.version } : null,
@@ -89,8 +95,44 @@ async function catalog() {
     source: manifestSource,
     error: manifestError,
     publishedAt: manifest?.publishedAt || null,
-    central: { version: app.getVersion(), update: selfUpdate }
+    central: { version: app.getVersion(), update: selfUpdate, ui }
   };
+}
+
+// Estado del diseño de Central: instalado desde el canal, o el que vino con el instalador.
+async function uiStatus(entry) {
+  const state = await readInstallState(root(), UI_ID);
+  const compatible = versionAtLeast(app.getVersion(), entry.minCentral || "0.0.0");
+  const installedHash = state?.current?.files ? JSON.stringify(state.current.files.map(file => [file.path, file.sha256])) : null;
+  const latestHash = JSON.stringify(entry.files.map(file => [file.path, file.sha256]));
+  return {
+    version: entry.version,
+    installed: state?.current ? { version: state.current.version } : null,
+    previous: state?.previous ? { version: state.previous.version } : null,
+    // Sin copia descargada, se compara con el diseño incluido en el instalador.
+    updateAvailable: compatible && (installedHash ? installedHash !== latestHash : !(await bundledUiMatches(entry))),
+    compatible,
+    busy: busy.get(UI_ID) || null
+  };
+}
+
+async function bundledUiMatches(entry) {
+  const { sha256File } = await import("./updater.js");
+  for (const file of entry.files) {
+    try { if (await sha256File(path.join(here, "..", file.path)) !== file.sha256) return false; } catch { return false; }
+  }
+  return true;
+}
+
+async function hubIndexPath() {
+  const entry = manifest?.apps.find(item => item.id === UI_ID);
+  const state = await readInstallState(root(), UI_ID);
+  const dir = currentAppDir(root(), state);
+  if (dir && (!entry || versionAtLeast(app.getVersion(), entry.minCentral || "0.0.0"))) {
+    const index = path.join(dir, "hub", "index.html");
+    try { await fsp.access(index); return index; } catch { /* copia dañada: usar la incluida */ }
+  }
+  return path.join(here, "../hub/index.html");
 }
 
 function send(channel, payload) {
@@ -134,8 +176,62 @@ async function installOrUpdate(appId, { fromFolder = null } = {}) {
       if (missing.length && fromFolder) return { warning: "La carpeta no tenía todos los modelos de transcripción. Puedes descargarlos después." };
     }
     await restartHost(appId);
+    if (appId === UI_ID) await reloadHub();
+    else await ensureLauncher(entry).catch(error => console.warn("Acceso directo", error));
     return { ok: true };
   });
+}
+
+async function ensureLauncher(entry) {
+  return createLauncher(osTools(), { id: entry.id, name: entry.name, short: entry.short, color: entry.color || "#666", version: entry.version });
+}
+
+// Repara los accesos de las apps instaladas (por ejemplo, si alguien los borró).
+async function repairLaunchers() {
+  for (const entry of manifest?.apps || []) {
+    if (entry.status !== "available" || entry.hidden || entry.id === UI_ID) continue;
+    if (!(await readInstallState(root(), entry.id))?.current) continue;
+    if (!(await launcherExists(osTools(), entry))) await ensureLauncher(entry).catch(() => {});
+  }
+}
+
+async function reloadHub() {
+  if (hubWindow && !hubWindow.isDestroyed()) await hubWindow.loadFile(await hubIndexPath());
+}
+
+/* ---------- Avisos de actualización ---------- */
+
+const notifiedPath = () => path.join(root(), "notified.json");
+
+async function pendingUpdates() {
+  const info = await catalog();
+  const list = info.apps.filter(item => item.updateAvailable).map(item => ({ key: `${item.id}@${item.version}`, label: `${item.name} ${item.version}` }));
+  if (info.central.ui?.updateAvailable) list.push({ key: `${UI_ID}@${info.central.ui.version}`, label: `diseño de BMMS Central ${info.central.ui.version}` });
+  return list;
+}
+
+// Notificación del sistema al detectar actualizaciones nuevas (una vez por versión).
+async function notifyUpdates() {
+  const list = await pendingUpdates();
+  if (!list.length || !Notification.isSupported()) return;
+  let seen = [];
+  try { seen = JSON.parse(await fsp.readFile(notifiedPath(), "utf8")); } catch { /* primera vez */ }
+  const fresh = list.filter(item => !seen.includes(item.key));
+  if (!fresh.length) return;
+  const notification = new Notification({
+    title: "BMMS Central: actualización disponible",
+    body: fresh.length === 1 ? `Hay una actualización de ${fresh[0].label}.` : `Hay ${fresh.length} actualizaciones: ${fresh.map(item => item.label).join(", ")}.`
+  });
+  notification.on("click", () => showHub());
+  notification.show();
+  await fsp.writeFile(notifiedPath(), JSON.stringify([...new Set([...seen, ...fresh.map(item => item.key)])].slice(-200)));
+}
+
+async function checkForUpdates() {
+  await loadManifest();
+  send("central:changed");
+  await repairLaunchers().catch(() => {});
+  await notifyUpdates().catch(() => {});
 }
 
 async function restartHost(appId) {
@@ -188,10 +284,18 @@ async function openApp(appId) {
     child.setAlwaysOnTop(true, "screen-saver");
     child.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   });
+  if (process.platform === "win32") window.setAppDetails({ appId: `com.bmms.app.${appId}`, appIconPath: process.execPath, relaunchCommand: `"${process.execPath}" --open-app=${appId}`, relaunchDisplayName: `BMMS ${entry?.name || appId}` });
   window.on("closed", () => { appWindows.delete(appId); send("central:changed"); });
   appWindows.set(appId, window);
   await window.loadURL(`${url}/tb`);
   send("central:changed");
+}
+
+function showHub() {
+  if (!hubWindow || hubWindow.isDestroyed()) { createHub(); return; }
+  if (hubWindow.isMinimized()) hubWindow.restore();
+  hubWindow.show();
+  hubWindow.focus();
 }
 
 function createHub() {
@@ -201,7 +305,7 @@ function createHub() {
     webPreferences: { preload: path.join(here, "hub-preload.cjs"), contextIsolation: true, sandbox: true }
   });
   hubWindow.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: "deny" }; });
-  hubWindow.loadFile(path.join(here, "../hub/index.html"));
+  hubIndexPath().then(index => hubWindow?.loadFile(index));
   hubWindow.on("closed", () => { hubWindow = null; });
 }
 
@@ -222,10 +326,42 @@ function setupSelfUpdate() {
 
 const handlers = {
   "central:catalog": () => catalog(),
-  "central:refresh": async () => { await loadManifest(); return catalog(); },
+  "central:refresh": async () => { await checkForUpdates(); return catalog(); },
   "central:install": (_, appId) => installOrUpdate(appId),
   "central:open": (_, appId) => openApp(appId),
-  "central:rollback": async (_, appId) => { await rollbackApp(root(), appId); await restartHost(appId); return catalog(); },
+  "central:rollback": async (_, appId) => {
+    if (appId === UI_ID) {
+      // Sin versión anterior descargada se vuelve al diseño que vino con el instalador.
+      const state = await readInstallState(root(), UI_ID);
+      if (state?.previous) await rollbackApp(root(), UI_ID); else await uninstallApp(root(), UI_ID);
+      await reloadHub();
+      return { ok: true };
+    }
+    await rollbackApp(root(), appId);
+    await restartHost(appId);
+    return catalog();
+  },
+  "central:uninstall": async (_, appId) => {
+    if (appId === UI_ID) throw new Error("No se puede desinstalar Central desde aquí.");
+    const entry = manifest?.apps.find(item => item.id === appId);
+    const window = appWindows.get(appId);
+    if (window && !window.isDestroyed()) window.close();
+    const running = hosts.get(appId);
+    if (running) { await running.host.close(); hosts.delete(appId); }
+    await uninstallApp(root(), appId);
+    if (entry) await removeLauncher(osTools(), entry);
+    return { ok: true };
+  },
+  "central:update-all": async () => {
+    const info = await catalog();
+    const errors = [];
+    for (const item of info.apps.filter(entry => entry.updateAvailable)) {
+      const result = await installOrUpdate(item.id).catch(error => ({ error: error.message }));
+      if (result?.error) errors.push(`${item.name}: ${result.error}`);
+    }
+    if (info.central.ui?.updateAvailable) await installOrUpdate(UI_ID); // al final: recarga el hub
+    return errors.length ? { error: errors.join(" · ") } : { ok: true };
+  },
   "central:download-assets": async (_, appId) => {
     const entry = manifest?.apps.find(item => item.id === appId);
     if (!entry?.assets) return { ok: true };
@@ -255,22 +391,58 @@ for (const [channel, handler] of Object.entries(handlers)) {
 
 /* ---------- Arranque ---------- */
 
+// Enlaces bmms-central://open/<id> (lanzadores de Aplicaciones en Mac) y --open-app=<id> (Windows).
+if (!process.env.BMMS_CENTRAL_USERDATA) { // en pruebas no se registra, para no quitarle el enlace a la Central instalada
+  if (process.defaultApp) app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1] || ".")]);
+  else app.setAsDefaultProtocolClient(PROTOCOL);
+}
+if (process.platform === "win32") app.setAppUserModelId("com.bmms.central");
+
+let launchTarget = targetFromArgs(process.argv);
+let ready = false;
+
+async function openTarget(appId) {
+  try {
+    if (!manifest) await loadManifest();
+    await openApp(appId);
+  } catch (error) {
+    showHub();
+    dialog.showMessageBox({ type: "warning", message: `No se pudo abrir la app: ${error.message}`, detail: "Instálala de nuevo desde BMMS Central." });
+  }
+}
+
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  const target = targetFromUrl(url);
+  if (!target) return;
+  if (ready) openTarget(target); else launchTarget = target;
+});
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => { if (hubWindow) { if (hubWindow.isMinimized()) hubWindow.restore(); hubWindow.focus(); } });
+  app.on("second-instance", (_, argv) => {
+    const target = targetFromArgs(argv);
+    if (target) openTarget(target); else showHub();
+  });
   app.whenReady().then(async () => {
     // Micrófono solo para las apps locales de Central.
     session.defaultSession.setPermissionRequestHandler((_, permission, callback, details) => callback(permission === "media" && isLocal(details.requestingUrl)));
     session.defaultSession.setPermissionCheckHandler((_, permission, origin) => permission === "media" && isLocal(`${origin}/`));
-    createHub();
+    ready = true;
+    if (process.platform === "darwin") app.dock?.setMenu(Menu.buildFromTemplate([{ label: "Abrir BMMS Central", click: () => showHub() }]));
+    await loadManifest();
+    // Abierta desde el acceso de una app: solo esa app. Si no, el hub.
+    if (launchTarget) openTarget(launchTarget); else createHub();
     setupSelfUpdate();
-    loadManifest().then(() => send("central:changed"));
-    setInterval(() => loadManifest().then(() => send("central:changed")), 30 * 60 * 1000);
+    send("central:changed");
+    repairLaunchers().catch(() => {});
+    notifyUpdates().catch(() => {});
+    setInterval(() => checkForUpdates().catch(() => {}), 30 * 60 * 1000);
   });
   app.on("window-all-closed", async () => {
     for (const { host } of hosts.values()) await host.close().catch(() => {});
     app.quit();
   });
-  app.on("activate", () => { if (!hubWindow) createHub(); });
+  app.on("activate", () => { if (!hubWindow && !appWindows.size) createHub(); });
 }

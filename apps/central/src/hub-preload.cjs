@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("central", {
   install: appId => ipcRenderer.invoke("central:install", appId),
   open: appId => ipcRenderer.invoke("central:open", appId),
   rollback: appId => ipcRenderer.invoke("central:rollback", appId),
+  uninstall: appId => ipcRenderer.invoke("central:uninstall", appId),
+  updateAll: () => ipcRenderer.invoke("central:update-all"),
   downloadAssets: appId => ipcRenderer.invoke("central:download-assets", appId),
   importFolder: appId => ipcRenderer.invoke("central:import-folder", appId),
   restartToUpdate: () => ipcRenderer.invoke("central:restart-to-update"),

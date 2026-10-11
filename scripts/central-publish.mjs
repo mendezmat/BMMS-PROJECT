@@ -103,6 +103,9 @@ async function modelAssets(assets) {
 const apps = [];
 for (const app of catalog.apps) {
   const entry = { id: app.id, name: app.name, status: app.status, category: app.category, color: app.color, summary: app.summary };
+  if (app.short) entry.short = app.short;
+  if (app.hidden) entry.hidden = true;
+  if (app.minCentral) entry.minCentral = app.minCentral;
   if (app.status === "available") {
     Object.assign(entry, { version: app.version, entry: app.entry, files: packageFiles(app.package) });
     entry.files = entry.files.map(file => ({ ...file, url: rawBase + file.src }));

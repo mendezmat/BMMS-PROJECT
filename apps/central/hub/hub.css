@@ -124,3 +124,13 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .thead > :nth-child(3), .row > .cat { display: none; }
   .search input { width: 90px; }
 }
+
+/* Aviso de actualizaciones (apps y diseño de Central) */
+.update-banner { margin: 12px 20px 0; padding: 10px 12px 10px 14px; border-radius: 4px; background: var(--surface); border-left: 3px solid var(--update); display: flex; align-items: center; gap: 14px; }
+.update-banner > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.update-banner strong { font-size: 13px; font-weight: 500; }
+.update-banner span { color: var(--text-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-small { height: 28px; padding: 0 16px; border-radius: 14px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.pill-small:hover:not(:disabled) { background: var(--accent-hover); }
+.pill-small:disabled { background: #3a3a3a; color: var(--text-3); }
+.link.is-danger { color: #ff8a80; }

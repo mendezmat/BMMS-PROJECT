@@ -82,7 +82,7 @@ function renderRow(app) {
   const thumb = document.createElement("div");
   thumb.className = "thumb";
   thumb.style.setProperty("--app-color", app.color || "#666");
-  thumb.textContent = initials(app.name);
+  thumb.textContent = app.short || initials(app.name);
   const names = document.createElement("div");
   names.className = "names";
   const title = document.createElement("strong");
@@ -188,6 +188,13 @@ function renderPanel() {
       link("Importar modelos desde carpeta…", () => act(app, () => window.central.importFolder(app.id)))
     );
   }
+  if (app.installed && !task) {
+    const remove = link("Desinstalar", () => {
+      if (confirm(`¿Desinstalar ${app.name}? Tus ajustes y sesiones guardadas se conservan.`)) act(app, () => window.central.uninstall(app.id));
+    });
+    remove.classList.add("is-danger");
+    links.append(remove);
+  }
   if (app.previous && !task) {
     links.append(link(`Volver a la versión ${app.previous.version}`, () => {
       if (confirm(`¿Volver a la versión anterior (${app.previous.version})?`)) act(app, () => window.central.rollback(app.id));
@@ -210,18 +217,29 @@ function render() {
   }
   for (const element of document.querySelectorAll(".tab")) element.classList.toggle("is-active", element.dataset.tab === tab);
 
-  const updates = state.apps.filter(app => app.updateAvailable).length;
+  const ui = state.central.ui;
+  const pending = state.apps.filter(app => app.updateAvailable).map(app => `${app.name} ${app.version}`);
+  if (ui?.updateAvailable) pending.push(`Diseño de BMMS Central ${ui.version}`);
+  const updates = pending.length;
   byId("updatesPill").hidden = !updates;
   byId("updatesPill").textContent = updates === 1 ? "1 actualización disponible" : `${updates} actualizaciones disponibles`;
+  byId("updateBanner").hidden = !updates;
+  byId("updateTitle").textContent = updates === 1 ? "Hay una actualización disponible" : `Hay ${updates} actualizaciones disponibles`;
+  byId("updateList").textContent = pending.join(" · ");
+  const updating = Boolean(ui?.busy) || state.apps.some(app => taskOf(app));
+  byId("updateAll").disabled = updating;
+  const uiTask = progress.get("central-ui") || ui?.busy;
+  byId("updateAll").textContent = uiTask ? `Actualizando diseño… ${uiTask.percent || 0}%` : "Actualizar todo";
 
   const channel = byId("channel");
   channel.classList.toggle("is-online", state.source === "online");
   channel.textContent = state.source === "online"
     ? `Catálogo al día · ${state.publishedAt ? dateFormat.format(new Date(state.publishedAt)) : ""}`
     : state.source === "none" ? "Sin catálogo" : "Sin conexión · último catálogo guardado";
-  showNotice(state.error && state.source !== "online" ? `${state.error} Las apps instaladas siguen funcionando.` : "");
+  showNotice(updateError || (state.error && state.source !== "online" ? `${state.error} Las apps instaladas siguen funcionando.` : ""));
 
   byId("centralVersion").textContent = `v${state.central.version}`;
+  byId("footUiBack").hidden = byId("footUiSep").hidden = !ui?.installed;
   const update = state.central.update || {};
   const banner = byId("selfUpdate");
   banner.hidden = !["downloading", "ready"].includes(update.status);
@@ -240,7 +258,22 @@ const importSelected = () => {
 window.central.onProgress(info => { progress.set(info.appId, info); render(); });
 window.central.onChanged(() => load());
 byId("refresh").addEventListener("click", () => load(true));
-byId("updatesPill").addEventListener("click", () => { tab = "mine"; render(); });
+let updateError = "";
+async function updateAll() {
+  byId("updateAll").disabled = true;
+  updateError = "";
+  const result = await window.central.updateAll();
+  progress.clear();
+  if (result?.error) updateError = `No se pudo actualizar: ${result.error}`;
+  await load();
+}
+byId("updatesPill").addEventListener("click", updateAll);
+byId("footUiBack").addEventListener("click", async () => {
+  if (!confirm("¿Volver al diseño anterior de BMMS Central?")) return;
+  const result = await window.central.rollback("central-ui");
+  if (result?.error) { updateError = result.error; render(); }
+});
+byId("updateAll").addEventListener("click", updateAll);
 byId("search").addEventListener("input", event => { query = event.target.value; render(); });
 for (const element of document.querySelectorAll(".tab")) element.addEventListener("click", () => { tab = element.dataset.tab; render(); });
 byId("navApps").addEventListener("click", () => { tab = "all"; render(); });

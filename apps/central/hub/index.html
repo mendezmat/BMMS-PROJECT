@@ -36,6 +36,10 @@
     </header>
 
     <div class="notice" id="notice" hidden></div>
+    <div class="update-banner" id="updateBanner" hidden>
+      <div><strong id="updateTitle"></strong><span id="updateList"></span></div>
+      <button class="pill-small" id="updateAll">Actualizar todo</button>
+    </div>
 
     <div class="tabs" role="tablist">
       <button role="tab" class="tab" data-tab="mine">Mis apps</button>
@@ -59,6 +63,8 @@
       <button class="link" id="footFolder">Instalar desde carpeta</button>
       <span class="sep">|</span>
       <button class="link" id="footData">Carpeta de datos</button>
+      <span class="sep" id="footUiSep" hidden>|</span>
+      <button class="link" id="footUiBack" hidden>Volver al diseño anterior</button>
     </footer>
   </div>
 

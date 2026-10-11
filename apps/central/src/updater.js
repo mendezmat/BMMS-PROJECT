@@ -270,3 +270,18 @@ async function findLocalAsset(folder, asset) {
   }
   return null;
 }
+
+// Desinstalar: borra los archivos de la app. Los datos del usuario y los modelos compartidos se conservan.
+export async function uninstallApp(root, appId) {
+  await fsp.rm(appPaths(root, appId).base, { recursive: true, force: true });
+}
+
+// Comparación simple de versiones "1.2.3".
+export function versionAtLeast(version, minimum) {
+  const a = String(version || "0").split(".").map(Number);
+  const b = String(minimum || "0").split(".").map(Number);
+  for (let index = 0; index < Math.max(a.length, b.length); index++) {
+    if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) > (b[index] || 0);
+  }
+  return true;
+}
