@@ -3,7 +3,12 @@
 //      que abre la app dentro de Central con el enlace bmms-central://open/<id>.
 // Windows: accesos "BMMS <App>" en el menú Inicio y el Escritorio que abren Central con --open-app=<id>.
 import { execFile } from "node:child_process";
-import fsp from "node:fs/promises";
+import { createRequire } from "node:module";
+import nodeFsp from "node:fs/promises";
+
+// Dentro de Electron, "fs" trata los archivos .asar como carpetas: borrar o copiar una app con su
+// app.asar falla a medias y deja la app rota. Para las apps se usa "original-fs", que no tiene ese truco.
+const fsp = (() => { try { return createRequire(import.meta.url)("original-fs").promises; } catch { return nodeFsp; } })();
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -199,10 +204,22 @@ export async function isStandaloneRunning(electronApp, app) {
   return false;
 }
 
+// Restos de intentos anteriores (copias .tmp-/.old- a medio hacer) junto a la app.
+async function cleanLeftovers(target) {
+  const dir = path.dirname(target);
+  const base = path.basename(target);
+  let entries = [];
+  try { entries = await fsp.readdir(dir); } catch { return; }
+  for (const entry of entries) {
+    if (entry.startsWith(`${base}.tmp-`) || entry.startsWith(`${base}.old-`)) await fsp.rm(path.join(dir, entry), { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 async function createMacStandalone(BrowserWindow, app) {
   const source = centralBundle();
   let lastError = null;
   for (const target of macTargets(app.name)) {
+    await cleanLeftovers(target);
     const staging = `${target}.tmp-${process.pid}`;
     try {
       await fsp.rm(staging, { recursive: true, force: true });
@@ -244,8 +261,20 @@ async function createMacStandalone(BrowserWindow, app) {
       await fsp.writeFile(path.join(resources, "bmms-launcher.json"), JSON.stringify(launcherSignature(app)));
       await run("codesign", ["--force", "--deep", "--sign", "-", staging]).catch(() => {}); // firma local (ad hoc) tras cambiar el Info.plist
       await run("xattr", ["-dr", "com.apple.quarantine", staging]).catch(() => {});
-      await fsp.rm(target, { recursive: true, force: true });
-      await fsp.rename(staging, target);
+      // Comprobar que la copia nueva está completa antes de reemplazar nada.
+      await fsp.access(path.join(staging, "Contents", "MacOS", launcherName(app.name)));
+      await fsp.access(path.join(staging, "Contents", "Frameworks", "Electron Framework.framework"));
+      // Cambio atómico: la app anterior se aparta, la nueva ocupa su lugar y recién entonces se borra la anterior.
+      const old = `${target}.old-${process.pid}`;
+      let hadOld = false;
+      try { await fsp.rename(target, old); hadOld = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
+      try {
+        await fsp.rename(staging, target);
+      } catch (error) {
+        if (hadOld) await fsp.rename(old, target).catch(() => {});
+        throw error;
+      }
+      if (hadOld) await fsp.rm(old, { recursive: true, force: true }).catch(() => {});
       await run("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister", ["-f", target]).catch(() => {});
       return target;
     } catch (error) {
@@ -269,6 +298,7 @@ async function createWindowsStandalone(electronApp, shell, BrowserWindow, app) {
   const [{ dir, exe }] = standaloneTarget(electronApp, app);
   const source = path.dirname(process.execPath);
   const staging = `${dir}.tmp-${process.pid}`;
+  await cleanLeftovers(dir);
   await fsp.rm(staging, { recursive: true, force: true });
   await fsp.cp(source, staging, { recursive: true, filter: file => !/Uninstall BMMS Central\.exe$/i.test(file) });
   await fsp.rename(path.join(staging, path.basename(process.execPath)), path.join(staging, path.basename(exe)));
@@ -277,8 +307,12 @@ async function createWindowsStandalone(electronApp, shell, BrowserWindow, app) {
   await fsp.writeFile(path.join(staging, "resources", "bmms-launcher.json"), JSON.stringify(launcherSignature(app)));
   const icon = path.join(staging, "resources", "bmms-app.ico");
   await fsp.writeFile(icon, pngToIco(app.iconPng256 || await renderIconPng(BrowserWindow, app, 256))).catch(() => {});
-  await fsp.rm(dir, { recursive: true, force: true });
-  await fsp.rename(staging, dir);
+  await fsp.access(path.join(staging, path.basename(exe)));
+  const old = `${dir}.old-${process.pid}`;
+  let hadOld = false;
+  try { await fsp.rename(dir, old); hadOld = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
+  try { await fsp.rename(staging, dir); } catch (error) { if (hadOld) await fsp.rename(old, dir).catch(() => {}); throw error; }
+  if (hadOld) await fsp.rm(old, { recursive: true, force: true }).catch(() => {});
   const finalIcon = path.join(dir, "resources", "bmms-app.ico");
   for (const target of windowsTargets(electronApp, app.name)) {
     await fsp.mkdir(path.dirname(target), { recursive: true });

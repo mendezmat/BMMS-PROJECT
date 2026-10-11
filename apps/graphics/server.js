@@ -408,7 +408,12 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/tb.css") {
     return serveFile(response, "tb.css", "text/css; charset=utf-8");
   }
-  if (url.pathname.startsWith("/api/tb/") && await tbApi.handle(request, response, url)) return;
+  // La API del TB Tool (ajustes, sesiones, registro) solo desde este mismo equipo, no desde la red.
+  if (url.pathname.startsWith("/api/tb/")) {
+    const remote = request.socket.remoteAddress || "";
+    if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remote)) { response.writeHead(403); response.end("Solo desde este equipo"); return; }
+    if (await tbApi.handle(request, response, url)) return;
+  }
 
   if (request.method === "GET" && url.pathname === "/") {
     return serveFile(response, "index.html", "text/html; charset=utf-8");

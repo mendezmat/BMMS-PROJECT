@@ -184,3 +184,24 @@ test("segmenter exposes the growing phrase for partial transcription", () => {
   assert.ok(segmenter.voicedMs >= 600);
   assert.ok(segmenter.snapshot().length >= 20 * 512);
 });
+
+test("routing never silently remaps a missing physical channel to another input", () => {
+  const script = fs.readFileSync("apps/graphics/public/tb.js", "utf8");
+  assert.doesNotMatch(script, /Math\.min\(channel\.channelIndex/);
+  assert.match(script, /El canal físico \$\{channel\.channelIndex \+ 1\} no existe/);
+  assert.match(script, /channelCountMode: "max"/);
+});
+
+test("TB Tool reconnects on device changes and stalls, and keeps a service log", () => {
+  const script = fs.readFileSync("apps/graphics/public/tb.js", "utf8");
+  const api = fs.readFileSync("apps/graphics/tb-api.js", "utf8");
+  assert.match(script, /addEventListener\?\.\("devicechange", onDeviceChange\)/);
+  assert.match(script, /"stall"/);
+  assert.match(api, /url\.pathname === "\/api\/tb\/log"/);
+});
+
+test("voice detection queues frames instead of dropping them when busy", () => {
+  const vad = fs.readFileSync("apps/graphics/public/tb-vad.js", "utf8");
+  assert.doesNotMatch(vad, /if \(busy\) return probability/);
+  assert.match(vad, /MAX_PENDING_PER_CHANNEL/);
+});

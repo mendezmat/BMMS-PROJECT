@@ -9,6 +9,7 @@ const MAX_LINES = 300;
 let settings = defaultSettings();
 let devices = [];
 const deviceChannelCounts = new Map();
+const observedChannels = new Map(); // deviceId -> canales que realmente llegaron
 let audio = null; // { context, destination, sink, inputs: Map<deviceId, {stream, splitter, capture, channelCount}>, lastTick }
 const runtimes = new Map(); // channelId -> { deviceId, physical, detector, voice, gate, levelDb, probability, speaking, active }
 const tests = new Map(); // channelId -> hasta cuándo se fuerza la alerta
@@ -18,6 +19,23 @@ let recognition = null;
 let recognitionWanted = false;
 let activity = {};
 let lastActiveChannelId = null;
+
+/* ---------- Registro del servicio (data/tb-tool/logs/tb-AAAA-MM-DD.jsonl) ---------- */
+const logBuffer = [];
+function tbLog(event, data = {}) {
+  logBuffer.push({ t: new Date().toISOString(), event, ...data });
+  if (logBuffer.length > 2000) logBuffer.splice(0, logBuffer.length - 2000);
+}
+async function flushLog() {
+  if (!logBuffer.length) return;
+  const entries = logBuffer.splice(0, logBuffer.length);
+  try {
+    const response = await fetch("/api/tb/log", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entries }) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  } catch { logBuffer.unshift(...entries.slice(-500)); } // sin servidor (versión vieja): se reintenta luego
+}
+setInterval(flushLog, 10000);
+window.addEventListener("pagehide", () => { if (logBuffer.length) navigator.sendBeacon?.("/api/tb/log", new Blob([JSON.stringify({ entries: logBuffer.splice(0) })], { type: "application/json" })); });
 
 const safeStorage = {
   get(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; } },
@@ -61,6 +79,47 @@ async function refreshDevices() {
   renderChannels();
 }
 
+// Cambio de dispositivos (ruteo en la consola, SoundGrid, desconexión): se reconecta solo.
+let lastDeviceKey = "";
+async function onDeviceChange() {
+  await refreshDevices();
+  const key = devices.map(device => `${device.deviceId}:${device.label}`).sort().join("|");
+  if (key === lastDeviceKey) return;
+  const first = !lastDeviceKey;
+  lastDeviceKey = key;
+  if (first || !audio) return;
+  tbLog("devicechange", { devices: devices.map(device => device.label || device.deviceId.slice(0, 8)) });
+  notice("Cambiaron las entradas de audio: reconectando…");
+  scheduleRestart(1500, "devicechange");
+}
+
+// Vigilancia: si una entrada deja de mandar audio (p. ej. tras re-rutear), se reabre; cada 10 s, resumen al registro.
+let lastSummaryAt = 0;
+setInterval(() => {
+  if (!audio) return;
+  const now = performance.now();
+  for (const input of audio.inputs.values()) {
+    if (now - input.lastLevelsAt > 4000) {
+      tbLog("stall", { device: input.label, silentMs: Math.round(now - input.lastLevelsAt) });
+      notice("La entrada de audio dejó de responder: reconectando…");
+      scheduleRestart(200, "stall");
+      return;
+    }
+  }
+  if (now - lastSummaryAt >= 10000) {
+    lastSummaryAt = now;
+    const summary = [];
+    for (const channel of settings.channels) {
+      const runtime = runtimes.get(channel.id);
+      if (!runtime?.stats?.ticks) continue;
+      const stats = runtime.stats;
+      summary.push({ channel: channel.name, avgDb: Math.round(stats.sumDb / stats.ticks), maxDb: Math.round(stats.maxDb), voicePct: Math.round((stats.voice / stats.ticks) * 100), alertPct: Math.round((stats.active / stats.ticks) * 100) });
+      runtime.stats = null;
+    }
+    if (summary.length) tbLog("summary", { channels: summary, vad: vadStatus });
+  }
+}, 2000);
+
 function deviceLabel(device, index) {
   if (device.deviceId === "default") return device.label ? `Predeterminada · ${device.label.replace(/^Default - |^Predeterminado - /, "")}` : "Entrada predeterminada";
   return device.label || `Entrada ${index + 1}`;
@@ -91,7 +150,7 @@ async function openInput(context, deviceId) {
   const constraints = {
     audio: {
       deviceId: deviceId && deviceId !== "default" ? { exact: deviceId } : undefined,
-      channelCount: { ideal: 8 },
+      channelCount: { ideal: 64 }, // interfaces multicanal (SoundGrid WDM, etc.): pedir todos los canales
       echoCancellation: false,
       noiseSuppression: false,
       autoGainControl: false
@@ -99,7 +158,8 @@ async function openInput(context, deviceId) {
   };
   const stream = await navigator.mediaDevices.getUserMedia(constraints);
   const track = stream.getAudioTracks()[0];
-  const channelCount = Math.max(1, Number(track?.getSettings?.().channelCount) || 2);
+  // Canales reales: lo que informa el dispositivo o lo que ya se vio llegar (algunos informan de menos).
+  const channelCount = Math.max(1, Number(track?.getSettings?.().channelCount) || 2, observedChannels.get(deviceId) || 0);
   deviceChannelCounts.set(deviceId, channelCount);
   const source = context.createMediaStreamSource(stream);
   const splitter = context.createChannelSplitter(channelCount);
@@ -109,18 +169,18 @@ async function openInput(context, deviceId) {
     numberOfInputs: 1,
     numberOfOutputs: 1,
     channelCount,
-    channelCountMode: "explicit",
+    channelCountMode: "max", // recibe todos los canales que entrega el dispositivo, sin mezclar
     channelInterpretation: "discrete",
     processorOptions: { channels: [] }
   });
   source.connect(capture);
   capture.connect(audio.sink);
-  const input = { deviceId, stream, splitter, capture, channelCount };
+  const input = { deviceId, stream, splitter, capture, channelCount, label: track?.label || "", lastLevelsAt: performance.now() };
   capture.port.onmessage = event => handleCapture(input, event.data);
   track?.addEventListener("ended", () => {
     if (!audio) return;
     notice("Se desconectó una entrada de audio. BMMS intentará reconectar.");
-    scheduleRestart(2000);
+    scheduleRestart(2000, "track-ended");
   });
   return input;
 }
@@ -142,11 +202,22 @@ async function startAudio() {
     try {
       if (!audio.inputs.has(channel.deviceId)) audio.inputs.set(channel.deviceId, await openInput(context, channel.deviceId));
       const input = audio.inputs.get(channel.deviceId);
-      const index = Math.min(channel.channelIndex, input.channelCount - 1);
+      // Nunca se reasigna en silencio a otro canal: si el canal físico no existe, se avisa.
+      if (channel.channelIndex >= input.channelCount) {
+        const message = `El canal físico ${channel.channelIndex + 1} no existe: «${input.label || "la entrada"}» entrega solo ${input.channelCount} canal${input.channelCount === 1 ? "" : "es"}. Con SoundGrid, sube los canales WDM en el Panel de control del driver o rutea el talkback a los primeros canales.`;
+        setChannelStatus(channel.id, message);
+        notice(`${channel.name}: ${message}`);
+        tbLog("routing-error", { channel: channel.name, channelIndex: channel.channelIndex, deviceChannels: input.channelCount, device: input.label });
+        continue;
+      }
+      const index = channel.channelIndex;
+      const twin = [...runtimes.entries()].find(([, runtime]) => runtime.deviceId === channel.deviceId && runtime.physical === index);
+      if (twin) notice(`${channel.name} y ${channelById(twin[0])?.name || "otro canal"} escuchan la misma entrada (canal físico ${index + 1}). Revisa el ruteo.`);
       const gate = context.createGain();
       gate.gain.value = 0;
       input.splitter.connect(gate, index);
       if (channel.transcribe) gate.connect(destination);
+      setChannelStatus(channel.id, `Escuchando el canal físico ${index + 1} de ${input.channelCount} · ${input.label || "entrada predeterminada"}`);
       runtimes.set(channel.id, { deviceId: channel.deviceId, physical: index, detector: createDetector(), voice: createVoiceChannel(), gate, levelDb: MIN_DB, probability: 0, speaking: false, active: false });
     } catch (error) {
       console.warn("TB Tool: entrada no disponible", error);
@@ -161,12 +232,14 @@ async function startAudio() {
   }
   await refreshDevices();
   setRunningUi(true);
+  tbLog("start", { inputs: [...audio.inputs.values()].map(input => ({ device: input.label, channels: input.channelCount })), channels: settings.channels.filter(item => item.enabled).map(item => ({ name: item.name, index: item.channelIndex + 1, detection: item.detection })) });
   if (settings.transcription.enabled) startRecognition();
 }
 
-function stopAudio() {
+function stopAudio(reason = "manual") {
   stopRecognition();
   if (!audio) return;
+  tbLog("stop", { reason });
   for (const input of audio.inputs.values()) {
     input.capture.port.onmessage = null;
     input.stream.getTracks().forEach(track => track.stop());
@@ -182,15 +255,26 @@ function stopAudio() {
 }
 
 let restartTimer;
-function scheduleRestart(delay = 250) {
+function scheduleRestart(delay = 250, reason = "") {
   if (!audio) return;
+  if (reason) tbLog("restart", { reason });
   clearTimeout(restartTimer);
-  restartTimer = setTimeout(async () => { stopAudio(); await startAudio(); }, delay);
+  restartTimer = setTimeout(async () => { stopAudio("restart"); await startAudio(); }, delay);
 }
 
 function handleCapture(input, message) {
   if (!audio) return;
   if (message.type === "levels") {
+    input.lastLevelsAt = performance.now();
+    // Si el dispositivo entrega más canales de los que informó al abrir, se vuelve a mapear.
+    if (message.rms.length > input.channelCount && message.rms.length > (observedChannels.get(input.deviceId) || 0)) {
+      observedChannels.set(input.deviceId, message.rms.length); // una sola vez por dispositivo: nunca en bucle
+      input.channelCount = message.rms.length;
+      deviceChannelCounts.set(input.deviceId, message.rms.length);
+      tbLog("device-channels", { device: input.label, channels: message.rms.length });
+      const needsRemap = settings.channels.some(channel => channel.enabled && channel.deviceId === input.deviceId && channel.channelIndex < message.rms.length && !runtimes.has(channel.id));
+      if (needsRemap) scheduleRestart(500, "more-channels");
+    }
     for (const runtime of runtimes.values()) {
       if (runtime.deviceId !== input.deviceId) continue;
       const rms = message.rms[runtime.physical] || 0;
@@ -227,8 +311,13 @@ function tick() {
       runtime.speaking = vadStatus === "ready" && isVoice(runtime.probability, runtime.speaking, channel.voiceSensitivity);
       above = loud && runtime.speaking;
     }
+    const stats = runtime.stats || (runtime.stats = { ticks: 0, voice: 0, active: 0, maxDb: MIN_DB, sumDb: 0 });
+    stats.ticks++; stats.sumDb += runtime.levelDb; stats.maxDb = Math.max(stats.maxDb, runtime.levelDb);
+    if (runtime.speaking) stats.voice++;
     const wasActive = runtime.active;
     runtime.active = runtime.detector.step(above, now, channel);
+    if (runtime.active) stats.active++;
+    if (runtime.active !== wasActive) tbLog(runtime.active ? "alert-on" : "alert-off", { channel: channel.name });
     if (runtime.active && !wasActive) lastActiveChannelId = channel.id;
     const open = runtime.detector.gateOpen(now, channel.holdMs);
     runtime.gate.gain.setTargetAtTime(open ? 1 : 0, audio.context.currentTime, 0.015);
@@ -334,8 +423,18 @@ const pendingByChannel = new Map(); // channelId -> frases enviadas sin resultad
 
 const localTranscription = () => settings.transcription.enabled && settings.transcription.engine === "local";
 
+// GPU útil para transcribir: Apple Silicon o tarjeta dedicada. Las gráficas integradas de Intel
+// (p. ej. el NUC de la iglesia) van mejor con el modelo liviano en el procesador.
 async function whisperDevice() {
-  try { return navigator.gpu && await navigator.gpu.requestAdapter() ? "webgpu" : "wasm"; } catch { return "wasm"; }
+  try {
+    const adapter = navigator.gpu && await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+    if (!adapter) return "wasm";
+    const info = adapter.info || (await adapter.requestAdapterInfo?.()) || {};
+    const vendor = String(info.vendor || "").toLowerCase();
+    tbLog("gpu", { vendor, architecture: info.architecture || "", description: info.description || "" });
+    if (vendor.includes("intel")) return "wasm";
+    return "webgpu";
+  } catch { return "wasm"; }
 }
 
 async function startWhisper() {
@@ -397,6 +496,7 @@ function handleWhisper(worker, message) {
       if (tbMetrics.length > 50) tbMetrics.shift();
     }
     if (text) { addLine(message.channelId, text); checkKeywords(message.channelId, text); }
+    tbLog("transcript", { channel: channelById(message.channelId)?.name, text, ms: message.ms, error: message.error || undefined });
     renderPending();
   }
 }
@@ -417,6 +517,7 @@ let keywordHit = null; // { channelId, word, until }
 function checkKeywords(channelId, text) {
   const word = matchKeyword(text, settings.keywords);
   if (!word) return;
+  if (!keywordHit || keywordHit.word !== word || keywordHit.until < performance.now()) tbLog("keyword", { channel: channelById(channelId)?.name, word, text });
   keywordHit = { channelId, word, until: performance.now() + 6000 };
   renderAlert();
   setTimeout(renderAlert, 6100);
@@ -442,8 +543,16 @@ function feedSegment(channel, runtime, frame) {
   }
 }
 
+let skipNotified = false;
 function sendSegment(channelId, segment) {
   if (!whisper || whisper.status === "error") return;
+  // Si la transcripción no da abasto, se saltan frases: la detección y las alertas nunca esperan por ella.
+  const waiting = [...pendingByChannel.values()].reduce((sum, count) => sum + count, 0);
+  if (waiting >= 2) {
+    tbLog("transcript-skip", { channel: channelById(channelId)?.name, waiting });
+    if (!skipNotified) { skipNotified = true; transcriptHint("El equipo va justo: se saltan algunas frases de la transcripción. Las alertas siguen funcionando."); }
+    return;
+  }
   pendingByChannel.set(channelId, (pendingByChannel.get(channelId) || 0) + 1);
   const id = ++whisperRequest;
   segmentMetrics.set(id, { audioMs: Math.round(segment.length / 16), lastVoiceAt: lastVoiceAt.get(channelId) || performance.now() });
@@ -684,7 +793,10 @@ function renderChannels() {
     if (![...deviceSelect.options].some(option => option.value === channel.deviceId)) deviceSelect.append(new Option("Entrada no conectada", channel.deviceId));
     const count = deviceChannelCounts.get(channel.deviceId) || Math.max(2, channel.channelIndex + 1);
     const channelSelect = card.querySelector('[data-field="channelIndex"]');
-    channelSelect.replaceChildren(...Array.from({ length: count }, (_, index) => new Option(`Canal ${index + 1}`, String(index))));
+    // Se puede elegir hasta el canal 32 aunque el dispositivo aún no se haya abierto; los que no entrega se marcan.
+    const known = deviceChannelCounts.has(channel.deviceId);
+    const total = Math.max(count, 32, channel.channelIndex + 1);
+    channelSelect.replaceChildren(...Array.from({ length: total }, (_, index) => new Option(`Canal ${index + 1}${known && index >= count ? " (no disponible)" : ""}`, String(index))));
     for (const field of card.querySelectorAll("[data-field]")) {
       const value = channel[field.dataset.field];
       if (field.type === "checkbox") field.checked = Boolean(value);
@@ -986,7 +1098,8 @@ async function init() {
   byId("tbExitAlertMode").addEventListener("click", () => setAlertMode(false));
   document.addEventListener("keydown", event => { if (event.key === "Escape" && document.body.classList.contains("is-alert-mode")) setAlertMode(false); });
   document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) document.body.classList.remove("is-alert-mode"); });
-  navigator.mediaDevices?.addEventListener?.("devicechange", refreshDevices);
+  navigator.mediaDevices?.addEventListener?.("devicechange", onDeviceChange);
+  onDeviceChange();
   window.bmmsCentral?.status?.({ running: false });
   // Abierta en segundo plano desde BMMS Central: empieza a escuchar sola.
   if (window.bmmsCentral?.autoStart) startAudio();

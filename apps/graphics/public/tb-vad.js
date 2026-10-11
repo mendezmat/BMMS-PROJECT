@@ -34,31 +34,63 @@ export function preloadVad() {
   return engine();
 }
 
+// Cola única para todos los canales: el modelo procesa un bloque a la vez, en orden, sin perder bloques
+// (perder bloques rompe la memoria del modelo y empeora mucho la detección con ruido).
+const queue = [];
+let running = false;
+const MAX_PENDING_PER_CHANNEL = 3; // si el equipo no da abasto, se descartan los más viejos de ese canal
+
+async function drain() {
+  if (running) return;
+  running = true;
+  try {
+    while (queue.length) {
+      const job = queue.shift();
+      try { job.resolve(await job.run()); } catch (error) { job.reject(error); }
+    }
+  } finally {
+    running = false;
+  }
+}
+
+export const vadStats = { processed: 0, dropped: 0, maxQueue: 0 };
+
 // Un estado por canal: la red recuerda el contexto de los bloques anteriores.
 export function createVoiceChannel() {
   let state = null;
   let context = new Float32Array(CONTEXT_SAMPLES);
-  let busy = false;
   let probability = 0;
+  const channelId = Symbol("canal");
   return {
     get probability() { return probability; },
-    async push(frame) {
-      if (busy) return probability; // si el equipo va lento se descarta un bloque, nunca se acumula retraso
-      busy = true;
-      try {
-        const { ort, session, sr } = await engine();
-        if (!state) state = new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]);
-        const input = new Float32Array(CONTEXT_SAMPLES + frame.length);
-        input.set(context, 0);
-        input.set(frame, CONTEXT_SAMPLES);
-        context = frame.slice(-CONTEXT_SAMPLES);
-        const result = await session.run({ input: new ort.Tensor("float32", input, [1, input.length]), state, sr });
-        state = result.stateN;
-        probability = Number(result.output.data[0]) || 0;
-      } finally {
-        busy = false;
-      }
-      return probability;
+    push(frame) {
+      return new Promise((resolve, reject) => {
+        const pending = queue.filter(job => job.channelId === channelId);
+        if (pending.length >= MAX_PENDING_PER_CHANNEL) {
+          const oldest = pending[0];
+          queue.splice(queue.indexOf(oldest), 1);
+          oldest.resolve(probability);
+          vadStats.dropped++;
+        }
+        queue.push({
+          channelId, resolve, reject,
+          run: async () => {
+            const { ort, session, sr } = await engine();
+            if (!state) state = new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]);
+            const input = new Float32Array(CONTEXT_SAMPLES + frame.length);
+            input.set(context, 0);
+            input.set(frame, CONTEXT_SAMPLES);
+            context = frame.slice(-CONTEXT_SAMPLES);
+            const result = await session.run({ input: new ort.Tensor("float32", input, [1, input.length]), state, sr });
+            state = result.stateN;
+            probability = Number(result.output.data[0]) || 0;
+            vadStats.processed++;
+            return probability;
+          }
+        });
+        vadStats.maxQueue = Math.max(vadStats.maxQueue, queue.length);
+        drain();
+      });
     },
     reset() { state = null; context = new Float32Array(CONTEXT_SAMPLES); probability = 0; }
   };

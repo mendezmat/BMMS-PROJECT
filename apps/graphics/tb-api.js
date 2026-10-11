@@ -107,8 +107,30 @@ export function createTbApi({ dataDir }) {
     await fs.rename(temporaryPath, tbSettingsPath);
   }
 
+  // Registro del servicio: una línea JSON por evento, un archivo por día (para diagnosticar después).
+  const logsDir = path.join(dataDir, "logs");
+  async function appendLog(entries) {
+    if (!Array.isArray(entries) || !entries.length) return 0;
+    const now = new Date();
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const file = path.join(logsDir, `tb-${day}.jsonl`);
+    await fs.mkdir(logsDir, { recursive: true });
+    try { if ((await fs.stat(file)).size > 25 * 1024 * 1024) return 0; } catch { /* nuevo */ }
+    const lines = entries.slice(0, 500).map(entry => JSON.stringify({ ...entry, t: typeof entry?.t === "string" ? entry.t : now.toISOString() }).slice(0, 4000));
+    await fs.appendFile(file, `${lines.join("\n")}\n`, "utf8");
+    return lines.length;
+  }
+
   // Devuelve true si la ruta era de la API del TB Tool.
   async function handle(request, response, url) {
+    if (request.method === "POST" && url.pathname === "/api/tb/log") {
+      try {
+        const { entries } = await readJson(request);
+        return send(response, 200, { ok: true, written: await appendLog(entries) });
+      } catch (error) {
+        return send(response, 400, { error: error.message });
+      }
+    }
     if (request.method === "GET" && url.pathname === "/api/tb/settings") {
       return send(response, 200, { settings: await loadTbSettings() });
     }

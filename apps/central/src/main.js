@@ -5,6 +5,7 @@ import electronUpdater from "electron-updater";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
@@ -13,6 +14,12 @@ import { spawn } from "node:child_process";
 import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
 
 const { autoUpdater } = electronUpdater;
+// Pruebas: --bmms-env=CLAVE=valor (para abrir copias de prueba con "open" sin tocar la instalación real).
+for (const arg of process.argv) {
+  const match = /^--bmms-env=(BMMS_[A-Z_]+)=(.*)$/.exec(arg);
+  if (match) process.env[match[1]] = match[2];
+}
+
 // Modo app: este mismo motor, copiado como "BMMS TB Tool", corre solo esa app con proceso, nombre e
 // identidad propios. Lee archivos, modelos y datos desde la carpeta de Central (que instala y actualiza).
 function readAppMode() {
@@ -338,6 +345,23 @@ async function launchStandalone(appId) {
   return true;
 }
 
+/* Una sola copia de cada app escuchando (Central o la app independiente): si no, alertas dobles. */
+const lockPath = appId => path.join(dataDir(), appId, "instance.json");
+const pidAlive = pid => { try { process.kill(pid, 0); return true; } catch (error) { return error.code === "EPERM"; } };
+function lockHolder(appId) {
+  try {
+    const info = JSON.parse(fs.readFileSync(lockPath(appId), "utf8"));
+    return info.pid !== process.pid && pidAlive(info.pid) ? info : null;
+  } catch { return null; }
+}
+function takeLock(appId) {
+  fs.mkdirSync(path.dirname(lockPath(appId)), { recursive: true });
+  fs.writeFileSync(lockPath(appId), JSON.stringify({ pid: process.pid, mode: APP_MODE ? "app" : "central", at: new Date().toISOString() }));
+}
+function releaseLock(appId) {
+  try { if (JSON.parse(fs.readFileSync(lockPath(appId), "utf8")).pid === process.pid) fs.rmSync(lockPath(appId)); } catch { /* sin bloqueo */ }
+}
+
 async function openApp(appId, { show = null } = {}) {
   if (await launchStandalone(appId)) return;
   const existing = appWindows.get(appId);
@@ -345,6 +369,15 @@ async function openApp(appId, { show = null } = {}) {
     if (show !== false) { existing.show(); existing.focus(); }
     return;
   }
+  const holder = lockHolder(appId);
+  if (holder) {
+    // Ya hay otra copia escuchando: no se abre una segunda.
+    const where = holder.mode === "app" ? "como aplicación propia" : "dentro de BMMS Central";
+    if (Notification.isSupported()) new Notification({ title: "BMMS", body: `La app ya está abierta ${where}. Usa su icono de la barra de menú.` }).show();
+    if (APP_MODE) app.quit();
+    return;
+  }
+  takeLock(appId);
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
   const url = await hostUrl(appId);
   const entry = manifest?.apps.find(item => item.id === appId);
@@ -380,6 +413,7 @@ async function openApp(appId, { show = null } = {}) {
     if (APP_MODE && process.platform === "darwin") app.dock?.hide(); // en segundo plano solo queda el icono de la barra de menú
   });
   window.on("closed", () => {
+    releaseLock(appId);
     appWindows.delete(appId);
     appStatus.delete(appId);
     trays.get(appId)?.destroy();
@@ -594,6 +628,8 @@ function createHub() {
 const RELEASES_URL = "https://github.com/mendezmat/BMMS-PROJECT/releases";
 // En Mac, instalar solo una actualización exige una app firmada por Apple (Developer ID, de pago).
 // Sin firma: se avisa y el botón abre la página de descarga. En Windows se descarga y se instala al reiniciar.
+// Para carpetas que contienen apps (con app.asar) se usa original-fs: el "fs" de Electron no las borra bien.
+const appFsp = (() => { try { return createRequire(import.meta.url)("original-fs").promises; } catch { return fsp; } })();
 const FEED_URL = process.env.BMMS_CENTRAL_UPDATE_URL || "https://github.com/mendezmat/BMMS-PROJECT/releases/download/central-latest";
 // Windows: electron-updater. Mac: actualizador propio (no necesita la firma de pago de Apple).
 const canAutoInstall = () => process.platform === "win32" || process.platform === "darwin";
@@ -610,7 +646,7 @@ async function macDownload(info) {
   const file = (info.files || []).find(item => /\.zip$/i.test(item.url));
   if (!file?.sha512) return manual("La versión publicada no trae el paquete para Mac.");
   const work = path.join(app.getPath("temp"), "bmms-central-update", String(info.version).replace(/[^0-9.]/g, ""));
-  await fsp.rm(work, { recursive: true, force: true });
+  await appFsp.rm(work, { recursive: true, force: true });
   await fsp.mkdir(work, { recursive: true });
   const zip = path.join(work, "update.zip");
   selfUpdate = { status: "downloading", version: info.version, percent: 0 };
@@ -629,7 +665,7 @@ async function macDownload(info) {
       if (Date.now() - lastSent > 500) { lastSent = Date.now(); selfUpdate = { ...selfUpdate, percent: Math.min(99, Math.round((received / total) * 100)) }; send("central:changed"); }
     }
   } finally { await handle.close(); }
-  if (hash.digest("base64") !== file.sha512) { await fsp.rm(work, { recursive: true, force: true }); throw new Error("La descarga del motor llegó dañada (sha512 no coincide)."); }
+  if (hash.digest("base64") !== file.sha512) { await appFsp.rm(work, { recursive: true, force: true }); throw new Error("La descarga del motor llegó dañada (sha512 no coincide)."); }
   const { execFile } = await import("node:child_process");
   const run = (cmd, args) => new Promise((resolve, reject) => execFile(cmd, args, (error, stdout) => error ? reject(error) : resolve(String(stdout))));
   await run("ditto", ["-x", "-k", zip, path.join(work, "app")]);
@@ -726,6 +762,7 @@ const handlers = {
     return { ok: true };
   },
   "central:update-all": async () => {
+    await loadManifest(); // siempre con el catálogo más reciente
     const info = await catalog();
     const errors = [];
     for (const item of info.apps.filter(entry => entry.updateAvailable)) {
@@ -828,7 +865,7 @@ if (!app.requestSingleInstanceLock()) {
 } else if (APP_MODE) {
   app.on("second-instance", () => showAppWindow(APP_MODE.appId));
   app.on("activate", () => showAppWindow(APP_MODE.appId));
-  app.on("before-quit", () => { quittingAll = true; });
+  app.on("before-quit", () => { quittingAll = true; releaseLock(APP_MODE.appId); });
   app.whenReady().then(() => startAppMode().catch(error => { dialog.showErrorBox("BMMS", String(error?.message || error)); app.quit(); }));
 } else {
   app.on("second-instance", (_, argv) => {
@@ -865,7 +902,7 @@ if (!app.requestSingleInstanceLock()) {
     notifyUpdates().catch(() => {});
     setInterval(() => checkForUpdates().catch(() => {}), 30 * 60 * 1000);
   });
-  app.on("before-quit", () => { quittingAll = true; });
+  app.on("before-quit", () => { quittingAll = true; for (const appId of appWindows.keys()) releaseLock(appId); });
   app.on("window-all-closed", async () => {
     for (const { host } of hosts.values()) await host.close().catch(() => {});
     app.quit();

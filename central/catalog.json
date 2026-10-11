@@ -5,7 +5,7 @@
       "id": "tb-tool",
       "name": "TB Tool",
       "status": "available",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "category": "Comunicación",
       "color": "#ff3b30",
       "summary": "Alerta visual de talkback. Se enciende solo cuando reconoce voz, con ventana flotante siempre encima y transcripción sin internet.",

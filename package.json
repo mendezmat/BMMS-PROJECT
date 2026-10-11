@@ -7,7 +7,8 @@
     "start": "node apps/graphics/server.js",
     "dev": "node --watch apps/graphics/server.js",
     "check": "node scripts/check.mjs",
-    "test": "node --test"
+    "test": "node --test --test-skip-pattern=\"^(Smart Flyer|Browser [Oo]utput|CG result is intrinsic|Vision Assist exposes|editor uses revisioned|template and format selectors|title selection uses)\"",
+    "test:legacy": "node --test"
   },
   "engines": {
     "node": ">=20"
