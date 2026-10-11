@@ -1,6 +1,6 @@
 // BMMS Central — proceso principal (Electron).
 // Hub de aplicaciones: lee el manifiesto firmado, instala/actualiza apps por archivos y las abre.
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, session, shell, systemPreferences, Tray } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, shell, systemPreferences, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -409,8 +409,16 @@ async function openApp(appId, { show = null } = {}) {
   window.on("close", event => {
     if (quittingAll || quittingApp === appId) return;
     event.preventDefault();
-    window.hide();
-    if (APP_MODE && process.platform === "darwin") app.dock?.hide(); // en segundo plano solo queda el icono de la barra de menú
+    hideAppWindow(appId); // en segundo plano solo queda el icono de la barra de menú
+  });
+  window.on("enter-full-screen", () => saveWindowPrefs(appId, { fullscreen: true }));
+  window.on("leave-full-screen", () => { if (window.isVisible()) saveWindowPrefs(appId, { fullscreen: false }); });
+  // Esc: vuelve a segundo plano. F11 (o Ctrl+Cmd+F en Mac): pantalla completa sí/no.
+  window.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const toggleFull = input.key === "F11" || (process.platform === "darwin" && input.meta && input.control && input.key.toLowerCase() === "f");
+    if (toggleFull) { event.preventDefault(); window.setFullScreen(!window.isFullScreen()); return; }
+    if (input.key === "Escape" && !input.meta && !input.control && !input.alt) { event.preventDefault(); hideAppWindow(appId); }
   });
   window.on("closed", () => {
     releaseLock(appId);
@@ -482,15 +490,41 @@ async function createTray(appId, entry) {
   trays.set(appId, tray);
   const refresh = () => updateTrayMenu(appId, entry);
   tray.on("click", () => { if (process.platform !== "darwin") showAppWindow(appId); });
+  // Atajo desde cualquier app: Ctrl+Shift+T (Cmd+Shift+T en Mac) abre u oculta la app.
+  try { globalShortcut.register("CommandOrControl+Shift+T", () => toggleAppWindow(appId)); } catch { /* atajo ocupado */ }
   refresh();
 }
 
-function showAppWindow(appId) {
+/* Abrir la ventana de la app: en pantalla completa por defecto (recuerda el último modo). */
+const windowPrefsPath = appId => path.join(dataDir(), appId, "window.json");
+function windowPrefs(appId) { try { return JSON.parse(fs.readFileSync(windowPrefsPath(appId), "utf8")); } catch { return { fullscreen: true }; } }
+function saveWindowPrefs(appId, prefs) { try { fs.mkdirSync(path.dirname(windowPrefsPath(appId)), { recursive: true }); fs.writeFileSync(windowPrefsPath(appId), JSON.stringify({ ...windowPrefs(appId), ...prefs })); } catch { /* sin preferencias */ } }
+
+function showAppWindow(appId, { fullscreen } = {}) {
   const window = appWindows.get(appId);
   if (!window || window.isDestroyed()) return;
   if (APP_MODE && process.platform === "darwin") app.dock?.show();
+  const full = fullscreen ?? windowPrefs(appId).fullscreen !== false;
   window.show();
   window.focus();
+  if (full && !window.isFullScreen()) window.setFullScreen(true);
+  if (!full && window.isFullScreen()) window.setFullScreen(false);
+}
+
+// Volver a segundo plano sin dejar de escuchar (en Mac, primero sale de pantalla completa).
+function hideAppWindow(appId) {
+  const window = appWindows.get(appId);
+  if (!window || window.isDestroyed()) return;
+  const done = () => { window.hide(); if (APP_MODE && process.platform === "darwin") app.dock?.hide(); };
+  if (window.isFullScreen()) { window.once("leave-full-screen", () => setTimeout(done, 50)); window.setFullScreen(false); }
+  else done();
+}
+
+function toggleAppWindow(appId) {
+  const window = appWindows.get(appId);
+  if (!window || window.isDestroyed()) return;
+  if (window.isVisible() && window.isFocused()) hideAppWindow(appId);
+  else showAppWindow(appId);
 }
 
 // "Abrir BMMS Central": en la app independiente abre el programa Central; dentro de Central, el hub.
@@ -525,13 +559,14 @@ function updateTrayMenu(appId, entry) {
   const name = entry?.name || appId;
   tray.setToolTip(`BMMS ${name}${status.running ? " · escuchando" : " · detenido"}`);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: `BMMS ${name}${status.running ? " — escuchando" : " — detenido"}`, enabled: false },
+    { label: `Abrir ${name} (pantalla completa)`, accelerator: "CommandOrControl+Shift+T", click: () => showAppWindow(appId, { fullscreen: true }) },
     { type: "separator" },
+    { label: `BMMS ${name}${status.running ? " — escuchando" : " — detenido"}`, enabled: false },
     status.running
       ? { label: "Detener monitoreo", click: () => command(appId, "stop") }
       : { label: "Iniciar monitoreo", click: () => command(appId, "start") },
     { label: "Probar alerta", click: () => command(appId, "test") },
-    { label: "Abrir ajustes y transcripción", click: () => showAppWindow(appId) },
+    { label: "Abrir en ventana", click: () => showAppWindow(appId, { fullscreen: false }) },
     { type: "separator" },
     { label: "Abrir al iniciar sesión", type: "checkbox", checked: loginItemEnabled(appId), click: item => setLoginItem(appId, item.checked) },
     { label: "Abrir BMMS Central", click: () => openCentral() },
@@ -593,6 +628,15 @@ ipcMain.on("tb:alert", (event, state) => {
     pulse: Boolean(state.pulse), flash: Boolean(state.flash), edge: state.edge === "all" ? "all" : "top",
     showText: Boolean(state.showText), text: String(state.text || "").slice(0, 200)
   });
+});
+
+ipcMain.on("tb:window", (event, action) => {
+  if (!fromAppWindow(event)) return;
+  const appId = [...appWindows].find(([, window]) => window.webContents === event.sender)?.[0];
+  const window = appId && appWindows.get(appId);
+  if (!window) return;
+  if (action === "fullscreen") window.setFullScreen(!window.isFullScreen());
+  if (action === "background") hideAppWindow(appId);
 });
 
 ipcMain.on("tb:status", (event, state) => {
@@ -809,6 +853,8 @@ for (const [channel, handler] of Object.entries(handlers)) {
 }
 
 /* ---------- Arranque ---------- */
+
+app.on("will-quit", () => globalShortcut.unregisterAll());
 
 // Enlaces bmms-central://open/<id> (lanzadores de Aplicaciones en Mac) y --open-app=<id> (Windows).
 if (!process.env.BMMS_CENTRAL_USERDATA && !APP_MODE) { // en pruebas no se registra, para no quitarle el enlace a la Central instalada

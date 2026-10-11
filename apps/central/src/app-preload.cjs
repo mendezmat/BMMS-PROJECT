@@ -9,5 +9,7 @@ contextBridge.exposeInMainWorld("bmmsCentral", {
   autoStart: process.argv.includes("--bmms-autostart"),
   alert: state => ipcRenderer.send("tb:alert", state),
   status: state => ipcRenderer.send("tb:status", state),
-  onCommand: callback => ipcRenderer.on("tb:command", (_, command) => callback(command))
+  onCommand: callback => ipcRenderer.on("tb:command", (_, command) => callback(command)),
+  toggleFullscreen: () => ipcRenderer.send("tb:window", "fullscreen"),
+  toBackground: () => ipcRenderer.send("tb:window", "background")
 });

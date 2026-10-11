@@ -1075,6 +1075,13 @@ async function init() {
   byId("tbClear").addEventListener("click", () => { if (transcript.length && confirm("¿Borrar la transcripción?")) { transcript = []; safeStorage.set(TRANSCRIPT_KEY, transcript); renderTranscript(); } });
   byId("tbFloat").addEventListener("click", openFloat);
   byId("tbSave").addEventListener("click", saveSession);
+  // Dentro de BMMS: pantalla completa y volver a segundo plano sin dejar de escuchar.
+  if (window.bmmsCentral?.toggleFullscreen) {
+    byId("tbFullscreen").hidden = false;
+    byId("tbBackground").hidden = false;
+    byId("tbFullscreen").addEventListener("click", () => window.bmmsCentral.toggleFullscreen());
+    byId("tbBackground").addEventListener("click", () => window.bmmsCentral.toBackground());
+  }
   byId("tbShowText").addEventListener("change", event => { settings.alert.showText = event.target.checked; saveSettings(); applyAlertStyle(); });
   byId("tbSmall").addEventListener("change", event => { settings.alert.small = event.target.checked; saveSettings(); applyAlertStyle(); });
   byId("tbBand").addEventListener("change", event => { settings.alert.band = event.target.value; saveSettings(); applyAlertStyle(); });
