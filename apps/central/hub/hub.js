@@ -1,18 +1,32 @@
-// BMMS Central — hub: muestra el catálogo y dispara instalaciones/actualizaciones.
+// BMMS Central — hub: lista de apps (estilo Waves Central) y panel de la app seleccionada.
 const byId = id => document.getElementById(id);
 const progress = new Map(); // appId -> { label, percent }
 const messages = new Map(); // appId -> { text, kind }
 let state = null;
+let selectedId = null;
+let tab = "all";
+let query = "";
 
 const mb = bytes => `${Math.round(bytes / 1e6)} MB`;
 const initials = name => name.replace(/^BMMS\s+/i, "").split(/\s+/).map(word => word[0]).join("").slice(0, 2).toUpperCase();
 const dateFormat = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" });
+const selectedApp = () => state?.apps.find(app => app.id === selectedId) || null;
+const taskOf = app => progress.get(app.id) || app.busy || null;
 
 async function load(refresh = false) {
+  const button = byId("refresh");
+  if (refresh) button.classList.add("is-spinning");
   const result = await (refresh ? window.central.refresh() : window.central.catalog());
-  if (result?.error && !result.apps) { byId("channelError").hidden = false; byId("channelError").textContent = result.error; return; }
+  button.classList.remove("is-spinning");
+  if (result?.error && !result.apps) { showNotice(result.error); return; }
   state = result;
+  if (!selectedApp()) selectedId = state.apps.find(app => app.status === "available")?.id || state.apps[0]?.id || null;
   render();
+}
+
+function showNotice(text) {
+  byId("notice").hidden = !text;
+  byId("notice").textContent = text || "";
 }
 
 async function act(app, action) {
@@ -21,99 +35,217 @@ async function act(app, action) {
   const result = await action();
   if (result?.error) messages.set(app.id, { text: result.error, kind: "error" });
   else if (result?.warning) messages.set(app.id, { text: result.warning, kind: "warn" });
+  else if (result?.canceled) messages.delete(app.id);
   progress.delete(app.id);
   await load();
 }
 
-function button(label, onClick, { primary = false, disabled = false } = {}) {
+/* ---------- Lista ---------- */
+
+function visibleApps() {
+  const text = query.trim().toLocaleLowerCase("es");
+  return state.apps
+    .filter(app => tab === "all" || app.installed)
+    .filter(app => !text || `${app.name} ${app.category || ""} ${app.summary || ""}`.toLocaleLowerCase("es").includes(text))
+    .sort((a, b) => (a.status === "available" ? 0 : 1) - (b.status === "available" ? 0 : 1));
+}
+
+function statusLine(app) {
+  if (app.status !== "available") return { text: "Próximamente", cls: "soon" };
+  const task = taskOf(app);
+  if (task) return { text: `${task.label} ${task.percent || 0}%`, cls: "" };
+  if (!app.installed) return { text: `V ${app.version}`, cls: "" };
+  if (app.updateAvailable) return { text: `V ${app.installed.version} · nueva V ${app.version}`, cls: "upd" };
+  return { text: `V ${app.installed.version}`, cls: "" };
+}
+
+function mark(yes) {
+  const span = document.createElement("span");
+  span.className = `mark ${yes ? "is-yes" : "is-no"}`;
+  span.textContent = yes ? "✓" : "—";
+  return span;
+}
+
+function renderRow(app) {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.classList.toggle("is-selected", app.id === selectedId);
+  row.classList.toggle("is-soon", app.status !== "available");
+  row.setAttribute("role", "button");
+  row.tabIndex = 0;
+
+  const radio = document.createElement("span");
+  radio.className = "radio";
+
+  const main = document.createElement("div");
+  main.className = "row-main";
+  const thumb = document.createElement("div");
+  thumb.className = "thumb";
+  thumb.style.setProperty("--app-color", app.color || "#666");
+  thumb.textContent = initials(app.name);
+  const names = document.createElement("div");
+  names.className = "names";
+  const title = document.createElement("strong");
+  title.textContent = app.name;
+  const line = statusLine(app);
+  const sub = document.createElement("small");
+  sub.textContent = line.text;
+  if (line.cls) sub.classList.add(line.cls);
+  names.append(title, sub);
+  main.append(thumb, names);
+
+  const cat = document.createElement("span");
+  cat.className = "cat";
+  cat.textContent = app.category || "";
+
+  const installed = app.status === "available" && Boolean(app.installed);
+  row.append(radio, main, cat, mark(installed), mark(installed && !app.updateAvailable && !app.missingAssetsBytes));
+  const select = () => { selectedId = app.id; render(); };
+  row.addEventListener("click", select);
+  row.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } });
+  return row;
+}
+
+/* ---------- Panel derecho ---------- */
+
+function link(label, onClick) {
   const element = document.createElement("button");
+  element.className = "link";
   element.textContent = label;
-  element.className = primary ? "primary" : "";
-  element.disabled = disabled;
   element.addEventListener("click", onClick);
   return element;
 }
 
-function renderCard(app) {
-  const card = byId("cardTemplate").content.firstElementChild.cloneNode(true);
-  card.style.setProperty("--app-color", app.color || "#888");
-  card.classList.toggle("is-soon", app.status !== "available");
-  card.querySelector(".icon").textContent = initials(app.name);
-  card.querySelector("h2").textContent = app.name;
-  card.querySelector(".category").textContent = app.category || "";
-  card.querySelector(".summary").textContent = app.summary || "";
-  const pill = card.querySelector(".pill");
-  const detail = card.querySelector(".detail");
-  const actions = card.querySelector(".actions");
-  const task = progress.get(app.id) || app.busy;
+function renderPanel() {
+  const app = selectedApp();
+  const primary = byId("primary");
+  const links = byId("panelLinks");
+  const summary = byId("summary");
+  links.replaceChildren();
+  primary.onclick = null;
 
+  if (!app) {
+    byId("panelHint").textContent = "Selecciona una aplicación de la lista.";
+    summary.replaceChildren();
+    primary.textContent = "Instalar";
+    primary.disabled = true;
+    byId("progress").hidden = true;
+    byId("message").hidden = true;
+    return;
+  }
+
+  const task = taskOf(app);
+  const head = document.createElement("div");
+  head.className = "summary-head";
+  head.textContent = "Resumen";
+  const body = document.createElement("div");
+  body.className = "summary-body";
+  const name = document.createElement("strong");
+  name.textContent = app.name;
+  const details = [];
   if (app.status !== "available") {
-    pill.textContent = "Próximamente";
-    detail.textContent = "Estará disponible en una próxima actualización de Central.";
+    details.push("Estará disponible en una próxima actualización de Central.");
   } else if (!app.installed) {
-    pill.textContent = "Disponible";
-    pill.classList.add("is-available");
-    detail.textContent = `Versión ${app.version}${app.totalAssetsBytes ? ` · incluye modelos de transcripción (${mb(app.totalAssetsBytes)}, una sola vez)` : ""}`;
-    actions.append(
-      button("Instalar", () => act(app, () => window.central.install(app.id)), { primary: true, disabled: Boolean(task) }),
-      button("Instalar desde carpeta…", () => act(app, () => window.central.importFolder(app.id)), { disabled: Boolean(task) })
-    );
+    details.push(`Versión ${app.version}`);
+    if (app.totalAssetsBytes) details.push(`Incluye modelos de transcripción (${mb(app.totalAssetsBytes)}, se descargan una sola vez).`);
   } else {
-    pill.textContent = app.updateAvailable ? "Actualización" : "Instalado";
-    pill.classList.add(app.updateAvailable ? "is-update" : "is-installed");
-    const parts = [`Versión ${app.installed.version}`, `instalada ${dateFormat.format(new Date(app.installed.installedAt))}`];
-    if (app.updateAvailable) parts.push(`nueva versión ${app.version} disponible`);
-    detail.textContent = parts.join(" · ");
-    actions.append(button(app.running ? "Mostrar" : "Abrir", () => act(app, () => window.central.open(app.id)), { primary: !app.updateAvailable, disabled: Boolean(task) }));
-    if (app.updateAvailable) actions.append(button("Actualizar", () => act(app, () => window.central.install(app.id)), { primary: true, disabled: Boolean(task) }));
-    if (app.missingAssetsBytes) {
-      detail.textContent += ` · faltan modelos de transcripción (${mb(app.missingAssetsBytes)})`;
-      detail.classList.add("is-warn");
-      actions.append(
-        button("Descargar modelos", () => act(app, () => window.central.downloadAssets(app.id)), { disabled: Boolean(task) }),
-        button("Importar de carpeta…", () => act(app, () => window.central.importFolder(app.id)), { disabled: Boolean(task) })
-      );
-    }
-    if (app.previous && !task) actions.append(button(`Volver a ${app.previous.version}`, () => { if (confirm(`¿Volver a la versión anterior (${app.previous.version})?`)) act(app, () => window.central.rollback(app.id)); }));
+    details.push(`Versión instalada ${app.installed.version} · ${dateFormat.format(new Date(app.installed.installedAt))}`);
+    if (app.updateAvailable) details.push(`Nueva versión ${app.version}: solo se descargan los archivos que cambiaron.`);
+    if (app.missingAssetsBytes) details.push(`Faltan modelos de transcripción (${mb(app.missingAssetsBytes)}).`);
   }
+  body.append(name, ...details.map(text => Object.assign(document.createElement("span"), { textContent: text })));
+  summary.replaceChildren(head, body);
 
-  const message = messages.get(app.id);
-  if (message) { detail.textContent = message.text; detail.className = `detail is-${message.kind}`; }
+  byId("panelHint").textContent = app.status === "available"
+    ? (app.summary || "")
+    : `${app.summary || ""}`;
+
+  byId("progress").hidden = !task;
   if (task) {
-    const box = card.querySelector(".progress");
-    box.hidden = false;
-    box.querySelector(".progress-bar").style.width = `${task.percent || 0}%`;
-    box.querySelector(".progress-label").textContent = `${task.label} ${task.percent || 0}%`;
+    byId("progressBar").style.width = `${task.percent || 0}%`;
+    byId("progressLabel").textContent = `${task.label} ${task.percent || 0}%`;
   }
-  return card;
+  const message = messages.get(app.id);
+  byId("message").hidden = !message;
+  if (message) { byId("message").textContent = message.text; byId("message").className = `message is-${message.kind}`; }
+
+  const run = (label, action) => { primary.textContent = label; primary.disabled = Boolean(task); primary.onclick = () => act(app, action); };
+  if (app.status !== "available") {
+    primary.textContent = "Próximamente";
+    primary.disabled = true;
+  } else if (!app.installed) {
+    run("Instalar", () => window.central.install(app.id));
+    if (!task) links.append(link("Instalar desde carpeta…", () => act(app, () => window.central.importFolder(app.id))));
+  } else if (app.updateAvailable) {
+    run("Actualizar", () => window.central.install(app.id));
+    if (!task) links.append(link(app.running ? "Mostrar la app" : "Abrir sin actualizar", () => act(app, () => window.central.open(app.id))));
+  } else {
+    run(app.running ? "Mostrar" : "Abrir", () => window.central.open(app.id));
+  }
+  if (app.installed && app.missingAssetsBytes && !task) {
+    links.append(
+      link("Descargar modelos de transcripción", () => act(app, () => window.central.downloadAssets(app.id))),
+      link("Importar modelos desde carpeta…", () => act(app, () => window.central.importFolder(app.id)))
+    );
+  }
+  if (app.previous && !task) {
+    links.append(link(`Volver a la versión ${app.previous.version}`, () => {
+      if (confirm(`¿Volver a la versión anterior (${app.previous.version})?`)) act(app, () => window.central.rollback(app.id));
+    }));
+  }
 }
+
+/* ---------- Todo ---------- */
 
 function render() {
   if (!state) return;
-  const available = state.apps.filter(app => app.status === "available");
-  const soon = state.apps.filter(app => app.status !== "available");
-  byId("apps").replaceChildren(...available.map(renderCard), ...soon.map(renderCard));
+  const apps = visibleApps();
+  const rows = byId("rows");
+  if (apps.length) rows.replaceChildren(...apps.map(renderRow));
+  else {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = tab === "mine" ? "Todavía no instalaste ninguna app. Ve a «Todas las apps»." : "Ninguna app coincide con la búsqueda.";
+    rows.replaceChildren(empty);
+  }
+  for (const element of document.querySelectorAll(".tab")) element.classList.toggle("is-active", element.dataset.tab === tab);
+
+  const updates = state.apps.filter(app => app.updateAvailable).length;
+  byId("updatesPill").hidden = !updates;
+  byId("updatesPill").textContent = updates === 1 ? "1 actualización disponible" : `${updates} actualizaciones disponibles`;
 
   const channel = byId("channel");
   channel.classList.toggle("is-online", state.source === "online");
   channel.textContent = state.source === "online"
-    ? `Canal al día · ${state.publishedAt ? dateFormat.format(new Date(state.publishedAt)) : ""}`
-    : state.source === "none" ? "Sin catálogo" : "Sin conexión · usando el último catálogo";
-  byId("channelError").hidden = !state.error || state.source === "online";
-  byId("channelError").textContent = state.error ? `${state.error} Las apps instaladas siguen funcionando.` : "";
+    ? `Catálogo al día · ${state.publishedAt ? dateFormat.format(new Date(state.publishedAt)) : ""}`
+    : state.source === "none" ? "Sin catálogo" : "Sin conexión · último catálogo guardado";
+  showNotice(state.error && state.source !== "online" ? `${state.error} Las apps instaladas siguen funcionando.` : "");
 
+  byId("centralVersion").textContent = `v${state.central.version}`;
   const update = state.central.update || {};
-  byId("centralVersion").textContent = `BMMS Central ${state.central.version}`;
   const banner = byId("selfUpdate");
   banner.hidden = !["downloading", "ready"].includes(update.status);
   if (update.status === "downloading") banner.textContent = `Descargando una nueva versión de Central… ${update.percent || 0}%`;
   if (update.status === "ready") {
-    banner.replaceChildren(document.createTextNode(`Central ${update.version} está lista.`), button("Reiniciar y actualizar", () => window.central.restartToUpdate(), { primary: true }));
+    banner.replaceChildren(document.createTextNode(`BMMS Central ${update.version} está lista.`), link("Reiniciar y actualizar", () => window.central.restartToUpdate()));
   }
+  renderPanel();
 }
+
+const importSelected = () => {
+  const app = selectedApp()?.status === "available" ? selectedApp() : state?.apps.find(item => item.status === "available");
+  if (app) act(app, () => window.central.importFolder(app.id));
+};
 
 window.central.onProgress(info => { progress.set(info.appId, info); render(); });
 window.central.onChanged(() => load());
-byId("refresh").addEventListener("click", async () => { byId("refresh").disabled = true; await load(true); byId("refresh").disabled = false; });
-byId("dataFolder").addEventListener("click", () => window.central.openDataFolder());
+byId("refresh").addEventListener("click", () => load(true));
+byId("updatesPill").addEventListener("click", () => { tab = "mine"; render(); });
+byId("search").addEventListener("input", event => { query = event.target.value; render(); });
+for (const element of document.querySelectorAll(".tab")) element.addEventListener("click", () => { tab = element.dataset.tab; render(); });
+byId("navApps").addEventListener("click", () => { tab = "all"; render(); });
+byId("navOffline").addEventListener("click", importSelected);
+byId("footFolder").addEventListener("click", importSelected);
+byId("navData").addEventListener("click", () => window.central.openDataFolder());
+byId("footData").addEventListener("click", () => window.central.openDataFolder());
 load();
