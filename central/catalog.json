@@ -5,7 +5,7 @@
       "id": "tb-tool",
       "name": "TB Tool",
       "status": "available",
-      "version": "1.3.1",
+      "version": "1.4.0",
       "category": "Comunicación",
       "color": "#ff3b30",
       "summary": "Alerta visual de talkback. Se enciende solo cuando reconoce voz, con ventana flotante siempre encima y transcripción sin internet.",
@@ -24,7 +24,9 @@
         "public/vendor/transformers/": "apps/graphics/public/vendor/transformers/",
         "public/tb-icon.png": "apps/graphics/public/tb-icon.png",
         "public/tb-trayTemplate.png": "apps/graphics/public/tb-trayTemplate.png",
-        "public/tb-trayTemplate-2x.png": "apps/graphics/public/tb-trayTemplate-2x.png"
+        "public/tb-trayTemplate-2x.png": "apps/graphics/public/tb-trayTemplate-2x.png",
+        "public/bmms-ui.css": "apps/graphics/public/bmms-ui.css",
+        "public/fonts/": "apps/graphics/public/fonts/"
       },
       "assets": {
         "localRoot": "apps/graphics/public/vendor/models",

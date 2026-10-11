@@ -1,0 +1,29 @@
+/* BMMS UI — estilo común de todas las pantallas de BMMS (lenguaje de BMMS Central, ver
+   apps/central/DESIGN.md). Solo apariencia: no cambia funciones. Fuente Roboto (OFL) incluida. */
+@font-face { font-family: "Roboto"; font-weight: 400; src: url("/fonts/roboto-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 500; src: url("/fonts/roboto-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 700; src: url("/fonts/roboto-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 900; src: url("/fonts/roboto-latin-900-normal.woff2") format("woff2"); }
+
+:root {
+  --bmms-bg: #121212;
+  --bmms-side: #191919;
+  --bmms-surface: #212121;
+  --bmms-surface-2: #262626;
+  --bmms-field: #1b1b1b;
+  --bmms-field-line: #353535;
+  --bmms-line: #262626;
+  --bmms-hover: #2c2c2c;
+  --bmms-text: #ffffff;
+  --bmms-text-2: #9e9e9e;
+  --bmms-text-3: #757575;
+  --bmms-accent: #3552ff;
+  --bmms-accent-hover: #4a64ff;
+  --bmms-accent-light: #6ca1ff;
+  --bmms-update: #f73663;
+  --bmms-ok: #4caf50;
+  --bmms-warn: #ffd479;
+  --bmms-danger: #ff8a80;
+  --bmms-radius: 4px;
+  --bmms-font: "Roboto", "Segoe UI", system-ui, sans-serif;
+}

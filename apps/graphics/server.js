@@ -402,6 +402,12 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/tb-vad.js") {
     return serveFile(response, "tb-vad.js", "text/javascript; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/bmms-ui.css") {
+    return serveFile(response, "bmms-ui.css", "text/css; charset=utf-8");
+  }
+  if (request.method === "GET" && /^\/fonts\/roboto-latin-(400|500|700|900)-normal\.woff2$/.test(url.pathname)) {
+    return serveFile(response, url.pathname.slice(1), "font/woff2");
+  }
   if (request.method === "GET" && url.pathname === "/tb-icon.png") {
     return serveFile(response, "tb-icon.png", "image/png");
   }
