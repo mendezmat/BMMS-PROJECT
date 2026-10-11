@@ -540,14 +540,91 @@ function createHub() {
 const RELEASES_URL = "https://github.com/mendezmat/BMMS-PROJECT/releases";
 // En Mac, instalar solo una actualización exige una app firmada por Apple (Developer ID, de pago).
 // Sin firma: se avisa y el botón abre la página de descarga. En Windows se descarga y se instala al reiniciar.
-const canAutoInstall = () => process.platform === "win32";
+const FEED_URL = process.env.BMMS_CENTRAL_UPDATE_URL || "https://github.com/mendezmat/BMMS-PROJECT/releases/download/central-latest";
+// Windows: electron-updater. Mac: actualizador propio (no necesita la firma de pago de Apple).
+const canAutoInstall = () => process.platform === "win32" || process.platform === "darwin";
+let macUpdate = null; // { version, newApp, bundle, exe }
+
+const currentBundle = () => path.resolve(process.execPath, "../../..");
+
+// Mac: descarga el .zip de la versión nueva, lo verifica (sha512 de latest-mac.yml) y lo deja listo.
+async function macDownload(info) {
+  const bundle = currentBundle();
+  const manual = message => { selfUpdate = { status: "available", version: info.version, manual: true, reason: message }; send("central:changed"); };
+  if (!bundle.endsWith(".app") || bundle.startsWith("/Volumes/")) return manual("Central se está ejecutando desde el instalador; muévelo a Aplicaciones.");
+  try { await fsp.access(path.dirname(bundle), fs.constants.W_OK); } catch { return manual("No hay permiso para escribir en Aplicaciones."); }
+  const file = (info.files || []).find(item => /\.zip$/i.test(item.url));
+  if (!file?.sha512) return manual("La versión publicada no trae el paquete para Mac.");
+  const work = path.join(app.getPath("temp"), "bmms-central-update", String(info.version).replace(/[^0-9.]/g, ""));
+  await fsp.rm(work, { recursive: true, force: true });
+  await fsp.mkdir(work, { recursive: true });
+  const zip = path.join(work, "update.zip");
+  selfUpdate = { status: "downloading", version: info.version, percent: 0 };
+  send("central:changed");
+  const response = await fetch(`${FEED_URL}/${encodeURIComponent(file.url)}`, { redirect: "follow" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const total = Number(response.headers.get("content-length")) || file.size || 1;
+  const hash = (await import("node:crypto")).createHash("sha512");
+  const handle = await fsp.open(zip, "w");
+  let received = 0, lastSent = 0;
+  try {
+    for await (const chunk of response.body) {
+      hash.update(chunk);
+      await handle.write(chunk);
+      received += chunk.length;
+      if (Date.now() - lastSent > 500) { lastSent = Date.now(); selfUpdate = { ...selfUpdate, percent: Math.min(99, Math.round((received / total) * 100)) }; send("central:changed"); }
+    }
+  } finally { await handle.close(); }
+  if (hash.digest("base64") !== file.sha512) { await fsp.rm(work, { recursive: true, force: true }); throw new Error("La descarga del motor llegó dañada (sha512 no coincide)."); }
+  const { execFile } = await import("node:child_process");
+  const run = (cmd, args) => new Promise((resolve, reject) => execFile(cmd, args, (error, stdout) => error ? reject(error) : resolve(String(stdout))));
+  await run("ditto", ["-x", "-k", zip, path.join(work, "app")]);
+  const appName = (await fsp.readdir(path.join(work, "app"))).find(entry => entry.endsWith(".app"));
+  if (!appName) throw new Error("El paquete del motor no contiene la aplicación.");
+  const newApp = path.join(work, "app", appName);
+  const version = (await run("plutil", ["-extract", "CFBundleShortVersionString", "raw", path.join(newApp, "Contents", "Info.plist")])).trim();
+  if (version !== info.version) throw new Error(`El paquete dice ${version} y se esperaba ${info.version}.`);
+  const exe = (await run("plutil", ["-extract", "CFBundleExecutable", "raw", path.join(newApp, "Contents", "Info.plist")])).trim();
+  await fsp.rm(zip, { force: true });
+  macUpdate = { version, newApp, bundle, exe };
+  selfUpdate = { status: "ready", version };
+  send("central:changed");
+  notifyUpdates().catch(() => {});
+}
+
+// Reemplaza la app al cerrar: guarda la anterior y la restaura si la nueva no abre.
+async function macInstallAndRestart() {
+  const script = path.join(app.getPath("temp"), "bmms-central-update", "swap.sh");
+  await fsp.writeFile(script, `#!/bin/sh
+PID="$1"; TARGET="$2"; NEW="$3"; EXE="$4"; BACKUP="$TARGET.bmms-anterior"
+while kill -0 "$PID" 2>/dev/null; do sleep 0.5; done
+rm -rf "$BACKUP"
+mv "$TARGET" "$BACKUP" || exit 1
+if ditto "$NEW" "$TARGET"; then
+  nohup "$TARGET/Contents/MacOS/$EXE" >/dev/null 2>&1 &
+  sleep 10
+  if pgrep -f "$TARGET/Contents/MacOS/" >/dev/null; then rm -rf "$BACKUP" "$NEW"; exit 0; fi
+fi
+rm -rf "$TARGET"; mv "$BACKUP" "$TARGET"
+nohup "$TARGET/Contents/MacOS/$EXE" >/dev/null 2>&1 &
+`, { mode: 0o755 });
+  spawn("/bin/sh", [script, String(process.pid), macUpdate.bundle, macUpdate.newApp, macUpdate.exe], { detached: true, stdio: "ignore" }).unref();
+  quittingAll = true;
+  app.quit();
+}
 
 function setupSelfUpdate() {
   if (!app.isPackaged) { selfUpdate = { status: "dev" }; return; }
   if (process.env.BMMS_CENTRAL_UPDATE_URL) autoUpdater.setFeedURL({ provider: "generic", url: process.env.BMMS_CENTRAL_UPDATE_URL }); // pruebas
-  autoUpdater.autoDownload = canAutoInstall();
+  autoUpdater.autoDownload = process.platform === "win32"; // en Mac descarga el actualizador propio
   autoUpdater.autoInstallOnAppQuit = false; // nunca se reinicia ni se instala sin que la persona lo pida
   autoUpdater.on("update-available", info => {
+    if (process.platform === "darwin") {
+      if (macUpdate?.version === info.version) return;
+      macDownload(info).catch(error => { selfUpdate = { status: "available", version: info.version, manual: true, reason: error.message }; send("central:changed"); });
+      notifyUpdates().catch(() => {});
+      return;
+    }
     selfUpdate = { status: canAutoInstall() ? "downloading" : "available", version: info.version, percent: 0, manual: !canAutoInstall() };
     send("central:changed");
     notifyUpdates().catch(() => {});
@@ -622,7 +699,8 @@ const handlers = {
   },
   "central:restart-to-update": () => {
     if (selfUpdate.status !== "ready") throw new Error("La actualización todavía no está lista.");
-    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    if (process.platform === "darwin" && macUpdate) setImmediate(() => macInstallAndRestart().catch(error => dialog.showErrorBox("BMMS Central", error.message)));
+    else setImmediate(() => autoUpdater.quitAndInstall(false, true));
     return { ok: true };
   },
   "central:open-release": () => {
