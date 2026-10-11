@@ -60,13 +60,28 @@ async function readSigned(dir) {
   return { bytes, signature, manifest: verifyManifest(bytes, signature, PUBLIC_KEY) };
 }
 
+// raw.githubusercontent guarda la copia de main hasta 5 minutos aunque cambie el ?t=, así que una
+// actualización recién publicada no aparecía. Con el commit exacto de main la copia nunca está vieja;
+// si la API de GitHub no responde se usa la dirección normal.
+async function channelUrlNow() {
+  const fixed = CHANNEL_URL.match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+\/[^/]+)\/main\/(.+)$/);
+  if (!fixed) return CHANNEL_URL;
+  try {
+    const response = await fetch(`https://api.github.com/repos/${fixed[1]}/commits/main`, { headers: { Accept: "application/vnd.github.sha" }, cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const sha = response.ok ? (await response.text()).trim() : "";
+    if (/^[0-9a-f]{40}$/.test(sha)) return `https://raw.githubusercontent.com/${fixed[1]}/${sha}/${fixed[2]}`;
+  } catch { /* sin API: dirección normal */ }
+  return CHANNEL_URL;
+}
+
 async function loadManifest() {
   manifestError = null;
   try {
     const bust = `?t=${Date.now()}`;
+    const url = await channelUrlNow();
     const [bytes, signature] = await Promise.all([
-      fetch(CHANNEL_URL + bust, { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return Buffer.from(await response.arrayBuffer()); }),
-      fetch(`${CHANNEL_URL}.sig${bust}`, { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.text(); })
+      fetch(url + bust, { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return Buffer.from(await response.arrayBuffer()); }),
+      fetch(`${url}.sig${bust}`, { cache: "no-store" }).then(async response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.text(); })
     ]);
     manifest = verifyManifest(bytes, signature, PUBLIC_KEY);
     manifestSource = "online";
