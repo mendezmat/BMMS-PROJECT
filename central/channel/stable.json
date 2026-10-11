@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "channel": "stable",
-  "publishedAt": "2026-10-11T00:29:27.927Z",
-  "commit": "4d6204f2f97c98e732da0ca738fbd581194461d8",
+  "publishedAt": "2026-10-11T01:11:08.372Z",
+  "commit": "8104843b90fe414a2a078fe16e7176359f08f154",
   "apps": [
     {
       "id": "tb-tool",
@@ -20,112 +20,112 @@
           "src": "apps/graphics/public/tb-detector.js",
           "size": 9924,
           "sha256": "5ccb3114156420efe5f5b9857744faf0d04111503a678c38c26c34c517fe5f46",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb-detector.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb-detector.js"
         },
         {
           "path": "public/tb-vad.js",
           "src": "apps/graphics/public/tb-vad.js",
           "size": 2487,
           "sha256": "dbbd4a52ca8ec3d036f52088cc5219eae07a55cb45233b7193b1c1150fb722a5",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb-vad.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb-vad.js"
         },
         {
           "path": "public/tb-whisper-worker.js",
           "src": "apps/graphics/public/tb-whisper-worker.js",
           "size": 3223,
           "sha256": "b10bb41b41482f2abbc3ac9f03fe346cbe5f7ab3afe45f7527b67ade2492a87d",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb-whisper-worker.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb-whisper-worker.js"
         },
         {
           "path": "public/tb-worklet.js",
           "src": "apps/graphics/public/tb-worklet.js",
           "size": 2641,
           "sha256": "3a195dfa6d863e9ec2c2b7a4c905f4b9350da9ef7085cf262b7039fb6be1362e",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb-worklet.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb-worklet.js"
         },
         {
           "path": "public/tb.css",
           "src": "apps/graphics/public/tb.css",
           "size": 11195,
           "sha256": "e1924db57509147ac528a092595f477182997d5dc3d6e0f2995cd3e6e5d3e326",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb.css"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb.css"
         },
         {
           "path": "public/tb.html",
           "src": "apps/graphics/public/tb.html",
           "size": 6629,
           "sha256": "c6082d1812e73cc23a037573d4f1b5388f8b7297847b7d2886e36e1c1813290d",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb.html"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb.html"
         },
         {
           "path": "public/tb.js",
           "src": "apps/graphics/public/tb.js",
           "size": 40591,
           "sha256": "263fe767ad8dc050f181c720173e928ed10cd4d99971172275ccd5cc26c75f8a",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/tb.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/tb.js"
         },
         {
           "path": "public/vendor/ort/ort-wasm-simd-threaded.mjs",
           "src": "apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.mjs",
           "size": 20856,
           "sha256": "30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.mjs"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.mjs"
         },
         {
           "path": "public/vendor/ort/ort-wasm-simd-threaded.wasm",
           "src": "apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.wasm",
           "size": 11210254,
           "sha256": "71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.wasm"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/ort/ort-wasm-simd-threaded.wasm"
         },
         {
           "path": "public/vendor/ort/ort.wasm.min.js",
           "src": "apps/graphics/public/vendor/ort/ort.wasm.min.js",
           "size": 48327,
           "sha256": "65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/ort/ort.wasm.min.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/ort/ort.wasm.min.js"
         },
         {
           "path": "public/vendor/transformers/LICENSE",
           "src": "apps/graphics/public/vendor/transformers/LICENSE",
           "size": 11358,
           "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/transformers/LICENSE"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/transformers/LICENSE"
         },
         {
           "path": "public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs",
           "src": "apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs",
           "size": 44484,
           "sha256": "08fb86ec433c78bfb032c5d84a68b8e8e5a8d81268fa39e24314179a5767a5b9",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.mjs"
         },
         {
           "path": "public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm",
           "src": "apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm",
           "size": 21596019,
           "sha256": "c46655e8a94afc45338d4cb2b840475f88e5012d524509916e505079c00bfa39",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/transformers/ort-wasm-simd-threaded.jsep.wasm"
         },
         {
           "path": "public/vendor/transformers/transformers.min.js",
           "src": "apps/graphics/public/vendor/transformers/transformers.min.js",
           "size": 888173,
           "sha256": "aa5002b70e789798da263f5f99c62bd3e8fcd0c119258a493c40c180648365fa",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/transformers/transformers.min.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/transformers/transformers.min.js"
         },
         {
           "path": "public/vendor/vad/silero_vad_v5.onnx",
           "src": "apps/graphics/public/vendor/vad/silero_vad_v5.onnx",
           "size": 2327524,
           "sha256": "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/public/vendor/vad/silero_vad_v5.onnx"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/public/vendor/vad/silero_vad_v5.onnx"
         },
         {
           "path": "tb-api.js",
           "src": "apps/graphics/tb-api.js",
           "size": 7187,
           "sha256": "44a69ef5f5d40a620a41d64e4affa923caaaa3cf4b989c57f9beab8405554770",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/graphics/tb-api.js"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/graphics/tb-api.js"
         }
       ],
       "assets": [
@@ -246,56 +246,63 @@
       "short": "BC",
       "hidden": true,
       "minCentral": "0.1.0",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "files": [
         {
           "path": "hub/fonts/LICENSE-Roboto.txt",
           "src": "apps/central/hub/fonts/LICENSE-Roboto.txt",
           "size": 4512,
           "sha256": "84044c09058803d87a241bd28abb4ce30a433d7db9c27a04da3efad6a0ca539c",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/fonts/LICENSE-Roboto.txt"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/fonts/LICENSE-Roboto.txt"
         },
         {
           "path": "hub/fonts/roboto-latin-400-normal.woff2",
           "src": "apps/central/hub/fonts/roboto-latin-400-normal.woff2",
           "size": 21884,
           "sha256": "425c0713a8176f92273d378599c7eac57de7fafabd4bd0ed457b70eb8f80d371",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/fonts/roboto-latin-400-normal.woff2"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/fonts/roboto-latin-400-normal.woff2"
         },
         {
           "path": "hub/fonts/roboto-latin-500-normal.woff2",
           "src": "apps/central/hub/fonts/roboto-latin-500-normal.woff2",
           "size": 22200,
           "sha256": "5bcc3aa180e7f26f643cd5b2621cd7c2de193d0661d913a94afd3d4881a7a34b",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/fonts/roboto-latin-500-normal.woff2"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/fonts/roboto-latin-500-normal.woff2"
         },
         {
           "path": "hub/fonts/roboto-latin-700-normal.woff2",
           "src": "apps/central/hub/fonts/roboto-latin-700-normal.woff2",
           "size": 22240,
           "sha256": "b9d66d1708156f765ada51939bc24ed259dafa69eb631b36e443680fe9e15879",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/fonts/roboto-latin-700-normal.woff2"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/fonts/roboto-latin-700-normal.woff2"
         },
         {
           "path": "hub/hub.css",
           "src": "apps/central/hub/hub.css",
           "size": 9579,
           "sha256": "917e41870068ba3e111f9d8af06d159df5a6a62c4f0ee37baa4f8356e92cad45",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/hub.css"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/hub.css"
         },
         {
           "path": "hub/hub.js",
           "src": "apps/central/hub/hub.js",
-          "size": 12788,
-          "sha256": "16ea3bc328539677cc51d92af26bca32838811436e129f29c7e5f52a20f590f2",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/hub.js"
+          "size": 13651,
+          "sha256": "fcdb33b50dbe19c6bc05343a1e56d8ff24e49e5c4338dfe3a05bbeb4642e837b",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/hub.js"
         },
         {
           "path": "hub/index.html",
           "src": "apps/central/hub/index.html",
           "size": 3977,
           "sha256": "7b17d3152b052d6ef1fabba3606607e2cf250cf1c1de6226fb6bdace980570d5",
-          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/4d6204f2f97c98e732da0ca738fbd581194461d8/apps/central/hub/index.html"
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/index.html"
+        },
+        {
+          "path": "hub/version.json",
+          "src": "apps/central/hub/version.json",
+          "size": 23,
+          "sha256": "32ea4c64f097e9a4c8f0866dba91930074d90572fcf92c07d8a8f27129d0c752",
+          "url": "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/8104843b90fe414a2a078fe16e7176359f08f154/apps/central/hub/version.json"
         }
       ]
     },
