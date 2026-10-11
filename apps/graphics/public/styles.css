@@ -2625,3 +2625,6 @@ html:not(.developer-mode) #view-scripture details:has(#integratedScriptureDiagno
   .sf38-cg-panel{height:154px!important;min-height:154px!important;max-height:154px!important}
   .smart-flyer-output-stage{height:114px!important;min-height:114px!important;max-height:114px!important}
 }
+
+.network-lan-toggle { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; cursor: pointer; }
+.network-lan-toggle input { width: 16px; height: 16px; margin: 0; }

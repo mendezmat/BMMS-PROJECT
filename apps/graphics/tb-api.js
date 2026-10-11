@@ -92,9 +92,21 @@ export function createTbApi({ dataDir }) {
     return sessions.filter(Boolean).sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
   }
 
+  // Ajustes: si el archivo está dañado (corte de luz, disco lleno) se usa la copia anterior (.bak) y el
+  // archivo dañado se guarda aparte; nunca se pierden los canales en silencio.
+  const backupPath = `${tbSettingsPath}.bak`;
   async function loadTbSettings() {
+    let raw;
+    try { raw = await fs.readFile(tbSettingsPath, "utf8"); } catch { raw = null; }
+    if (raw !== null) {
+      try { return normalizeTbSettings(JSON.parse(raw)); } catch {
+        await fs.copyFile(tbSettingsPath, `${tbSettingsPath}.danado-${Date.now()}`).catch(() => {});
+      }
+    }
     try {
-      return normalizeTbSettings(JSON.parse(await fs.readFile(tbSettingsPath, "utf8")));
+      const settings = normalizeTbSettings(JSON.parse(await fs.readFile(backupPath, "utf8")));
+      if (raw !== null) await saveTbSettings(settings).catch(() => {});
+      return settings;
     } catch {
       return normalizeTbSettings();
     }
@@ -104,17 +116,30 @@ export function createTbApi({ dataDir }) {
     await fs.mkdir(path.dirname(tbSettingsPath), { recursive: true });
     const temporaryPath = `${tbSettingsPath}.tmp`;
     await fs.writeFile(temporaryPath, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+    // La versión anterior (si era válida) queda como copia de seguridad.
+    try { JSON.parse(await fs.readFile(tbSettingsPath, "utf8")); await fs.copyFile(tbSettingsPath, backupPath); } catch { /* sin anterior válido */ }
     await fs.rename(temporaryPath, tbSettingsPath);
   }
 
   // Registro del servicio: una línea JSON por evento, un archivo por día (para diagnosticar después).
   const logsDir = path.join(dataDir, "logs");
+  // Se guardan 30 días de registros; los más viejos se borran solos (nunca llenan el disco).
+  let lastCleanup = "";
+  async function removeOldLogs(now) {
+    const limit = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+    for (const name of await fs.readdir(logsDir)) {
+      const match = name.match(/^tb-(\d{4})-(\d{2})-(\d{2})\.jsonl$/);
+      if (match && new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getTime() < limit) await fs.rm(path.join(logsDir, name), { force: true });
+    }
+  }
+
   async function appendLog(entries) {
     if (!Array.isArray(entries) || !entries.length) return 0;
     const now = new Date();
     const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const file = path.join(logsDir, `tb-${day}.jsonl`);
     await fs.mkdir(logsDir, { recursive: true });
+    if (lastCleanup !== day) { lastCleanup = day; await removeOldLogs(now).catch(() => {}); }
     try { if ((await fs.stat(file)).size > 25 * 1024 * 1024) return 0; } catch { /* nuevo */ }
     const lines = entries.slice(0, 500).map(entry => JSON.stringify({ ...entry, t: typeof entry?.t === "string" ? entry.t : now.toISOString() }).slice(0, 4000));
     await fs.appendFile(file, `${lines.join("\n")}\n`, "utf8");
@@ -169,5 +194,5 @@ export function createTbApi({ dataDir }) {
     return false;
   }
 
-  return { handle, loadSettings: loadTbSettings };
+  return { handle, loadSettings: loadTbSettings, saveSettings: saveTbSettings, appendLog };
 }

@@ -1,5 +1,5 @@
-import { TB_COLORS, cleanTranscript, matchKeyword, createDetector, createSegmenter, defaultChannel, defaultSettings, dominantChannel, isVoice, normalizeSettings, recommendThreshold, voiceThreshold, whisperLanguage, whisperModel, MIN_DB } from "./tb-detector.js";
-import { createVoiceChannel, preloadVad } from "./tb-vad.js";
+import { TB_COLORS, alertLevel, cleanTranscript, matchKeyword, createDetector, createSegmenter, defaultChannel, defaultSettings, dominantChannel, isVoice, normalizeSettings, recommendThreshold, voiceThreshold, whisperLanguage, whisperModel, MIN_DB } from "./tb-detector.js";
+import { createVoiceChannel, preloadVad, resetVad } from "./tb-vad.js";
 
 const byId = id => document.getElementById(id);
 const SETTINGS_KEY = "bmms.tb.settings.v1";
@@ -79,6 +79,27 @@ async function refreshDevices() {
   renderChannels();
 }
 
+// Si una entrada cambió de identificador (p. ej. reinstalar o reiniciar el driver de SoundGrid) pero sigue
+// con el mismo nombre, el canal se vuelve a asignar solo en vez de quedar en «Entrada no conectada».
+function remapDevicesByLabel() {
+  if (!devices.some(device => device.label)) return false; // sin permiso aún: no hay nombres
+  let changed = false;
+  for (const channel of settings.channels) {
+    if (channel.deviceId === "default" || devices.some(device => device.deviceId === channel.deviceId)) {
+      const current = devices.find(device => device.deviceId === channel.deviceId);
+      if (current?.label && channel.deviceId !== "default" && channel.deviceLabel !== current.label) { channel.deviceLabel = current.label; changed = true; }
+      continue;
+    }
+    const match = channel.deviceLabel && devices.find(device => device.deviceId !== "default" && device.label === channel.deviceLabel);
+    if (!match) continue;
+    tbLog("device-remap", { channel: channel.name, label: match.label });
+    channel.deviceId = match.deviceId;
+    changed = true;
+  }
+  if (changed) { saveSettings(); renderChannels(); }
+  return changed;
+}
+
 // Cambio de dispositivos (ruteo en la consola, SoundGrid, desconexión): se reconecta solo.
 let lastDeviceKey = "";
 async function onDeviceChange() {
@@ -87,6 +108,7 @@ async function onDeviceChange() {
   if (key === lastDeviceKey) return;
   const first = !lastDeviceKey;
   lastDeviceKey = key;
+  remapDevicesByLabel();
   if (first || !audio) return;
   tbLog("devicechange", { devices: devices.map(device => device.label || device.deviceId.slice(0, 8)) });
   notice("Cambiaron las entradas de audio: reconectando…");
@@ -95,15 +117,36 @@ async function onDeviceChange() {
 
 // Vigilancia: si una entrada deja de mandar audio (p. ej. tras re-rutear), se reabre; cada 10 s, resumen al registro.
 let lastSummaryAt = 0;
+let stallRestarts = 0; // reintentos seguidos: la espera crece para no quedar en un bucle
+const NO_SIGNAL_MS = 8000;
 setInterval(() => {
   if (!audio) return;
   const now = performance.now();
+  // El sistema puede suspender el audio (otra app tomó el dispositivo, el equipo despertó): se reanuda solo.
+  if (audio.context.state !== "running" && audio.context.state !== "closed") {
+    tbLog("audio-resume", { state: audio.context.state });
+    audio.context.resume().catch(() => {});
+  }
   for (const input of audio.inputs.values()) {
     if (now - input.lastLevelsAt > 4000) {
-      tbLog("stall", { device: input.label, silentMs: Math.round(now - input.lastLevelsAt) });
+      stallRestarts++;
+      tbLog("stall", { device: input.label, silentMs: Math.round(now - input.lastLevelsAt), attempt: stallRestarts });
       notice("La entrada de audio dejó de responder: reconectando…");
-      scheduleRestart(200, "stall");
+      scheduleRestart(Math.min(30000, 200 * 2 ** Math.min(7, stallRestarts - 1)), "stall");
       return;
+    }
+  }
+  if (now - audio.startedAt > 15000) stallRestarts = 0;
+  // Canal sin señal (silencio digital total: casi siempre es ruteo). Se avisa en el canal, sin detener nada.
+  for (const [channelId, runtime] of runtimes) {
+    const silent = now - Math.max(runtime.lastSignalAt, audio.startedAt) > NO_SIGNAL_MS;
+    if (silent && !runtime.noSignal) {
+      runtime.noSignal = true;
+      tbLog("no-signal", { channel: channelById(channelId)?.name });
+      setChannelStatus(channelId, `Sin señal: el canal físico ${runtime.physical + 1} no trae audio. Revisa el ruteo en la consola o el canal elegido.`, "warn");
+    } else if (!silent && runtime.noSignal) {
+      runtime.noSignal = false;
+      setChannelStatus(channelId, runtime.statusText, runtime.statusKind);
     }
   }
   if (now - lastSummaryAt >= 10000) {
@@ -145,6 +188,25 @@ async function ensureVad() {
 }
 
 const usesVoice = channel => channel.detection === "voice" && vadStatus !== "failed";
+
+// Si el detector de voz da errores seguidos, se apaga la detección de ese bloque (probabilidad 0: la alerta
+// no puede quedar pegada) y tras varios errores se recarga el modelo sin detener el monitoreo.
+let vadErrors = 0;
+let vadReloads = 0;
+function vadFailed(runtime, error) {
+  runtime.probability = 0;
+  vadErrors++;
+  if (vadErrors === 1) console.warn("TB Tool: detector de voz", error);
+  if (vadErrors < 25 || vadStatus === "loading") return;
+  vadErrors = 0;
+  vadReloads++;
+  tbLog("vad-reload", { error: String(error?.message || error).slice(0, 200), reloads: vadReloads });
+  resetVad();
+  for (const item of runtimes.values()) item.voice.reset();
+  vadStatus = "idle";
+  if (vadReloads <= 5) ensureVad();
+  else { vadStatus = "failed"; notice("El detector de voz falló varias veces. Los canales siguen funcionando por nivel de audio."); }
+}
 
 async function openInput(context, deviceId) {
   const constraints = {
@@ -195,7 +257,9 @@ async function startAudio() {
   const sink = context.createGain();
   sink.gain.value = 0;
   sink.connect(context.destination);
-  audio = { context, destination, sink, inputs: new Map(), lastTick: 0 };
+  audio = { context, destination, sink, inputs: new Map(), lastTick: 0, startedAt: performance.now() };
+  if (context.state !== "running") context.resume().catch(() => {});
+  remapDevicesByLabel();
   notice("");
   if (settings.channels.some(channel => channel.enabled && channel.detection === "voice")) ensureVad();
   for (const channel of settings.channels.filter(item => item.enabled)) {
@@ -217,11 +281,18 @@ async function startAudio() {
       gate.gain.value = 0;
       input.splitter.connect(gate, index);
       if (channel.transcribe) gate.connect(destination);
-      setChannelStatus(channel.id, `Escuchando el canal físico ${index + 1} de ${input.channelCount} · ${input.label || "entrada predeterminada"}`);
-      runtimes.set(channel.id, { deviceId: channel.deviceId, physical: index, detector: createDetector(), voice: createVoiceChannel(), gate, levelDb: MIN_DB, probability: 0, speaking: false, active: false });
+      let statusText = `Escuchando el canal físico ${index + 1} de ${input.channelCount} · ${input.label || "entrada predeterminada"}`;
+      let statusKind = "";
+      if (/bluetooth|airpods/i.test(input.label)) { statusText += ". Ojo: Bluetooth tiene retardo y puede desconectarse; para el servicio usa la interfaz de audio."; statusKind = "warn"; }
+      else if (channel.deviceId === "default") { statusText += ". Ojo: es la entrada predeterminada del sistema y cambia si conectas audífonos; mejor elige la entrada exacta."; statusKind = "warn"; }
+      setChannelStatus(channel.id, statusText, statusKind);
+      runtimes.set(channel.id, { deviceId: channel.deviceId, physical: index, detector: createDetector(), voice: createVoiceChannel(), gate, levelDb: MIN_DB, probability: 0, speaking: false, active: false, lastSignalAt: 0, noSignal: false, statusText, statusKind });
     } catch (error) {
       console.warn("TB Tool: entrada no disponible", error);
-      const reason = error?.name === "NotAllowedError" ? "Permite el acceso al micrófono en el navegador." : "No se pudo abrir la entrada de audio.";
+      const reason = error?.name === "NotAllowedError"
+        ? (window.bmmsCentral?.platform === "darwin" ? "macOS no deja usar el micrófono: abre Ajustes del Sistema › Privacidad y seguridad › Micrófono y activa BMMS (TB Tool y Central). Luego pulsa Iniciar monitoreo." : window.bmmsCentral ? "Windows no deja usar el micrófono: abre Configuración › Privacidad › Micrófono y permite las apps de escritorio." : "Permite el acceso al micrófono en el navegador.")
+        : error?.name === "OverconstrainedError" || error?.name === "NotFoundError" ? "La entrada elegida no está conectada. Elige otra entrada." : "No se pudo abrir la entrada de audio.";
+      tbLog("input-error", { channel: channel.name, error: error?.name || String(error) });
       notice(`${channel.name}: ${reason}`);
     }
   }
@@ -278,6 +349,7 @@ function handleCapture(input, message) {
     for (const runtime of runtimes.values()) {
       if (runtime.deviceId !== input.deviceId) continue;
       const rms = message.rms[runtime.physical] || 0;
+      if (rms > 1e-7) runtime.lastSignalAt = performance.now();
       runtime.levelDb = rms > 0 ? Math.max(MIN_DB, 20 * Math.log10(rms)) : MIN_DB;
     }
     tick();
@@ -289,7 +361,7 @@ function handleCapture(input, message) {
       const channel = channelById(channelId);
       if (!channel) continue;
       if (channel.detection === "voice" && vadStatus === "ready") {
-        runtime.voice.push(message.frame).then(probability => { runtime.probability = probability; }).catch(error => console.warn("TB Tool: detector de voz", error));
+        runtime.voice.push(message.frame).then(probability => { runtime.probability = probability; vadErrors = 0; }).catch(error => vadFailed(runtime, error));
       }
       if (recognitionWanted && localTranscription() && channel.transcribe) feedSegment(channel, runtime, message.frame);
     }
@@ -403,6 +475,7 @@ function startRecognition() {
 
 function stopRecognition() {
   recognitionWanted = false;
+  whisperRecoveries = 0;
   const instance = recognition;
   recognition = null;
   if (instance) { instance.onend = null; try { instance.abort(); } catch { /* ya detenido */ } }
@@ -457,7 +530,9 @@ async function startWhisper() {
   worker.onerror = event => {
     if (whisper?.worker !== worker) return;
     whisper.status = "error";
+    tbLog("whisper-error", { message: String(event.message || "").slice(0, 200) });
     transcriptHint(`No se pudo iniciar la transcripción sin internet: ${event.message || "error desconocido"}`);
+    scheduleWhisperRecovery("error");
   };
   worker.postMessage({ type: "load", model, device, language });
 }
@@ -466,20 +541,53 @@ function stopWhisper() {
   whisper?.worker.terminate();
   whisper = null;
   pendingByChannel.clear();
+  partialInFlight.clear();
+  segmentMetrics.clear();
+  jobStartedAt.clear();
 }
+
+// Si una frase lleva más de 30 s sin resultado (o el proceso se cayó), se reinicia la transcripción.
+// Sin esto quedaba "esperando" para siempre y no volvía a transcribir ni a detectar palabras clave.
+const jobStartedAt = new Map(); // id -> momento de envío
+const WHISPER_JOB_TIMEOUT_MS = 30000;
+let whisperRecoveries = 0;
+let whisperRecoveryTimer = null;
+function scheduleWhisperRecovery(reason) {
+  if (whisperRecoveryTimer || !recognitionWanted || !localTranscription()) return;
+  whisperRecoveries++;
+  if (whisperRecoveries > 8) {
+    stopWhisper();
+    transcriptHint("La transcripción sin internet no pudo iniciar (revisa los modelos en BMMS Central). Las alertas siguen funcionando.");
+    return;
+  }
+  const delay = Math.min(60000, 2000 * 2 ** Math.min(5, whisperRecoveries - 1));
+  tbLog("whisper-restart", { reason, attempt: whisperRecoveries, delayMs: delay });
+  transcriptHint("La transcripción sin internet se reinicia… las alertas siguen funcionando.");
+  stopWhisper();
+  whisperRecoveryTimer = setTimeout(() => { whisperRecoveryTimer = null; if (recognitionWanted && localTranscription() && audio) startWhisper(); }, delay);
+}
+setInterval(() => {
+  if (!whisper || whisper.status !== "ready") return;
+  const now = performance.now();
+  for (const started of jobStartedAt.values()) if (now - started > WHISPER_JOB_TIMEOUT_MS) { scheduleWhisperRecovery("timeout"); return; }
+}, 5000);
 
 function handleWhisper(worker, message) {
   if (whisper?.worker !== worker) return;
   if (message.type === "progress") transcriptHint(`Cargando el modelo de transcripción… ${message.percent}%`);
   if (message.type === "ready") {
     whisper.status = "ready";
+    whisperRecoveries = 0;
     transcriptHint(`Transcripción sin internet lista (${whisper.label}).`);
   }
   if (message.type === "error") {
     whisper.status = "error";
-    transcriptHint(`Error en la transcripción sin internet: ${message.message}`);
+    tbLog("whisper-error", { message: String(message.message || "").slice(0, 200) });
+    transcriptHint(`Error en la transcripción sin internet: ${message.message}. Las alertas siguen funcionando.`);
+    scheduleWhisperRecovery("load-error");
   }
   if (message.type === "result") {
+    jobStartedAt.delete(message.id);
     if (message.error) console.warn("TB Tool: Whisper", message.error);
     const text = cleanTranscript(message.text);
     if (message.partial) {
@@ -539,6 +647,7 @@ function feedSegment(channel, runtime, frame) {
     partialInFlight.add(channel.id);
     lastPartialAt.set(channel.id, now);
     pendingByChannel.set(channel.id, pendingByChannel.get(channel.id) || 0);
+    jobStartedAt.set(whisperRequest + 1, now);
     whisper.worker.postMessage({ type: "transcribe", partial: true, id: ++whisperRequest, channelId: channel.id, audio, model: whisper.model, device: whisper.device, language: whisper.language }, [audio.buffer]);
   }
 }
@@ -555,6 +664,7 @@ function sendSegment(channelId, segment) {
   }
   pendingByChannel.set(channelId, (pendingByChannel.get(channelId) || 0) + 1);
   const id = ++whisperRequest;
+  jobStartedAt.set(id, performance.now());
   segmentMetrics.set(id, { audioMs: Math.round(segment.length / 16), lastVoiceAt: lastVoiceAt.get(channelId) || performance.now() });
   whisper.worker.postMessage({ type: "transcribe", id, channelId, audio: segment, model: whisper.model, device: whisper.device, language: whisper.language }, [segment.buffer]);
   renderPending();
@@ -575,10 +685,12 @@ function handleResult(event) {
     const result = event.results[index];
     const text = String(result[0]?.transcript || "").trim();
     if (!text) continue;
+    const speaker = currentSpeaker();
     if (result.isFinal) {
-      addLine(currentSpeaker(), text);
+      addLine(speaker, text);
+      checkKeywords(speaker, text);
       activity = {};
-    } else interim += `${text} `;
+    } else { interim += `${text} `; checkKeywords(speaker, text); }
   }
   renderLive(interim.trim());
 }
@@ -604,9 +716,11 @@ function setRunningUi(running) {
   renderFloat();
 }
 
-function setChannelStatus(channelId, message) {
+function setChannelStatus(channelId, message, kind = "") {
   const status = document.querySelector(`.tb-channel[data-id="${CSS.escape(channelId)}"] [data-role="status"]`);
-  if (status) status.textContent = message;
+  if (!status) return;
+  status.textContent = message;
+  status.classList.toggle("is-warn", kind === "warn");
 }
 
 const dbToPercent = db => Math.max(0, Math.min(100, ((db + 90) / 90) * 100));
@@ -643,10 +757,10 @@ function sendOverlay(active, force = false) {
   // Dos niveles: pequeña con cualquier voz; franja grande con palabra clave (o siempre, si se elige).
   const hit = keywordHit && keywordHit.until > performance.now() ? keywordHit : null;
   const hitChannel = hit && settings.channels.find(channel => channel.id === hit.channelId);
-  let level = "none";
-  if (settings.alert.band === "voice" && active.length) level = "band";
-  else if (hit) level = "band";
-  else if (active.length && settings.alert.small) level = "small";
+  let level = alertLevel(settings.alert, active.length, Boolean(hit));
+  // Motor de Central anterior a 0.1.11: no distingue niveles y mostraría la franja grande con cualquier voz.
+  // Ahí la alerta pequeña no se envía; la franja con palabra clave sí.
+  if (level === "small" && !window.bmmsCentral.overlayLevels) level = "none";
   const shown = hit && hitChannel ? [hitChannel, ...ordered.filter(channel => channel.id !== hitChannel.id)] : ordered;
   const state = {
     active: level !== "none",
@@ -662,11 +776,15 @@ function sendOverlay(active, force = false) {
   window.bmmsCentral.alert(state);
 }
 
+// Dentro de BMMS Central la alerta la dibuja solo la ventana a pantalla completa (encima de todo, también
+// de esta ventana). Si la página dibujara además la suya, se veía doble.
+const pageDrawsAlert = () => !window.bmmsCentral?.overlay;
+
 function renderAlert() {
   const active = activeChannels();
   const alert = byId("tbAlert");
   const key = active.map(channel => channel.id).join("|");
-  alert.classList.toggle("is-on", active.length > 0);
+  alert.classList.toggle("is-on", pageDrawsAlert() && active.length > 0);
   sendOverlay(active);
   if (key === lastAlertKey) return;
   lastAlertKey = key;
@@ -781,7 +899,7 @@ function applyAlertStyle() {
 function renderChannels() {
   const list = byId("tbChannelList");
   const template = byId("tbChannelTemplate");
-  const statuses = new Map([...list.querySelectorAll(".tb-channel")].map(card => [card.dataset.id, card.querySelector('[data-role="status"]').textContent]));
+  const statuses = new Map([...list.querySelectorAll(".tb-channel")].map(card => { const status = card.querySelector('[data-role="status"]'); return [card.dataset.id, { text: status.textContent, warn: status.classList.contains("is-warn") }]; }));
   list.replaceChildren(...settings.channels.map(channel => {
     const card = template.content.firstElementChild.cloneNode(true);
     card.dataset.id = channel.id;
@@ -806,7 +924,9 @@ function renderChannels() {
     card.querySelector('[data-out="voiceSensitivity"]').textContent = `${Math.round(channel.voiceSensitivity * 100)}%`;
     card.querySelector('[data-role="sensitivity"]').hidden = channel.detection !== "voice";
     card.querySelector(".tb-meter-threshold").style.left = `${dbToPercent(channel.thresholdDb)}%`;
-    card.querySelector('[data-role="status"]').textContent = statuses.get(channel.id) || "";
+    const status = card.querySelector('[data-role="status"]');
+    status.textContent = statuses.get(channel.id)?.text || "";
+    status.classList.toggle("is-warn", Boolean(statuses.get(channel.id)?.warn));
     card.querySelector('[data-action="remove"]').disabled = settings.channels.length <= 1;
     return card;
   }));
@@ -870,6 +990,7 @@ function bindChannelEvents() {
     if (field === "voiceSensitivity") card.querySelector('[data-out="voiceSensitivity"]').textContent = `${Math.round(channel.voiceSensitivity * 100)}%`;
     if (field === "color") { card.style.setProperty("--channel-color", channel.color); lastAlertKey = ""; }
     if (field === "name") lastAlertKey = "";
+    if (field === "deviceId") channel.deviceLabel = devices.find(device => device.deviceId === channel.deviceId)?.label || "";
     saveSettings();
   });
   list.addEventListener("change", event => {
@@ -1017,6 +1138,52 @@ function backToLive() {
   renderTranscript();
 }
 
+/* ---------- Chequeo antes del servicio ---------- */
+
+// Revisa todo lo que puede fallar y lo muestra en verde (bien), amarillo (ojo) o rojo (hay que arreglarlo).
+async function runCheck() {
+  const items = [];
+  const add = (state, title, detail) => items.push({ state, title, detail });
+  if (!audio) { await startAudio().catch(() => {}); await new Promise(resolve => setTimeout(resolve, 2500)); }
+  if (!audio) add("bad", "El monitoreo no pudo iniciar", "Revisa el aviso en la pantalla principal.");
+  else if (!runtimes.size) add("bad", "Ningún canal está escuchando", "El monitoreo está encendido pero no pudo abrir ninguna entrada. Revisa el aviso y los canales.");
+  else add("ok", "Monitoreo encendido", `Escuchando ${runtimes.size} canal${runtimes.size === 1 ? "" : "es"}.`);
+  const enabled = settings.channels.filter(channel => channel.enabled);
+  if (!enabled.length) add("bad", "No hay canales activos", "Activa al menos un canal.");
+  const now = performance.now();
+  for (const channel of enabled) {
+    const runtime = runtimes.get(channel.id);
+    if (!runtime) { add("bad", `${channel.name}: no está escuchando`, "La entrada o el canal físico no están disponibles. Mira el mensaje del canal."); continue; }
+    const signal = now - runtime.lastSignalAt < NO_SIGNAL_MS;
+    add(signal ? "ok" : "bad", `${channel.name}: ${signal ? "llega audio" : "sin señal"}`, `Canal físico ${runtime.physical + 1} · ${audio.inputs.get(channel.deviceId)?.label || "entrada predeterminada"}${signal ? "" : ". Revisa el ruteo en la consola."}`);
+    if (runtime.statusKind === "warn") add("warn", `${channel.name}: entrada poco confiable`, runtime.statusText.split("Ojo: ")[1] || runtime.statusText);
+    if (usesVoice(channel)) add(vadStatus === "ready" ? "ok" : vadStatus === "loading" ? "warn" : "bad", `${channel.name}: detector de voz ${vadStatus === "ready" ? "listo" : vadStatus === "loading" ? "cargando" : "no disponible"}`, vadStatus === "ready" ? "Solo se enciende con voz, no con ruido." : "Mientras tanto funciona por nivel de audio.");
+  }
+  const twins = new Set();
+  for (const channel of enabled) { const key = `${channel.deviceId}|${channel.channelIndex}`; if (twins.has(key)) add("warn", "Dos canales escuchan lo mismo", `${channel.name} usa la misma entrada y canal físico que otro canal.`); twins.add(key); }
+  const central = window.bmmsCentral;
+  add(central?.overlay ? "ok" : "warn", central?.overlay ? "Alerta a pantalla completa lista" : "Alerta solo dentro de esta ventana", central?.overlay ? "Se ve encima de todas las apps y pantallas. Usa «Probar alerta» para verla." : "Abre TB Tool desde BMMS Central para ver la alerta encima de todo.");
+  add(central?.overlay && !central.overlayLevels ? "warn" : "ok", central?.overlay && !central.overlayLevels ? "Actualiza BMMS Central" : "Alerta pequeña y franja correctas", central?.overlay && !central.overlayLevels ? "Tu motor de Central es antiguo: por ahora solo se muestra la franja con palabras clave. Pulsa «Reiniciar y actualizar» en Central." : "Pequeña con cualquier voz; franja grande con palabras clave.");
+  add(central?.keepAwake ? "ok" : "warn", central?.keepAwake ? "El equipo no se suspende" : "El equipo podría suspenderse", central?.keepAwake ? "Mientras escucha, la pantalla y el equipo no se apagan." : "Desactiva la suspensión y el protector de pantalla en la configuración de energía, o actualiza BMMS Central.");
+  add(central?.updatesPaused ? "ok" : "warn", central?.updatesPaused ? "Actualizaciones en pausa" : "Avisos de actualización activos", central?.updatesPaused ? "Durante el monitoreo no aparecen avisos ni reinicios." : "Actualiza BMMS Central para pausarlos durante el servicio.");
+  if (!settings.transcription.enabled) add("warn", "Transcripción apagada", "Las palabras clave (franja grande) necesitan la transcripción.");
+  else if (settings.transcription.engine === "browser") add(navigator.onLine ? "warn" : "bad", navigator.onLine ? "Transcripción por internet" : "Transcripción sin conexión", navigator.onLine ? "Si se corta internet, se detiene. Para el servicio conviene «Sin internet (Whisper)»." : "No hay internet: cambia a «Sin internet (Whisper)».");
+  else add(whisper?.status === "ready" ? "ok" : whisper?.status === "error" ? "bad" : "warn", whisper?.status === "ready" ? `Transcripción sin internet lista (${whisper.label})` : whisper?.status === "error" ? "La transcripción sin internet falló" : "Transcripción cargando…", whisper?.status === "error" ? "Las alertas funcionan igual. Revisa que los modelos estén descargados en BMMS Central." : "Las alertas no dependen de ella.");
+  if (!settings.keywords.length) add("warn", "Sin palabras clave", "La franja grande solo sale con palabras clave.");
+  const list = byId("tbCheckList");
+  list.replaceChildren(...items.map(item => {
+    const row = document.createElement("li");
+    row.className = item.state === "ok" ? "" : `is-${item.state}`;
+    const title = document.createElement("strong");
+    title.textContent = item.title;
+    const detail = document.createElement("span");
+    detail.textContent = item.detail;
+    row.append(title, detail);
+    return row;
+  }));
+  tbLog("check", { results: items.map(item => `${item.state}:${item.title}`) });
+}
+
 function setAlertMode(on) {
   document.body.classList.toggle("is-alert-mode", on);
   if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
@@ -1094,6 +1261,10 @@ async function init() {
     if (name === "test") { const channel = settings.channels.find(item => item.enabled) || settings.channels[0]; if (channel) testAlert(channel); }
   });
   byId("tbSessions").addEventListener("click", openSessions);
+  byId("tbCheck").addEventListener("click", () => { byId("tbCheckList").replaceChildren(Object.assign(document.createElement("li"), { textContent: "Revisando…" })); byId("tbCheckDialog").showModal(); runCheck(); });
+  byId("tbCheckAgain").addEventListener("click", runCheck);
+  byId("tbCheckClose").addEventListener("click", () => byId("tbCheckDialog").close());
+  byId("tbCheckTest").addEventListener("click", () => { const channel = settings.channels.find(item => item.enabled) || settings.channels[0]; if (channel) testAlert(channel); });
   byId("tbSessionsClose").addEventListener("click", () => byId("tbSessionsDialog").close());
   byId("tbViewingExport").addEventListener("click", exportTranscript);
   byId("tbViewingBack").addEventListener("click", backToLive);

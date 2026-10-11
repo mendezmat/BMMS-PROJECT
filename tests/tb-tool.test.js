@@ -207,3 +207,64 @@ test("voice detection queues frames instead of dropping them when busy", () => {
   assert.doesNotMatch(vad, /if \(busy\) return probability/);
   assert.match(vad, /MAX_PENDING_PER_CHANNEL/);
 });
+
+test("alert level: band only with a keyword unless 'always'; small pill for any voice", async () => {
+  const { alertLevel } = await import("../apps/graphics/public/tb-detector.js");
+  const keywordsOnly = { band: "keywords", small: true };
+  assert.equal(alertLevel(keywordsOnly, 1, false), "small");
+  assert.equal(alertLevel(keywordsOnly, 1, true), "band");
+  assert.equal(alertLevel(keywordsOnly, 0, false), "none");
+  assert.equal(alertLevel({ band: "keywords", small: false }, 1, false), "none");
+  assert.equal(alertLevel({ band: "voice", small: true }, 1, false), "band");
+  assert.equal(alertLevel({ band: "voice", small: true }, 0, true), "band");
+});
+
+test("inside Central the page never draws its own alert (it was shown double)", () => {
+  const source = fs.readFileSync(new URL("../apps/graphics/public/tb.js", import.meta.url), "utf8");
+  assert.match(source, /const pageDrawsAlert = \(\) => !window\.bmmsCentral\?\.overlay;/);
+  assert.match(source, /alert\.classList\.toggle\("is-on", pageDrawsAlert\(\) && active\.length > 0\)/);
+  assert.match(source, /if \(level === "small" && !window\.bmmsCentral\.overlayLevels\) level = "none";/);
+  // Las palabras clave también funcionan con la transcripción del navegador.
+  assert.match(source, /addLine\(speaker, text\);\s*checkKeywords\(speaker, text\);/);
+});
+
+test("channel keeps the input name so it can be found again if its id changes", () => {
+  const settings = normalizeSettings({ channels: [{ deviceId: "abc", deviceLabel: "Waves SoundGrid" }] });
+  assert.equal(settings.channels[0].deviceLabel, "Waves SoundGrid");
+  assert.equal(normalizeSettings({ channels: [{}] }).channels[0].deviceLabel, "");
+});
+
+test("corrupt settings file falls back to the previous good copy and keeps the damaged one", async () => {
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { createTbApi } = await import("../apps/graphics/tb-api.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tb-api-"));
+  try {
+    const api = createTbApi({ dataDir: dir });
+    const first = normalizeSettings({ channels: [{ name: "Director" }] });
+    const second = normalizeSettings({ channels: [{ name: "Productor" }] });
+    await api.saveSettings(first);
+    await api.saveSettings(second);
+    assert.equal((await api.loadSettings()).channels[0].name, "Productor");
+    fs.writeFileSync(path.join(dir, "tb-tool.json"), "{ corrupto");
+    assert.equal((await api.loadSettings()).channels[0].name, "Director");
+    assert.ok(fs.readdirSync(dir).some(name => name.startsWith("tb-tool.json.danado-")));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "tb-tool.json"), "utf8")).channels[0].name, "Director");
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("service logs older than 30 days are removed", async () => {
+  const os = await import("node:os");
+  const path = await import("node:path");
+  const { createTbApi } = await import("../apps/graphics/tb-api.js");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tb-logs-"));
+  try {
+    fs.mkdirSync(path.join(dir, "logs"));
+    fs.writeFileSync(path.join(dir, "logs", "tb-2020-01-01.jsonl"), "{}\n");
+    const api = createTbApi({ dataDir: dir });
+    await api.appendLog([{ event: "start" }]);
+    const names = fs.readdirSync(path.join(dir, "logs"));
+    assert.ok(!names.includes("tb-2020-01-01.jsonl"));
+    assert.equal(names.length, 1);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

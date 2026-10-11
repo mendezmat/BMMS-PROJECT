@@ -14,10 +14,11 @@
   </div>
 
   <header class="tb-top">
-    <img class="tb-logo" src="/tb-icon.png" alt=""><div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.4.1</span></div>
+    <img class="tb-logo" src="/tb-icon.png" alt=""><div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.5.0</span></div>
     <div class="tb-top-actions">
       <span class="tb-state" id="tbState">Detenido</span>
       <button class="primary" id="tbStart">Iniciar monitoreo</button>
+      <button id="tbCheck" title="Revisa todo antes del servicio">Chequeo</button>
       <button id="tbFullscreen" hidden title="Pantalla completa (F11)">Pantalla completa</button>
       <button id="tbBackground" hidden title="Seguir escuchando en segundo plano (Esc)">Segundo plano</button>
       <button id="tbFloat" title="Ventana pequeña que queda encima de todas las aplicaciones">Ventana flotante</button>
@@ -98,6 +99,12 @@
   <dialog class="tb-dialog" id="tbSessionsDialog">
     <div class="tb-dialog-head"><h2>Sesiones guardadas</h2><button id="tbSessionsClose" aria-label="Cerrar">✕</button></div>
     <ul class="tb-session-list" id="tbSessionList"></ul>
+  </dialog>
+
+  <dialog class="tb-dialog" id="tbCheckDialog">
+    <div class="tb-dialog-head"><h2>Chequeo antes del servicio</h2><button id="tbCheckClose" aria-label="Cerrar">✕</button></div>
+    <ul class="tb-check-list" id="tbCheckList"></ul>
+    <div class="tb-check-actions"><button id="tbCheckTest">Probar alerta</button><button class="primary" id="tbCheckAgain">Revisar de nuevo</button></div>
   </dialog>
 
   <template id="tbChannelTemplate">

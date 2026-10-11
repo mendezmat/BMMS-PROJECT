@@ -1,6 +1,6 @@
 // BMMS Central — proceso principal (Electron).
 // Hub de aplicaciones: lee el manifiesto firmado, instala/actualiza apps por archivos y las abre.
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, screen, session, shell, systemPreferences, Tray } from "electron";
+import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, screen, session, shell, systemPreferences, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
+import { planOverlays, sanitizeOverlayState } from "./overlay-state.js";
 import { createStandalone, isStandaloneRunning, PROTOCOL, refreshStandaloneIcon, removeStandalone, renderIconPng, standaloneInstalled, standaloneSignatureMatches, targetFromArgs, targetFromUrl } from "./launchers.js";
 import { spawn } from "node:child_process";
 import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
@@ -288,7 +289,11 @@ async function pendingUpdates() {
 }
 
 // Notificación del sistema al detectar actualizaciones nuevas (una vez por versión).
+const monitoring = () => [...appStatus.values()].some(status => status.running);
+
 async function notifyUpdates() {
+  // Durante un servicio (una app escuchando) no se avisa nada: se avisa cuando se detiene.
+  if (monitoring()) return;
   const list = await pendingUpdates();
   if (!list.length || !Notification.isSupported()) return;
   let seen = [];
@@ -439,6 +444,7 @@ async function openApp(appId, { show = null } = {}) {
     releaseLock(appId);
     appWindows.delete(appId);
     appStatus.delete(appId);
+    updateKeepAwake();
     trays.get(appId)?.destroy();
     trays.delete(appId);
     pushOverlay({ active: false, channels: [] });
@@ -453,6 +459,13 @@ async function openApp(appId, { show = null } = {}) {
     console.warn("App detenida", details?.reason);
     setTimeout(() => { if (!window.isDestroyed()) window.webContents.reload(); }, 1500);
   });
+  // Si la página se cuelga más de 10 s, se reinicia sola (vuelve a escuchar al recargar).
+  let hangTimer = null;
+  window.webContents.on("unresponsive", () => {
+    clearTimeout(hangTimer);
+    hangTimer = setTimeout(() => { if (!window.isDestroyed()) window.webContents.forcefullyCrashRenderer(); }, 10000);
+  });
+  window.webContents.on("responsive", () => clearTimeout(hangTimer));
   appWindows.set(appId, window);
   await window.loadURL(`${url}/tb`);
   if (hubWindow && !hubWindow.isDestroyed()) hubWindow.hide();
@@ -611,19 +624,30 @@ function createOverlay(display) {
     window.webContents.send("overlay:state", overlayState);
     window.showInactive(); // nunca roba el foco
   });
-  window.on("closed", () => overlays.delete(display.id));
+  window.on("closed", () => { if (overlays.get(display.id) === window) overlays.delete(display.id); });
+  // Si la ventana de la alerta se cae, se crea otra con el estado actual (nunca queda sin alerta).
+  window.webContents.on("render-process-gone", (_, details) => {
+    console.warn("Alerta detenida", details?.reason);
+    if (overlays.get(display.id) === window) overlays.delete(display.id);
+    if (!window.isDestroyed()) window.destroy();
+    setTimeout(() => syncOverlays(), 500);
+  });
   overlays.set(display.id, window);
 }
 
 function syncOverlays() {
-  const displays = screen.getAllDisplays();
-  const ids = new Set(displays.map(display => display.id));
-  for (const [id, window] of overlays) if (!ids.has(id)) window.destroy();
-  for (const display of displays) {
-    const existing = overlays.get(display.id);
-    if (existing) existing.setBounds(display.bounds);
-    else createOverlay(display);
-  }
+  const plan = planOverlays([...overlays.keys()], screen.getAllDisplays());
+  for (const id of plan.remove) { const window = overlays.get(id); overlays.delete(id); if (window && !window.isDestroyed()) window.destroy(); }
+  for (const display of plan.update) overlays.get(display.id).setBounds(display.bounds);
+  for (const display of plan.create) createOverlay(display);
+}
+
+// Mientras una app escucha, la pantalla y el equipo no se suspenden (no requiere permisos de administrador).
+let keepAwakeId = null;
+function updateKeepAwake() {
+  const want = monitoring();
+  if (want && keepAwakeId === null) keepAwakeId = powerSaveBlocker.start("prevent-display-sleep");
+  if (!want && keepAwakeId !== null) { powerSaveBlocker.stop(keepAwakeId); keepAwakeId = null; notifyUpdates().catch(() => {}); }
 }
 
 function pushOverlay(state) {
@@ -636,13 +660,7 @@ const fromAppWindow = event => [...appWindows.values()].some(window => !window.i
 
 ipcMain.on("tb:alert", (event, state) => {
   if (!fromAppWindow(event) || typeof state !== "object" || !state) return;
-  pushOverlay({
-    active: Boolean(state.active),
-    channels: (Array.isArray(state.channels) ? state.channels : []).slice(0, 6).map(channel => ({ name: String(channel?.name || "").slice(0, 40), color: /^#[0-9a-f]{6}$/i.test(channel?.color) ? channel.color : "#ff3b30" })),
-    thickness: Number(state.thickness) || 48, opacity: Number(state.opacity) || .9,
-    pulse: Boolean(state.pulse), flash: Boolean(state.flash), edge: state.edge === "all" ? "all" : "top",
-    showText: Boolean(state.showText), text: String(state.text || "").slice(0, 200)
-  });
+  pushOverlay(sanitizeOverlayState(state));
 });
 
 ipcMain.on("tb:window", (event, action) => {
@@ -659,6 +677,7 @@ ipcMain.on("tb:status", (event, state) => {
   const appId = [...appWindows].find(([, window]) => window.webContents === event.sender)?.[0];
   if (!appId) return;
   appStatus.set(appId, { running: Boolean(state?.running) });
+  updateKeepAwake();
   updateTrayMenu(appId, manifest?.apps.find(item => item.id === appId));
 });
 

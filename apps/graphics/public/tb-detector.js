@@ -49,6 +49,7 @@ export function normalizeSettings(input = {}) {
         color: isColor(channel?.color) ? channel.color : fallback.color,
         enabled: channel?.enabled !== false,
         deviceId: typeof channel?.deviceId === "string" && channel.deviceId ? channel.deviceId.slice(0, 256) : "default",
+        deviceLabel: typeof channel?.deviceLabel === "string" ? channel.deviceLabel.slice(0, 200) : "",
         channelIndex: Math.round(clamp(channel?.channelIndex, 0, 31, 0)),
         thresholdDb: clamp(channel?.thresholdDb, -90, 0, fallback.thresholdDb),
         attackMs: Math.round(clamp(channel?.attackMs, 0, 2000, fallback.attackMs)),
@@ -269,4 +270,13 @@ export function matchKeyword(text, keywords = []) {
     if (needle && haystack.includes(` ${needle} `)) return keyword;
   }
   return null;
+}
+
+// Nivel de la alerta a pantalla completa: "band" (franja grande), "small" (pastilla) o "none".
+// La franja sale solo con palabra clave, salvo que se elija "Siempre que alguien habla".
+export function alertLevel(alert, activeCount, keywordHit) {
+  if (keywordHit) return "band";
+  if (!activeCount) return "none";
+  if (alert?.band === "voice") return "band";
+  return alert?.small ? "small" : "none";
 }

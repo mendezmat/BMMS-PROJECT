@@ -1,6 +1,6 @@
 import http from "node:http";
 import fs from "node:fs/promises";
-import { createReadStream } from "node:fs";
+import { createReadStream, readFileSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
@@ -956,12 +956,26 @@ const server = http.createServer(async (request, response) => {
     });
   }
 
+  if (request.method === "POST" && url.pathname === "/api/network/lan") {
+    const remote = request.socket.remoteAddress || "";
+    if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(remote)) return json(response, 403, { error: "Solo desde este equipo" });
+    let body = "";
+    for await (const chunk of request) { body += chunk; if (body.length > 1000) break; }
+    let wanted = false;
+    try { wanted = JSON.parse(body || "{}").lan === true; } catch { return json(response, 400, { error: "JSON inválido" }); }
+    await fs.mkdir(path.dirname(networkConfigPath), { recursive: true });
+    await fs.writeFile(networkConfigPath, `${JSON.stringify({ lan: wanted }, null, 2)}\n`, "utf8");
+    return json(response, 200, { lan: wanted, active: lanEnabled, restartNeeded: wanted !== lanEnabled });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/network") {
-    const addresses = getLanAddresses();
+    const addresses = lanEnabled ? getLanAddresses() : [];
     const preferredAddress = addresses[0] || "localhost";
     return json(response, 200, {
       port,
       host,
+      lan: lanEnabled,
+      lanSaved: readNetworkConfig().lan === true,
       addresses,
       preferredAddress,
       editorUrl: `http://${preferredAddress}:${port}`,
@@ -1144,9 +1158,17 @@ const server = http.createServer(async (request, response) => {
 });
 
 const port = Number(process.env.PORT || 4173);
-const host = process.env.BMMS_HOST || "0.0.0.0";
+// Por seguridad escucha solo en este equipo. Para OBS/vMix en otro PC se activa «Permitir otros equipos
+// de la red» en Scripture (data/graphics-server.json) o BMMS_HOST=0.0.0.0; se aplica al reiniciar.
+const networkConfigPath = path.join(projectRoot, "data", "graphics-server.json");
+function readNetworkConfig() {
+  try { return JSON.parse(readFileSync(networkConfigPath, "utf8")); } catch { return {}; }
+}
+const host = process.env.BMMS_HOST || (readNetworkConfig().lan === true ? "0.0.0.0" : "127.0.0.1");
+const lanEnabled = !["127.0.0.1", "localhost", "::1"].includes(host);
 server.listen(port, host, () => {
-  const addresses = getLanAddresses();
+  const addresses = lanEnabled ? getLanAddresses() : [];
+  if (!lanEnabled) logger.info("BMMS Graphics solo acepta este equipo. Para OBS/vMix en otro PC: Scripture › «Permitir otros equipos de la red», o BMMS_HOST=0.0.0.0.");
   logger.info("BMMS Graphics ready", {
     localEditor: `http://localhost:${port}`,
     lanEditors: addresses.map(address => `http://${address}:${port}`),

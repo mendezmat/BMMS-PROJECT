@@ -1525,7 +1525,13 @@ async function loadNetworkInfo() {
     $("#scriptureOutputUrl").textContent = outputUrl;
     $("#openScriptureOutputUrl").href = outputUrl;
 
-    if (network.addresses.length) {
+    $("#scriptureLanToggle").checked = Boolean(network.lanSaved);
+    if (network.lanSaved !== network.lan) {
+      $("#scriptureNetworkHelp").textContent = "Cierra y vuelve a abrir BMMS Graphics para aplicar el cambio de red.";
+    } else if (!network.lan) {
+      $("#scriptureNetworkHelp").textContent =
+        "Solo este equipo puede abrir la salida. Para OBS/vMix en otro PC, activa «Permitir otros equipos de la red».";
+    } else if (network.addresses.length) {
       $("#scriptureNetworkHelp").textContent =
         `Desde otro PC de la misma red use esta URL. Puerto ${network.port}.`;
     } else {
@@ -1537,6 +1543,15 @@ async function loadNetworkInfo() {
     console.error("No fue posible detectar la dirección LAN", error);
   }
 }
+
+$("#scriptureLanToggle")?.addEventListener("change", async event => {
+  try {
+    await api("/api/network/lan", { method: "POST", body: JSON.stringify({ lan: event.target.checked }) });
+  } catch (error) {
+    console.error("No fue posible guardar la opción de red", error);
+  }
+  loadNetworkInfo();
+});
 
 $("#copyScriptureOutputUrl").addEventListener("click", async () => {
   const url = $("#scriptureOutputUrl").textContent.trim();

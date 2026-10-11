@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld("bmmsCentral", {
   isCentral: true,
   platform: process.platform,
   overlay: true,
+  overlayLevels: true, // la alerta distingue pequeña / franja (motor 0.1.11 o más nuevo)
+  keepAwake: true,     // el equipo no se suspende mientras escucha
+  updatesPaused: true, // no avisa actualizaciones durante el monitoreo
   autoStart: process.argv.includes("--bmms-autostart"),
   alert: state => ipcRenderer.send("tb:alert", state),
   status: state => ipcRenderer.send("tb:status", state),

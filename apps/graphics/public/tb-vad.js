@@ -34,6 +34,12 @@ export function preloadVad() {
   return engine();
 }
 
+// Tras errores seguidos: descarta el modelo y los bloques en espera; el próximo bloque lo vuelve a cargar.
+export function resetVad() {
+  enginePromise = null;
+  for (const job of queue.splice(0)) job.resolve(0);
+}
+
 // Cola única para todos los canales: el modelo procesa un bloque a la vez, en orden, sin perder bloques
 // (perder bloques rompe la memoria del modelo y empeora mucho la detección con ruido).
 const queue = [];
