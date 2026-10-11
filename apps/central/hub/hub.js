@@ -220,6 +220,9 @@ function render() {
   const ui = state.central.ui;
   const pending = state.apps.filter(app => app.updateAvailable).map(app => `${app.name} ${app.version}`);
   if (ui?.updateAvailable) pending.push(`Diseño de BMMS Central ${ui.version}`);
+  const engine = state.central.update || {};
+  const engineUpdate = ["available", "downloading", "ready"].includes(engine.status);
+  if (engineUpdate) pending.push(`Motor de BMMS Central ${engine.version}`);
   const updates = pending.length;
   byId("updatesPill").hidden = !updates;
   byId("updatesPill").textContent = updates === 1 ? "1 actualización disponible" : `${updates} actualizaciones disponibles`;
@@ -240,12 +243,15 @@ function render() {
 
   byId("centralVersion").textContent = `v${state.central.version}`;
   byId("footUiBack").hidden = byId("footUiSep").hidden = !ui?.installed;
-  const update = state.central.update || {};
+  // Motor de Central (programa): Windows lo descarga solo; Mac sin firma de Apple abre la página de descarga.
   const banner = byId("selfUpdate");
-  banner.hidden = !["downloading", "ready"].includes(update.status);
-  if (update.status === "downloading") banner.textContent = `Descargando una nueva versión de Central… ${update.percent || 0}%`;
-  if (update.status === "ready") {
-    banner.replaceChildren(document.createTextNode(`BMMS Central ${update.version} está lista.`), link("Reiniciar y actualizar", () => window.central.restartToUpdate()));
+  banner.hidden = !engineUpdate;
+  if (engine.status === "downloading") banner.textContent = `Descargando el motor de BMMS Central ${engine.version}… ${engine.percent || 0}%`;
+  if (engine.status === "ready") {
+    banner.replaceChildren(document.createTextNode(`El motor de BMMS Central ${engine.version} está listo. Se instalará al reiniciar.`), link("Reiniciar y actualizar", () => window.central.restartToUpdate()));
+  }
+  if (engine.status === "available") {
+    banner.replaceChildren(document.createTextNode(`Hay un motor nuevo de BMMS Central (${engine.version}). En Mac se instala descargándolo.`), link("Descargar", () => window.central.openRelease?.()));
   }
   renderPanel();
 }
@@ -264,6 +270,10 @@ async function updateAll() {
   updateError = "";
   const result = await window.central.updateAll();
   progress.clear();
+  // El motor va al final: en Windows reinicia para instalarse; en Mac abre la descarga.
+  const engine = state?.central.update || {};
+  if (!result?.error && engine.status === "ready") { await window.central.restartToUpdate(); return; }
+  if (!result?.error && engine.status === "available") window.central.openRelease?.();
   if (result?.error) updateError = `No se pudo actualizar: ${result.error}`;
   await load();
 }

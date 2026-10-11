@@ -64,7 +64,7 @@
       "name": "Diseño de BMMS Central",
       "status": "available",
       "hidden": true,
-      "version": "1.0.0",
+      "version": "1.0.1",
       "minCentral": "0.1.0",
       "category": "Central",
       "color": "#ff9f0a",

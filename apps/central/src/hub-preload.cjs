@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("central", {
   downloadAssets: appId => ipcRenderer.invoke("central:download-assets", appId),
   importFolder: appId => ipcRenderer.invoke("central:import-folder", appId),
   restartToUpdate: () => ipcRenderer.invoke("central:restart-to-update"),
+  openRelease: () => ipcRenderer.invoke("central:open-release"),
   openDataFolder: () => ipcRenderer.invoke("central:open-data-folder"),
   onChanged: callback => ipcRenderer.on("central:changed", () => callback()),
   onProgress: callback => ipcRenderer.on("central:progress", (_, info) => callback(info))

@@ -31,10 +31,19 @@ git add central/channel && git commit -m "chore(central): publicar canal" && git
 Los PC con Central verán "Actualización" en la tarjeta de la app (revisa cada 30 minutos o con
 "Buscar actualizaciones").
 
-## Publicar una nueva versión de Central (el programa)
+## Publicar un cambio de diseño de Central
 
-Sube `version` en `apps/central/package.json`, haz commit y crea la etiqueta `central-vX.Y.Z`.
-GitHub Actions compila los instaladores de Windows y Mac y los publica en Releases; Central se actualiza solo.
+Cambia los archivos de `apps/central/hub/`, sube la versión en `apps/central/hub/version.json` **y** en
+`central/catalog.json` (entrada `central-ui`), y publica como una corrección de app (pasos de arriba).
+Central solo ofrece un diseño más nuevo que el que ya tiene.
+
+## Publicar una nueva versión del motor de Central (el programa)
+
+Sube `version` en `apps/central/package.json`, haz commit y push. GitHub Actions
+(`.github/workflows/central-release.yml`) compila los instaladores de Windows y Mac y los publica en la
+release `central-vX.Y.Z` y en la release fija `central-latest`, de donde Central los lee.
+- Windows: se descarga solo y se instala con "Reiniciar y actualizar".
+- Mac: sin firma de Apple (Developer ID) no puede instalarse solo; Central avisa y el botón abre la descarga.
 
 ## Desarrollo
 

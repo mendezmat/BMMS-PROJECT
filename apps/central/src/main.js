@@ -105,30 +105,33 @@ async function uiStatus(entry) {
   const compatible = versionAtLeast(app.getVersion(), entry.minCentral || "0.0.0");
   const installedHash = state?.current?.files ? JSON.stringify(state.current.files.map(file => [file.path, file.sha256])) : null;
   const latestHash = JSON.stringify(entry.files.map(file => [file.path, file.sha256]));
+  // Se usa el diseño más nuevo entre el descargado y el que trae el instalador; solo se ofrece uno más nuevo.
+  const bundled = await bundledUiVersion();
+  const usingDownloaded = Boolean(state?.current) && versionAtLeast(state.current.version, bundled); // igual que hubIndexPath()
+  const active = usingDownloaded ? state.current.version : bundled;
+  const newer = !versionAtLeast(active, entry.version);
+  const republished = usingDownloaded && state.current.version === entry.version && installedHash !== latestHash;
   return {
     version: entry.version,
-    installed: state?.current ? { version: state.current.version } : null,
+    active,
+    installed: usingDownloaded ? { version: state.current.version } : null,
     previous: state?.previous ? { version: state.previous.version } : null,
-    // Sin copia descargada, se compara con el diseño incluido en el instalador.
-    updateAvailable: compatible && (installedHash ? installedHash !== latestHash : !(await bundledUiMatches(entry))),
+    updateAvailable: compatible && (newer || republished),
     compatible,
     busy: busy.get(UI_ID) || null
   };
 }
 
-async function bundledUiMatches(entry) {
-  const { sha256File } = await import("./updater.js");
-  for (const file of entry.files) {
-    try { if (await sha256File(path.join(here, "..", file.path)) !== file.sha256) return false; } catch { return false; }
-  }
-  return true;
+async function bundledUiVersion() {
+  try { return JSON.parse(await fsp.readFile(path.join(here, "../hub/version.json"), "utf8")).version || "0.0.0"; } catch { return "0.0.0"; }
 }
 
 async function hubIndexPath() {
   const entry = manifest?.apps.find(item => item.id === UI_ID);
   const state = await readInstallState(root(), UI_ID);
   const dir = currentAppDir(root(), state);
-  if (dir && (!entry || versionAtLeast(app.getVersion(), entry.minCentral || "0.0.0"))) {
+  const newerThanBundled = state?.current && versionAtLeast(state.current.version, await bundledUiVersion());
+  if (dir && newerThanBundled && (!entry || versionAtLeast(app.getVersion(), entry.minCentral || "0.0.0"))) {
     const index = path.join(dir, "hub", "index.html");
     try { await fsp.access(index); return index; } catch { /* copia dañada: usar la incluida */ }
   }
@@ -207,6 +210,7 @@ async function pendingUpdates() {
   const info = await catalog();
   const list = info.apps.filter(item => item.updateAvailable).map(item => ({ key: `${item.id}@${item.version}`, label: `${item.name} ${item.version}` }));
   if (info.central.ui?.updateAvailable) list.push({ key: `${UI_ID}@${info.central.ui.version}`, label: `diseño de BMMS Central ${info.central.ui.version}` });
+  if (["available", "downloading", "ready"].includes(selfUpdate.status)) list.push({ key: `engine@${selfUpdate.version}`, label: `motor de BMMS Central ${selfUpdate.version}` });
   return list;
 }
 
@@ -228,6 +232,7 @@ async function notifyUpdates() {
 }
 
 async function checkForUpdates() {
+  checkSelfUpdate();
   await loadManifest();
   send("central:changed");
   await repairLaunchers().catch(() => {});
@@ -320,15 +325,34 @@ function createHub() {
 
 /* ---------- Actualización de Central (instalador completo, GitHub Releases) ---------- */
 
+const RELEASES_URL = "https://github.com/mendezmat/BMMS-PROJECT/releases";
+// En Mac, instalar solo una actualización exige una app firmada por Apple (Developer ID, de pago).
+// Sin firma: se avisa y el botón abre la página de descarga. En Windows se descarga y se instala al reiniciar.
+const canAutoInstall = () => process.platform === "win32";
+
 function setupSelfUpdate() {
   if (!app.isPackaged) { selfUpdate = { status: "dev" }; return; }
-  autoUpdater.autoDownload = true;
-  autoUpdater.on("checking-for-update", () => { selfUpdate = { status: "checking" }; send("central:changed"); });
+  if (process.env.BMMS_CENTRAL_UPDATE_URL) autoUpdater.setFeedURL({ provider: "generic", url: process.env.BMMS_CENTRAL_UPDATE_URL }); // pruebas
+  autoUpdater.autoDownload = canAutoInstall();
+  autoUpdater.autoInstallOnAppQuit = false; // nunca se reinicia ni se instala sin que la persona lo pida
+  autoUpdater.on("update-available", info => {
+    selfUpdate = { status: canAutoInstall() ? "downloading" : "available", version: info.version, percent: 0, manual: !canAutoInstall() };
+    send("central:changed");
+    notifyUpdates().catch(() => {});
+  });
   autoUpdater.on("update-not-available", () => { selfUpdate = { status: "current" }; send("central:changed"); });
-  autoUpdater.on("download-progress", info => { selfUpdate = { status: "downloading", percent: Math.round(info.percent) }; send("central:changed"); });
+  autoUpdater.on("download-progress", info => { selfUpdate = { ...selfUpdate, status: "downloading", percent: Math.round(info.percent) }; send("central:changed"); });
   autoUpdater.on("update-downloaded", info => { selfUpdate = { status: "ready", version: info.version }; send("central:changed"); });
-  autoUpdater.on("error", error => { selfUpdate = { status: "error", message: error?.message || String(error) }; send("central:changed"); });
-  autoUpdater.checkForUpdates().catch(() => {});
+  autoUpdater.on("error", error => {
+    // Sin conexión o sin releases todavía: no es un problema para el usuario.
+    if (selfUpdate.status !== "available" && selfUpdate.status !== "ready") selfUpdate = { status: "error", message: error?.message || String(error) };
+    send("central:changed");
+  });
+  checkSelfUpdate();
+}
+
+function checkSelfUpdate() {
+  if (app.isPackaged && !["downloading", "ready"].includes(selfUpdate.status)) autoUpdater.checkForUpdates().catch(() => {});
 }
 
 /* ---------- IPC ---------- */
@@ -387,7 +411,15 @@ const handlers = {
     if (result.canceled || !result.filePaths[0]) return { canceled: true };
     return installOrUpdate(appId, { fromFolder: result.filePaths[0] });
   },
-  "central:restart-to-update": () => { autoUpdater.quitAndInstall(); },
+  "central:restart-to-update": () => {
+    if (selfUpdate.status !== "ready") throw new Error("La actualización todavía no está lista.");
+    setImmediate(() => autoUpdater.quitAndInstall(false, true));
+    return { ok: true };
+  },
+  "central:open-release": () => {
+    const version = String(selfUpdate.version || "").replace(/[^0-9.]/g, "");
+    return shell.openExternal(version ? `${RELEASES_URL}/tag/central-v${version}` : RELEASES_URL);
+  },
   "central:open-data-folder": () => shell.openPath(dataDir())
 };
 

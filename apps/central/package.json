@@ -1,7 +1,7 @@
 {
   "name": "bmms-central",
   "productName": "BMMS Central",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Hub de aplicaciones de producción BMMS con actualizaciones por archivos.",
   "author": "BMMS",
   "license": "UNLICENSED",
@@ -45,10 +45,9 @@
     ],
     "publish": [
       {
-        "provider": "github",
-        "owner": "mendezmat",
-        "repo": "BMMS-PROJECT",
-        "releaseType": "release"
+        "provider": "generic",
+        "url": "https://github.com/mendezmat/BMMS-PROJECT/releases/download/central-latest",
+        "channel": "latest"
       }
     ],
     "win": {

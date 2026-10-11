@@ -1,21 +1,56 @@
 # Publica los instaladores de BMMS Central (Windows y Mac) en GitHub Releases.
-# Central se actualiza solo desde ahí (electron-updater). Las apps (TB Tool) NO usan esto:
-# se actualizan por archivos con central/channel/stable.json.
-# Se dispara al subir una etiqueta: git tag central-v0.1.0 && git push origin central-v0.1.0
+# Se dispara solo cuando cambia la versión en apps/central/package.json en main
+# (basta con "Push origin" desde GitHub Desktop; no hace falta subir etiquetas).
+#
+# - Release versionada:  central-vX.Y.Z  (historial).
+# - Release fija:        central-latest  (siempre la última). Central lee de ahí
+#   latest.yml / latest-mac.yml con electron-updater (proveedor "generic"), que verifica sha512.
+# Las apps (TB Tool) y el diseño de Central NO usan esto: van por central/channel/stable.json.
 name: BMMS Central release
 
 on:
   push:
-    tags: ["central-v*"]
+    branches: [main]
+    paths: ["apps/central/package.json"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: central-release
+  cancel-in-progress: false
+
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=$(node -p "require('./apps/central/package.json').version")" >> "$GITHUB_OUTPUT"
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "central-v${{ steps.version.outputs.version }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: prepare
+    if: needs.prepare.outputs.exists == 'false'
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            command: npx electron-builder --win nsis --x64 --publish never
+          - os: macos-latest
+            command: npx electron-builder --mac dmg zip --arm64 --publish never
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -29,14 +64,46 @@ jobs:
           cache-dependency-path: apps/central/package-lock.json
       - run: npm ci
       - run: npm test
-      - name: Build and publish (Windows)
-        if: runner.os == 'Windows'
-        run: npx electron-builder --win nsis --x64 --publish always
+      - run: ${{ matrix.command }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish (Mac)
-        if: runner.os == 'macOS'
-        run: npx electron-builder --mac dmg zip --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: central-${{ matrix.os }}
+          path: |
+            apps/central/dist/*.exe
+            apps/central/dist/*.dmg
+            apps/central/dist/*.zip
+            apps/central/dist/*.blockmap
+            apps/central/dist/latest*.yml
+          if-no-files-found: error
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Release versionada
+        run: |
+          gh release create "central-v$VERSION" artifacts/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "BMMS Central $VERSION" --latest=false \
+            --notes "Instaladores de BMMS Central $VERSION. Windows: BMMS-Central-Setup-$VERSION.exe. Mac (Apple Silicon): BMMS-Central-$VERSION-arm64.dmg."
+      - name: Release fija central-latest (la que lee Central)
+        run: |
+          if ! gh release view central-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create central-latest --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "BMMS Central (última versión)" --latest=false \
+              --notes "Canal de actualizaciones del motor de BMMS Central. No borrar."
+          fi
+          gh release upload central-latest artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+          # Quitar instaladores de versiones anteriores de la release fija.
+          for asset in $(gh release view central-latest --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'); do
+            if [ ! -f "artifacts/$asset" ]; then gh release delete-asset central-latest "$asset" --repo "$GITHUB_REPOSITORY" --yes; fi
+          done
