@@ -148,10 +148,12 @@ test("offline transcription is the default and picks the model by hardware", () 
   assert.equal(whisperLanguage("en-US"), "english");
 });
 
-test("offline transcription never goes online and the model files are local", () => {
+test("offline transcription never goes online and the model files are local", t => {
   const worker = fs.readFileSync("apps/graphics/public/tb-whisper-worker.js", "utf8");
   assert.match(worker, /env\.allowRemoteModels = false/);
   assert.match(worker, /env\.localModelPath = "\/vendor\/models\/"/);
+  // Los modelos no van a git (pesan cientos de MB): en CI solo se revisa la configuración.
+  if (!fs.existsSync("apps/graphics/public/vendor/models")) { t.skip("modelos no descargados (scripts/download-tb-model.mjs)"); return; }
   for (const model of ["whisper-small", "whisper-base"]) {
     for (const file of ["config.json", "tokenizer.json", "onnx/decoder_model_merged_q4.onnx", "onnx/encoder_model_quantized.onnx"]) {
       assert.ok(fs.existsSync(`apps/graphics/public/vendor/models/onnx-community/${model}/${file}`), `${model}/${file}`);
