@@ -10,8 +10,8 @@ body { font-family: "Roboto", "Segoe UI", system-ui, sans-serif; -webkit-font-sm
 .band, .dim, .edges { position: fixed; pointer-events: none; opacity: 0; }
 .band { transform: translateY(-14px); transition: opacity 180ms cubic-bezier(.2, .8, .2, 1), transform 220ms cubic-bezier(.2, .8, .2, 1); }
 .dim, .edges { transition: opacity 180ms ease-out; }
-body.is-on .band { opacity: var(--opacity); transform: none; }
-body.is-on .dim, body.is-on .edges { opacity: 1; }
+body.is-on.is-band .band { opacity: var(--opacity); transform: none; }
+body.is-on.is-band .dim, body.is-on.is-band .edges { opacity: 1; }
 body:not(.is-on) .band { transition-duration: 450ms, 450ms; }
 body:not(.is-on) .dim, body:not(.is-on) .edges { transition-duration: 450ms; }
 
@@ -48,6 +48,18 @@ body.is-flash .dim { background: color-mix(in srgb, var(--color) 12%, transparen
 .edges { inset: 0; display: none; box-shadow: inset 0 0 0 calc(var(--band) * .05) color-mix(in srgb, var(--color) 85%, transparent); }
 body.is-all .edges { display: block; }
 
-body.is-on.is-pulse .band { animation: pulse 1400ms ease-in-out infinite; }
+body.is-on.is-band.is-pulse .band { animation: pulse 1400ms ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: calc(var(--opacity) * .72); } }
 @media (prefers-reduced-motion: reduce) { .band { transform: none; } body.is-on.is-pulse .band { animation: none; } }
+
+/* Alerta pequeña (cualquier voz): pastilla discreta arriba al centro. */
+.pill { position: fixed; top: 14px; left: 50%; display: inline-flex; align-items: center; gap: 9px; padding: 8px 16px 8px 12px; border-radius: 999px;
+  background: rgba(18, 18, 18, .84); border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  color: #fff; font-weight: 900; font-size: 17px; letter-spacing: .02em; text-transform: uppercase; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -10px); transition: opacity 160ms cubic-bezier(.2, .8, .2, 1), transform 200ms cubic-bezier(.2, .8, .2, 1); }
+.pill i { width: 10px; height: 10px; border-radius: 50%; background: var(--color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 30%, transparent), 0 0 12px var(--color); }
+.pill em { font-style: normal; font-weight: 500; font-size: 12px; letter-spacing: .1em; color: rgba(255, 255, 255, .6); }
+body.is-on.is-small .pill { opacity: 1; transform: translate(-50%, 0); }
+body:not(.is-on) .pill, body.is-band .pill { transition-duration: 380ms; }
+body.is-on.is-small.is-pulse .pill i { animation: dot 1200ms ease-in-out infinite; }
+@keyframes dot { 50% { transform: scale(.75); opacity: .7; } }

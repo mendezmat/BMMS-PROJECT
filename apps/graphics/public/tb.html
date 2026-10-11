@@ -12,7 +12,7 @@
   </div>
 
   <header class="tb-top">
-    <div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.1.1</span></div>
+    <div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.2.0</span></div>
     <div class="tb-top-actions">
       <span class="tb-state" id="tbState">Detenido</span>
       <button class="primary" id="tbStart">Iniciar monitoreo</button>
@@ -39,6 +39,9 @@
           <label class="tb-check"><input type="checkbox" id="tbPulse"> Pulso</label>
           <label class="tb-check"><input type="checkbox" id="tbFlash"> Destello</label>
           <label class="tb-check" id="tbShowTextRow"><input type="checkbox" id="tbShowText"> Mostrar la transcripción en la alerta</label>
+          <label class="tb-check"><input type="checkbox" id="tbSmall"> Alerta pequeña cuando alguien habla</label>
+          <label>Franja grande<select id="tbBand"><option value="keywords">Solo con palabras clave</option><option value="voice">Siempre que alguien habla</option></select></label>
+          <label class="tb-keywords">Palabras clave (una por línea; sin importar tildes ni mayúsculas)<textarea id="tbKeywords" rows="4" placeholder="atención&#10;urgente&#10;cámara dos"></textarea></label>
           <label>Dónde se ve<select id="tbEdge"><option value="top">Solo arriba</option><option value="all">Todo el borde</option></select></label>
         </div>
       </details>

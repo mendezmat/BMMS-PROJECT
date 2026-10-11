@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createDetector, dominantChannel, isVoice, normalizeSettings, recommendThreshold, rmsDb, voiceThreshold } from "../apps/graphics/public/tb-detector.js";
-import { cleanTranscript, createSegmenter, whisperLanguage, whisperModel } from "../apps/graphics/public/tb-detector.js";
+import { cleanTranscript, createSegmenter, matchKeyword, whisperLanguage, whisperModel } from "../apps/graphics/public/tb-detector.js";
 
 const config = { thresholdDb: -40, attackMs: 60, holdMs: 900 };
 
@@ -158,4 +158,29 @@ test("offline transcription never goes online and the model files are local", ()
     }
   }
   assert.ok(fs.existsSync("apps/graphics/public/vendor/models/onnx-community/whisper-small/onnx/encoder_model_fp16.onnx"));
+});
+
+test("keywords match without accents, case or number words and only as whole words", () => {
+  assert.equal(matchKeyword("¡ATENCIÓN, cámara dos!", ["atencion"]), "atencion");
+  assert.equal(matchKeyword("Cámara 2 cierra el plano", ["cámara dos"]), "cámara dos");
+  assert.equal(matchKeyword("desatención total", ["atención"]), null);
+  assert.equal(matchKeyword("", ["atención"]), null);
+  assert.equal(matchKeyword("hola", []), null);
+});
+
+test("two alert levels: small for any voice, band only with keywords by default", () => {
+  const settings = normalizeSettings({});
+  assert.equal(settings.alert.small, true);
+  assert.equal(settings.alert.band, "keywords");
+  assert.ok(settings.keywords.length >= 1);
+  assert.equal(normalizeSettings({ alert: { band: "voice" } }).alert.band, "voice");
+  assert.deepEqual(normalizeSettings({ keywords: [" urgente ", "", "urgente", "x".repeat(60)] }).keywords, ["urgente", "x".repeat(40)]);
+});
+
+test("segmenter exposes the growing phrase for partial transcription", () => {
+  const segmenter = createSegmenter();
+  for (let index = 0; index < 20; index++) segmenter.push(new Float32Array(512), true, 900);
+  assert.equal(segmenter.recording, true);
+  assert.ok(segmenter.voicedMs >= 600);
+  assert.ok(segmenter.snapshot().length >= 20 * 512);
 });

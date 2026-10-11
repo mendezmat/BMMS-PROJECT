@@ -24,7 +24,8 @@ export function defaultSettings() {
   return {
     schemaVersion: 1,
     channels: [defaultChannel(0)],
-    alert: { thickness: 48, opacity: 0.85, pulse: true, flash: false, edge: "top", showText: false },
+    alert: { thickness: 48, opacity: 0.85, pulse: true, flash: false, edge: "top", showText: false, small: true, band: "keywords" },
+    keywords: ["atención", "urgente"],
     transcription: { enabled: true, language: "es-US", fontSize: 28, engine: "local", model: "auto" }
   };
 }
@@ -63,8 +64,13 @@ export function normalizeSettings(input = {}) {
       pulse: input.alert?.pulse !== false,
       flash: input.alert?.flash === true,
       showText: input.alert?.showText === true,
+      small: input.alert?.small !== false,
+      band: input.alert?.band === "voice" ? "voice" : "keywords",
       edge: input.alert?.edge === "all" ? "all" : "top"
     },
+    keywords: Array.isArray(input.keywords)
+      ? [...new Set(input.keywords.map(word => String(word || "").replace(/\s+/g, " ").trim().slice(0, 40)).filter(Boolean))].slice(0, 50)
+      : base.keywords,
     transcription: {
       enabled: input.transcription?.enabled !== false,
       language: typeof input.transcription?.language === "string" && /^[a-z]{2}(-[A-Z0-9]{2,3})?$/.test(input.transcription.language) ? input.transcription.language : base.transcription.language,
@@ -183,6 +189,15 @@ export function createSegmenter({ sampleRate = 16000, preRollMs = 300, tailMs = 
 
   return {
     get recording() { return frames !== null; },
+    get voicedMs() { return voicedMs; },
+    // Copia del audio acumulado de la frase en curso (para transcripción parcial mientras se habla).
+    snapshot() {
+      if (!frames) return null;
+      const audio = new Float32Array(frames.reduce((sum, frame) => sum + frame.length, 0));
+      let offset = 0;
+      for (const frame of frames) { audio.set(frame, offset); offset += frame.length; }
+      return audio;
+    },
     // Devuelve una frase completa (Float32Array) o null.
     push(frame, voiced, holdMs = 900) {
       const ms = duration(frame);
@@ -232,4 +247,26 @@ export function cleanTranscript(text) {
   // Bucles: la misma frase repetida muchas veces se deja una vez.
   clean = clean.replace(/(\b.{3,40}?[.,!?]?)(\s+\1){2,}/giu, "$1");
   return clean;
+}
+
+/* ---------- Palabras clave ---------- */
+
+// Sin tildes, sin mayúsculas y sin signos: "¡Atención, Cámara 2!" → "atencion camara 2".
+// Los números escritos en palabras cuentan igual que en cifras ("cámara dos" = "Cámara 2").
+const NUMBER_WORDS = Object.freeze({ cero: "0", uno: "1", una: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5", seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10", once: "11", doce: "12", trece: "13", catorce: "14", quince: "15", dieciseis: "16", diecisiete: "17", dieciocho: "18", diecinueve: "19", veinte: "20" });
+
+export function normalizeForMatch(text) {
+  return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9ñ]+/g, " ").trim()
+    .split(" ").map(word => NUMBER_WORDS[word] || word).join(" ");
+}
+
+// Devuelve la primera palabra clave que aparece completa en el texto (o null).
+export function matchKeyword(text, keywords = []) {
+  const haystack = ` ${normalizeForMatch(text)} `;
+  if (haystack.trim() === "") return null;
+  for (const keyword of keywords) {
+    const needle = normalizeForMatch(keyword);
+    if (needle && haystack.includes(` ${needle} `)) return keyword;
+  }
+  return null;
 }

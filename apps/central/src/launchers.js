@@ -286,7 +286,8 @@ async function createWindowsStandalone(electronApp, shell, BrowserWindow, app) {
 }
 
 export async function createStandalone({ electronApp, shell, BrowserWindow }, app) {
-  if (isPackagedMac()) return [await createMacStandalone(BrowserWindow, { ...app, standalone: true })];
+  // Solo desde una Central instalada: en desarrollo el motor no lleva la app dentro y la copia no serviría.
+  if (electronApp.isPackaged && isPackagedMac()) return [await createMacStandalone(BrowserWindow, { ...app, standalone: true })];
   if (process.platform === "win32" && electronApp.isPackaged) return [await createWindowsStandalone(electronApp, shell, BrowserWindow, { ...app, standalone: true })];
   return createLauncher({ electronApp, shell, BrowserWindow }, app); // en desarrollo: acceso que abre Central
 }

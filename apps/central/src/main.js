@@ -356,6 +356,11 @@ async function openApp(appId, { show = null } = {}) {
     }
     send("central:changed");
   });
+  // En segundo plano nadie vería un fallo: si la página se cae, se recarga y vuelve a escuchar.
+  window.webContents.on("render-process-gone", (_, details) => {
+    console.warn("App detenida", details?.reason);
+    setTimeout(() => { if (!window.isDestroyed()) window.webContents.reload(); }, 1500);
+  });
   appWindows.set(appId, window);
   await window.loadURL(`${url}/tb`);
   if (hubWindow && !hubWindow.isDestroyed()) hubWindow.hide();

@@ -1,4 +1,4 @@
-import { TB_COLORS, cleanTranscript, createDetector, createSegmenter, defaultChannel, defaultSettings, dominantChannel, isVoice, normalizeSettings, recommendThreshold, voiceThreshold, whisperLanguage, whisperModel, MIN_DB } from "./tb-detector.js";
+import { TB_COLORS, cleanTranscript, matchKeyword, createDetector, createSegmenter, defaultChannel, defaultSettings, dominantChannel, isVoice, normalizeSettings, recommendThreshold, voiceThreshold, whisperLanguage, whisperModel, MIN_DB } from "./tb-detector.js";
 import { createVoiceChannel, preloadVad } from "./tb-vad.js";
 
 const byId = id => document.getElementById(id);
@@ -261,11 +261,13 @@ function finishCalibration(channel, samples) {
   setChannelStatus(channel.id, `Ruido ${floorDb} dB → umbral ${thresholdDb} dB`);
 }
 
+// Prueba: muestra la alerta grande como si se hubiera dicho la primera palabra clave.
 function testAlert(channel) {
-  tests.set(channel.id, performance.now() + 2500);
+  tests.set(channel.id, performance.now() + 3000);
   lastActiveChannelId = channel.id;
+  keywordHit = { channelId: channel.id, word: settings.keywords[0] || "Prueba", until: performance.now() + 3000 };
   renderAlert();
-  setTimeout(renderAlert, 2600);
+  setTimeout(renderAlert, 3100);
 }
 
 /* ---------- Transcripción (reconocimiento de voz del navegador) ---------- */
@@ -379,25 +381,73 @@ function handleWhisper(worker, message) {
     transcriptHint(`Error en la transcripción sin internet: ${message.message}`);
   }
   if (message.type === "result") {
-    pendingByChannel.set(message.channelId, Math.max(0, (pendingByChannel.get(message.channelId) || 1) - 1));
     if (message.error) console.warn("TB Tool: Whisper", message.error);
     const text = cleanTranscript(message.text);
-    if (text) addLine(message.channelId, text);
+    if (message.partial) {
+      partialInFlight.delete(message.channelId);
+      // El texto parcial se muestra mientras la persona sigue hablando y ya sirve para las palabras clave.
+      if (text) { if (segmenters.get(message.channelId)?.recording) renderLive(`${text}…`, message.channelId); checkKeywords(message.channelId, text); }
+      return;
+    }
+    pendingByChannel.set(message.channelId, Math.max(0, (pendingByChannel.get(message.channelId) || 1) - 1));
+    const metric = segmentMetrics.get(message.id);
+    if (metric) {
+      segmentMetrics.delete(message.id);
+      tbMetrics.push({ audioMs: metric.audioMs, inferMs: message.ms, endToTextMs: Math.round(performance.now() - metric.lastVoiceAt), text });
+      if (tbMetrics.length > 50) tbMetrics.shift();
+    }
+    if (text) { addLine(message.channelId, text); checkKeywords(message.channelId, text); }
     renderPending();
   }
+}
+
+/* Métricas de velocidad (consola: window.__tbMetrics). */
+const tbMetrics = [];
+window.__tbMetrics = tbMetrics;
+const segmentMetrics = new Map(); // id -> { audioMs, lastVoiceAt }
+const lastVoiceAt = new Map();    // channelId -> momento del último bloque con voz
+const partialInFlight = new Set();
+const lastPartialAt = new Map();
+const TRANSCRIBE_SILENCE_MS = 450;  // la frase se cierra antes que la alerta (que usa la retención del canal)
+const PARTIAL_EVERY_MS = 800;
+
+/* ---------- Palabras clave: activan la alerta grande ---------- */
+
+let keywordHit = null; // { channelId, word, until }
+function checkKeywords(channelId, text) {
+  const word = matchKeyword(text, settings.keywords);
+  if (!word) return;
+  keywordHit = { channelId, word, until: performance.now() + 6000 };
+  renderAlert();
+  setTimeout(renderAlert, 6100);
 }
 
 function feedSegment(channel, runtime, frame) {
   if (!segmenters.has(channel.id)) segmenters.set(channel.id, createSegmenter());
   const voiced = usesVoice(channel) ? runtime.speaking : runtime.levelDb >= channel.thresholdDb;
-  const segment = segmenters.get(channel.id).push(frame, voiced, channel.holdMs);
-  if (segment) sendSegment(channel.id, segment);
+  if (voiced) lastVoiceAt.set(channel.id, performance.now());
+  const segmenter = segmenters.get(channel.id);
+  const segment = segmenter.push(frame, voiced, Math.min(channel.holdMs, TRANSCRIBE_SILENCE_MS));
+  if (segment) { sendSegment(channel.id, segment); return; }
+  // Transcripción parcial mientras se habla (solo con GPU: en CPU retrasaría las frases finales).
+  const now = performance.now();
+  if (voiced && whisper?.status === "ready" && whisper.device === "webgpu" && segmenter.recording && segmenter.voicedMs >= 600
+      && !partialInFlight.size && !pendingByChannel.get(channel.id) && now - (lastPartialAt.get(channel.id) || 0) >= PARTIAL_EVERY_MS) { // una parcial a la vez en total
+    const audio = segmenter.snapshot();
+    if (!audio) return;
+    partialInFlight.add(channel.id);
+    lastPartialAt.set(channel.id, now);
+    pendingByChannel.set(channel.id, pendingByChannel.get(channel.id) || 0);
+    whisper.worker.postMessage({ type: "transcribe", partial: true, id: ++whisperRequest, channelId: channel.id, audio, model: whisper.model, device: whisper.device, language: whisper.language }, [audio.buffer]);
+  }
 }
 
 function sendSegment(channelId, segment) {
   if (!whisper || whisper.status === "error") return;
   pendingByChannel.set(channelId, (pendingByChannel.get(channelId) || 0) + 1);
-  whisper.worker.postMessage({ type: "transcribe", id: ++whisperRequest, channelId, audio: segment, model: whisper.model, device: whisper.device, language: whisper.language }, [segment.buffer]);
+  const id = ++whisperRequest;
+  segmentMetrics.set(id, { audioMs: Math.round(segment.length / 16), lastVoiceAt: lastVoiceAt.get(channelId) || performance.now() });
+  whisper.worker.postMessage({ type: "transcribe", id, channelId, audio: segment, model: whisper.model, device: whisper.device, language: whisper.language }, [segment.buffer]);
   renderPending();
 }
 
@@ -481,9 +531,19 @@ function sendOverlay(active, force = false) {
   const text = live && live !== "Transcribiendo…" ? live : (recent && Date.now() - Date.parse(recent.at) < 8000 ? recent.text : "");
   const main = active.find(channel => channel.id === lastActiveChannelId) || active[0];
   const ordered = main ? [main, ...active.filter(channel => channel !== main)] : [];
+  // Dos niveles: pequeña con cualquier voz; franja grande con palabra clave (o siempre, si se elige).
+  const hit = keywordHit && keywordHit.until > performance.now() ? keywordHit : null;
+  const hitChannel = hit && settings.channels.find(channel => channel.id === hit.channelId);
+  let level = "none";
+  if (settings.alert.band === "voice" && active.length) level = "band";
+  else if (hit) level = "band";
+  else if (active.length && settings.alert.small) level = "small";
+  const shown = hit && hitChannel ? [hitChannel, ...ordered.filter(channel => channel.id !== hitChannel.id)] : ordered;
   const state = {
-    active: active.length > 0,
-    channels: ordered.map(channel => ({ name: channel.name, color: channel.color })),
+    active: level !== "none",
+    level,
+    word: hit ? hit.word : "",
+    channels: shown.map(channel => ({ name: channel.name, color: channel.color })),
     thickness: settings.alert.thickness, opacity: settings.alert.opacity, pulse: settings.alert.pulse,
     flash: settings.alert.flash, edge: settings.alert.edge, showText: settings.alert.showText, text
   };
@@ -597,6 +657,9 @@ function applyAlertStyle() {
   byId("tbPulse").checked = settings.alert.pulse;
   byId("tbFlash").checked = settings.alert.flash;
   byId("tbShowText").checked = settings.alert.showText;
+  byId("tbSmall").checked = settings.alert.small;
+  byId("tbBand").value = settings.alert.band;
+  if (document.activeElement !== byId("tbKeywords")) byId("tbKeywords").value = settings.keywords.join("\n");
   byId("tbShowTextRow").hidden = !window.bmmsCentral?.overlay;
   if (window.bmmsCentral?.overlay) sendOverlay(activeChannels(), true);
   byId("tbTranscribe").checked = settings.transcription.enabled;
@@ -901,6 +964,10 @@ async function init() {
   byId("tbFloat").addEventListener("click", openFloat);
   byId("tbSave").addEventListener("click", saveSession);
   byId("tbShowText").addEventListener("change", event => { settings.alert.showText = event.target.checked; saveSettings(); applyAlertStyle(); });
+  byId("tbSmall").addEventListener("change", event => { settings.alert.small = event.target.checked; saveSettings(); applyAlertStyle(); });
+  byId("tbBand").addEventListener("change", event => { settings.alert.band = event.target.value; saveSettings(); applyAlertStyle(); });
+  byId("tbKeywords").addEventListener("input", event => { settings.keywords = event.target.value.split("\n"); saveSettings(); });
+  byId("tbKeywords").addEventListener("change", () => applyAlertStyle());
   // Órdenes desde el icono de la bandeja / barra de menú de BMMS Central.
   window.bmmsCentral?.onCommand?.(name => {
     if (name === "start" && !audio) startAudio();

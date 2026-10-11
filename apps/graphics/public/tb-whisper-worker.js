@@ -10,7 +10,6 @@ env.backends.onnx.wasm.wasmPaths = "/vendor/transformers/";
 env.backends.onnx.wasm.numThreads = 1; // WASM multihilo se cuelga dentro de un Web Worker
 
 let loaded = null; // { key, transcriber }
-let queue = Promise.resolve();
 
 async function load(model, device) {
   const key = `${model}|${device}`;
@@ -51,12 +50,43 @@ async function handle(message) {
     try {
       const transcriber = await load(message.model, message.device);
       const output = await transcriber(message.audio, { language: message.language, task: "transcribe" });
-      self.postMessage({ type: "result", id: message.id, channelId: message.channelId, text: output?.text || "", ms: Math.round(performance.now() - started) });
+      self.postMessage({ type: "result", id: message.id, channelId: message.channelId, partial: Boolean(message.partial), text: output?.text || "", ms: Math.round(performance.now() - started) });
     } catch (error) {
-      self.postMessage({ type: "result", id: message.id, channelId: message.channelId, text: "", error: error?.message || String(error) });
+      self.postMessage({ type: "result", id: message.id, channelId: message.channelId, partial: Boolean(message.partial), text: "", error: error?.message || String(error) });
     }
   }
 }
 
-// Una tarea a la vez, en orden de llegada.
-self.onmessage = event => { queue = queue.then(() => handle(event.data)); };
+// Una tarea a la vez. Las frases finales pasan delante de las parciales, y de las parciales
+// solo se guarda la más reciente por canal (las viejas ya no sirven).
+const jobs = [];
+let working = false;
+async function pump() {
+  if (working) return;
+  working = true;
+  while (jobs.length) {
+    const job = jobs.shift();
+    await handle(job);
+  }
+  working = false;
+}
+self.onmessage = event => {
+  const message = event.data;
+  if (message.type === "transcribe" && message.partial) {
+    const index = jobs.findIndex(job => job.partial && job.channelId === message.channelId);
+    if (index >= 0) { self.postMessage({ type: "result", id: jobs[index].id, channelId: message.channelId, partial: true, text: "", skipped: true }); jobs.splice(index, 1); }
+    jobs.push(message);
+  } else if (message.type === "transcribe") {
+    for (let index = jobs.length - 1; index >= 0; index--) {
+      if (jobs[index].partial && jobs[index].channelId === message.channelId) {
+        self.postMessage({ type: "result", id: jobs[index].id, channelId: message.channelId, partial: true, text: "", skipped: true });
+        jobs.splice(index, 1);
+      }
+    }
+    const firstPartial = jobs.findIndex(job => job.partial);
+    jobs.splice(firstPartial < 0 ? jobs.length : firstPartial, 0, message);
+  } else {
+    jobs.unshift(message);
+  }
+  pump();
+};
