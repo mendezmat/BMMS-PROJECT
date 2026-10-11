@@ -441,6 +441,7 @@ function setRunningUi(running) {
   const state = byId("tbState");
   state.textContent = running ? "Monitoreando" : "Detenido";
   state.classList.toggle("is-running", running);
+  window.bmmsCentral?.status?.({ running });
   renderFloat();
 }
 
@@ -471,11 +472,33 @@ function activeChannels() {
 }
 
 let lastAlertKey = "";
+// Dentro de BMMS Central la alerta se dibuja a pantalla completa (franja superior sobre todas las apps).
+let lastOverlayKey = "";
+function sendOverlay(active, force = false) {
+  if (!window.bmmsCentral?.alert) return;
+  const recent = transcript[transcript.length - 1];
+  const live = byId("tbLive").hidden ? "" : byId("tbLive").textContent;
+  const text = live && live !== "Transcribiendo…" ? live : (recent && Date.now() - Date.parse(recent.at) < 8000 ? recent.text : "");
+  const main = active.find(channel => channel.id === lastActiveChannelId) || active[0];
+  const ordered = main ? [main, ...active.filter(channel => channel !== main)] : [];
+  const state = {
+    active: active.length > 0,
+    channels: ordered.map(channel => ({ name: channel.name, color: channel.color })),
+    thickness: settings.alert.thickness, opacity: settings.alert.opacity, pulse: settings.alert.pulse,
+    flash: settings.alert.flash, edge: settings.alert.edge, showText: settings.alert.showText, text
+  };
+  const key = JSON.stringify(state);
+  if (!force && key === lastOverlayKey) return;
+  lastOverlayKey = key;
+  window.bmmsCentral.alert(state);
+}
+
 function renderAlert() {
   const active = activeChannels();
   const alert = byId("tbAlert");
   const key = active.map(channel => channel.id).join("|");
   alert.classList.toggle("is-on", active.length > 0);
+  sendOverlay(active);
   if (key === lastAlertKey) return;
   lastAlertKey = key;
   renderFloat();
@@ -573,6 +596,9 @@ function applyAlertStyle() {
   byId("tbOpacityValue").textContent = `${Math.round(settings.alert.opacity * 100)}%`;
   byId("tbPulse").checked = settings.alert.pulse;
   byId("tbFlash").checked = settings.alert.flash;
+  byId("tbShowText").checked = settings.alert.showText;
+  byId("tbShowTextRow").hidden = !window.bmmsCentral?.overlay;
+  if (window.bmmsCentral?.overlay) sendOverlay(activeChannels(), true);
   byId("tbTranscribe").checked = settings.transcription.enabled;
   byId("tbLanguage").value = settings.transcription.language;
   byId("tbEngine").value = settings.transcription.engine;
@@ -874,6 +900,13 @@ async function init() {
   byId("tbClear").addEventListener("click", () => { if (transcript.length && confirm("¿Borrar la transcripción?")) { transcript = []; safeStorage.set(TRANSCRIPT_KEY, transcript); renderTranscript(); } });
   byId("tbFloat").addEventListener("click", openFloat);
   byId("tbSave").addEventListener("click", saveSession);
+  byId("tbShowText").addEventListener("change", event => { settings.alert.showText = event.target.checked; saveSettings(); applyAlertStyle(); });
+  // Órdenes desde el icono de la bandeja / barra de menú de BMMS Central.
+  window.bmmsCentral?.onCommand?.(name => {
+    if (name === "start" && !audio) startAudio();
+    if (name === "stop" && audio) stopAudio();
+    if (name === "test") { const channel = settings.channels.find(item => item.enabled) || settings.channels[0]; if (channel) testAlert(channel); }
+  });
   byId("tbSessions").addEventListener("click", openSessions);
   byId("tbSessionsClose").addEventListener("click", () => byId("tbSessionsDialog").close());
   byId("tbViewingExport").addEventListener("click", exportTranscript);
@@ -887,6 +920,9 @@ async function init() {
   document.addEventListener("keydown", event => { if (event.key === "Escape" && document.body.classList.contains("is-alert-mode")) setAlertMode(false); });
   document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) document.body.classList.remove("is-alert-mode"); });
   navigator.mediaDevices?.addEventListener?.("devicechange", refreshDevices);
+  window.bmmsCentral?.status?.({ running: false });
+  // Abierta en segundo plano desde BMMS Central: empieza a escuchar sola.
+  if (window.bmmsCentral?.autoStart) startAudio();
 }
 
 init();

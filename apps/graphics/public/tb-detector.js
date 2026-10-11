@@ -24,7 +24,7 @@ export function defaultSettings() {
   return {
     schemaVersion: 1,
     channels: [defaultChannel(0)],
-    alert: { thickness: 48, opacity: 0.85, pulse: true, flash: false, edge: "top" },
+    alert: { thickness: 48, opacity: 0.85, pulse: true, flash: false, edge: "top", showText: false },
     transcription: { enabled: true, language: "es-US", fontSize: 28, engine: "local", model: "auto" }
   };
 }
@@ -62,6 +62,7 @@ export function normalizeSettings(input = {}) {
       opacity: clamp(input.alert?.opacity, 0.1, 1, base.alert.opacity),
       pulse: input.alert?.pulse !== false,
       flash: input.alert?.flash === true,
+      showText: input.alert?.showText === true,
       edge: input.alert?.edge === "all" ? "all" : "top"
     },
     transcription: {

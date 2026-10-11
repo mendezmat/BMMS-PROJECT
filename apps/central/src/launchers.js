@@ -27,7 +27,7 @@ function windowsTargets(electronApp, name) {
 }
 
 // Icono redondo con las iniciales y el color de la app, dibujado por Electron (sin archivos externos).
-async function renderIconPng(BrowserWindow, { name, short, color }) {
+export async function renderIconPng(BrowserWindow, { name, short, color }) {
   const initials = short ? String(short).slice(0, 3).toUpperCase() : name.replace(/^BMMS\s+/i, "").split(/\s+/).map(word => word[0]).join("").slice(0, 2).toUpperCase();
   const html = `<!doctype html><html><body style="margin:0;width:1024px;height:1024px;background:transparent;display:grid;place-items:center">
     <div style="width:824px;height:824px;border-radius:50%;display:grid;place-items:center;

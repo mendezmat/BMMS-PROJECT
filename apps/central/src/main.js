@@ -1,13 +1,13 @@
 // BMMS Central — proceso principal (Electron).
 // Hub de aplicaciones: lee el manifiesto firmado, instala/actualiza apps por archivos y las abre.
-import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, session, shell, systemPreferences, Tray } from "electron";
 import electronUpdater from "electron-updater";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
-import { createLauncher, launcherExists, PROTOCOL, removeLauncher, targetFromArgs, targetFromUrl } from "./launchers.js";
+import { createLauncher, launcherExists, PROTOCOL, removeLauncher, renderIconPng, targetFromArgs, targetFromUrl } from "./launchers.js";
 import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
 
 const { autoUpdater } = electronUpdater;
@@ -266,18 +266,35 @@ async function hostUrl(appId) {
 
 const isLocal = url => /^http:\/\/127\.0\.0\.1:\d+\//.test(url || "");
 
-async function openApp(appId) {
+/* ---------- Apps en segundo plano (bandeja / barra de menú) ---------- */
+
+const trays = new Map();        // appId -> Tray
+const appStatus = new Map();    // appId -> { running, active }
+let quittingApp = null;         // appId que se está cerrando de verdad
+let quittingAll = false;
+
+// Abrir una app: si no estaba corriendo, arranca en segundo plano (sin ventana) y empieza a escuchar.
+// Si ya corría, muestra su ventana de ajustes.
+async function openApp(appId, { show = null } = {}) {
   const existing = appWindows.get(appId);
-  if (existing && !existing.isDestroyed()) { existing.show(); existing.focus(); return; }
+  if (existing && !existing.isDestroyed()) {
+    if (show !== false) { existing.show(); existing.focus(); }
+    return;
+  }
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
   const url = await hostUrl(appId);
   const entry = manifest?.apps.find(item => item.id === appId);
+  const background = show === null ? true : !show;
   const window = new BrowserWindow({
-    width: 1320, height: 880, minWidth: 900, minHeight: 600,
+    width: 1320, height: 880, minWidth: 900, minHeight: 600, show: false,
     title: `BMMS ${entry?.name || appId}`, backgroundColor: "#090b0e", autoHideMenuBar: true,
-    webPreferences: { preload: path.join(here, "app-preload.cjs"), contextIsolation: true, sandbox: true }
+    webPreferences: {
+      preload: path.join(here, "app-preload.cjs"), contextIsolation: true, sandbox: true,
+      backgroundThrottling: false, // sigue escuchando con la ventana oculta
+      additionalArguments: background ? ["--bmms-autostart"] : []
+    }
   });
-  // Ventana flotante del TB Tool: una ventana real del sistema, siempre encima de todo.
+  // Ventana flotante clásica (opcional): ventana real, siempre encima, sin quitar el foco.
   window.webContents.setWindowOpenHandler(({ url: target, frameName }) => {
     if (frameName === "tbfloat") {
       return { action: "allow", overrideBrowserWindowOptions: { width: 460, height: 300, minWidth: 220, minHeight: 140, show: false, alwaysOnTop: true, autoHideMenuBar: true, backgroundColor: "#090b0e", title: "BMMS TB", fullscreenable: false, minimizable: false } };
@@ -285,25 +302,168 @@ async function openApp(appId) {
     if (/^https?:\/\//.test(target) && !isLocal(target)) shell.openExternal(target);
     return { action: "deny" };
   });
-  // La alerta flotante nunca le quita el foco a otras apps (OBS, ProPresenter): aparece sin activarse.
   window.webContents.on("did-create-window", child => {
     child.setAlwaysOnTop(true, "screen-saver");
     child.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     child.showInactive();
   });
   if (process.platform === "win32") window.setAppDetails({ appId: `com.bmms.app.${appId}`, appIconPath: process.execPath, relaunchCommand: `"${process.execPath}" --open-app=${appId}`, relaunchDisplayName: `BMMS ${entry?.name || appId}` });
+  // Cerrar la ventana no detiene la app: sigue en segundo plano. Para salir, el menú de la bandeja.
+  window.on("close", event => {
+    if (quittingAll || quittingApp === appId) return;
+    event.preventDefault();
+    window.hide();
+  });
   window.on("closed", () => {
     appWindows.delete(appId);
-    // Al cerrar la última app, el hub oculto vuelve (si no, Central quedaría abierto sin ventanas).
-    if (!appWindows.size && hubWindow && !hubWindow.isDestroyed() && !hubWindow.isVisible()) hubWindow.show();
+    appStatus.delete(appId);
+    trays.get(appId)?.destroy();
+    trays.delete(appId);
+    pushOverlay({ active: false, channels: [] });
+    if (!appWindows.size && !quittingAll) {
+      if (hubWindow && !hubWindow.isDestroyed()) { if (!hubWindow.isVisible()) hubWindow.show(); }
+      else app.quit(); // abierta solo desde el acceso de la app: al salir de la app, sale Central
+    }
     send("central:changed");
   });
   appWindows.set(appId, window);
   await window.loadURL(`${url}/tb`);
-  // El hub se oculta al abrir una app: así nada lo vuelve a traer al frente mientras se usa la app.
   if (hubWindow && !hubWindow.isDestroyed()) hubWindow.hide();
+  await createTray(appId, entry).catch(error => console.warn("Bandeja", error));
+  if (background) {
+    if (Notification.isSupported()) new Notification({ title: `BMMS ${entry?.name || appId}`, body: "Está escuchando en segundo plano. Ábrelo desde el icono de la barra de menú." }).show();
+  } else {
+    window.show();
+  }
   send("central:changed");
 }
+
+async function quitApp(appId) {
+  const window = appWindows.get(appId);
+  quittingApp = appId;
+  if (window && !window.isDestroyed()) window.destroy();
+  quittingApp = null;
+  const running = hosts.get(appId);
+  if (running) { await running.host.close().catch(() => {}); hosts.delete(appId); }
+}
+
+async function createTray(appId, entry) {
+  if (trays.has(appId)) return;
+  const png = await renderIconPng(BrowserWindow, { name: entry?.name || appId, short: entry?.short, color: entry?.color || "#ff3b30" });
+  const icon = nativeImage.createFromBuffer(png).resize({ width: process.platform === "darwin" ? 18 : 16, height: process.platform === "darwin" ? 18 : 16 });
+  const tray = new Tray(icon);
+  tray.setToolTip(`BMMS ${entry?.name || appId}`);
+  trays.set(appId, tray);
+  const refresh = () => updateTrayMenu(appId, entry);
+  tray.on("click", () => { if (process.platform !== "darwin") showAppWindow(appId); });
+  refresh();
+}
+
+function showAppWindow(appId) {
+  const window = appWindows.get(appId);
+  if (window && !window.isDestroyed()) { window.show(); window.focus(); }
+}
+
+function command(appId, name) {
+  appWindows.get(appId)?.webContents.send("tb:command", name);
+}
+
+function loginItemEnabled(appId) {
+  try { return JSON.parse(fs.readFileSync(path.join(root(), "autostart.json"), "utf8")).includes(appId); } catch { return false; }
+}
+
+function setLoginItem(appId, enabled) {
+  let list = [];
+  try { list = JSON.parse(fs.readFileSync(path.join(root(), "autostart.json"), "utf8")); } catch { /* vacío */ }
+  list = enabled ? [...new Set([...list, appId])] : list.filter(item => item !== appId);
+  fs.writeFileSync(path.join(root(), "autostart.json"), JSON.stringify(list));
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: list.length > 0, args: ["--login"] });
+}
+
+function updateTrayMenu(appId, entry) {
+  const tray = trays.get(appId);
+  if (!tray || tray.isDestroyed()) return;
+  const status = appStatus.get(appId) || {};
+  const name = entry?.name || appId;
+  tray.setToolTip(`BMMS ${name}${status.running ? " · escuchando" : " · detenido"}`);
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: `BMMS ${name}${status.running ? " — escuchando" : " — detenido"}`, enabled: false },
+    { type: "separator" },
+    status.running
+      ? { label: "Detener monitoreo", click: () => command(appId, "stop") }
+      : { label: "Iniciar monitoreo", click: () => command(appId, "start") },
+    { label: "Probar alerta", click: () => command(appId, "test") },
+    { label: "Abrir ajustes y transcripción", click: () => showAppWindow(appId) },
+    { type: "separator" },
+    { label: "Abrir al iniciar sesión", type: "checkbox", checked: loginItemEnabled(appId), click: item => setLoginItem(appId, item.checked) },
+    { label: "Abrir BMMS Central", click: () => showHub() },
+    { type: "separator" },
+    { label: `Salir de ${name}`, click: () => quitApp(appId) }
+  ]));
+}
+
+/* ---------- Alerta a pantalla completa ---------- */
+
+const overlays = new Map(); // displayId -> BrowserWindow
+let overlayState = { active: false, channels: [] };
+
+function createOverlay(display) {
+  const { x, y, width, height } = display.bounds;
+  const window = new BrowserWindow({
+    x, y, width, height, show: false, frame: false, transparent: true, resizable: false, movable: false,
+    minimizable: false, maximizable: false, fullscreenable: false, focusable: false, skipTaskbar: true, hasShadow: false,
+    alwaysOnTop: true, backgroundColor: "#00000000", title: "BMMS Alerta",
+    ...(process.platform === "darwin" ? { type: "panel" } : {}),
+    webPreferences: { preload: path.join(here, "overlay-preload.cjs"), contextIsolation: true, sandbox: true, backgroundThrottling: false }
+  });
+  window.setIgnoreMouseEvents(true, { forward: true }); // los clics pasan a la app de abajo
+  window.setAlwaysOnTop(true, "screen-saver");
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
+  window.loadFile(path.join(here, "overlay", "overlay.html")).then(() => {
+    window.webContents.send("overlay:state", overlayState);
+    window.showInactive(); // nunca roba el foco
+  });
+  window.on("closed", () => overlays.delete(display.id));
+  overlays.set(display.id, window);
+}
+
+function syncOverlays() {
+  const displays = screen.getAllDisplays();
+  const ids = new Set(displays.map(display => display.id));
+  for (const [id, window] of overlays) if (!ids.has(id)) window.destroy();
+  for (const display of displays) {
+    const existing = overlays.get(display.id);
+    if (existing) existing.setBounds(display.bounds);
+    else createOverlay(display);
+  }
+}
+
+function pushOverlay(state) {
+  overlayState = state;
+  if (state.active && !overlays.size) syncOverlays();
+  for (const window of overlays.values()) if (!window.isDestroyed()) window.webContents.send("overlay:state", state);
+}
+
+const fromAppWindow = event => [...appWindows.values()].some(window => !window.isDestroyed() && window.webContents === event.sender);
+
+ipcMain.on("tb:alert", (event, state) => {
+  if (!fromAppWindow(event) || typeof state !== "object" || !state) return;
+  pushOverlay({
+    active: Boolean(state.active),
+    channels: (Array.isArray(state.channels) ? state.channels : []).slice(0, 6).map(channel => ({ name: String(channel?.name || "").slice(0, 40), color: /^#[0-9a-f]{6}$/i.test(channel?.color) ? channel.color : "#ff3b30" })),
+    thickness: Number(state.thickness) || 48, opacity: Number(state.opacity) || .9,
+    pulse: Boolean(state.pulse), flash: Boolean(state.flash), edge: state.edge === "all" ? "all" : "top",
+    showText: Boolean(state.showText), text: String(state.text || "").slice(0, 200)
+  });
+});
+
+ipcMain.on("tb:status", (event, state) => {
+  if (!fromAppWindow(event)) return;
+  const appId = [...appWindows].find(([, window]) => window.webContents === event.sender)?.[0];
+  if (!appId) return;
+  appStatus.set(appId, { running: Boolean(state?.running) });
+  updateTrayMenu(appId, manifest?.apps.find(item => item.id === appId));
+});
 
 function showHub() {
   if (!hubWindow || hubWindow.isDestroyed()) { createHub(); return; }
@@ -320,7 +480,8 @@ function createHub() {
   });
   hubWindow.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: "deny" }; });
   hubIndexPath().then(index => hubWindow?.loadFile(index));
-  hubWindow.on("closed", () => { hubWindow = null; });
+  // Las ventanas de alerta (transparentes) no cuentan: sin hub ni apps, Central se cierra.
+  hubWindow.on("closed", () => { hubWindow = null; if (!appWindows.size) app.quit(); });
 }
 
 /* ---------- Actualización de Central (instalador completo, GitHub Releases) ---------- */
@@ -377,10 +538,7 @@ const handlers = {
   "central:uninstall": async (_, appId) => {
     if (appId === UI_ID) throw new Error("No se puede desinstalar Central desde aquí.");
     const entry = manifest?.apps.find(item => item.id === appId);
-    const window = appWindows.get(appId);
-    if (window && !window.isDestroyed()) window.close();
-    const running = hosts.get(appId);
-    if (running) { await running.host.close(); hosts.delete(appId); }
+    await quitApp(appId);
     await uninstallApp(root(), appId);
     if (entry) await removeLauncher(osTools(), entry);
     return { ok: true };
@@ -480,18 +638,27 @@ if (!app.requestSingleInstanceLock()) {
       ]));
     }
     await loadManifest();
+    screen.on("display-added", () => overlays.size && syncOverlays());
+    screen.on("display-removed", () => overlays.size && syncOverlays());
+    screen.on("display-metrics-changed", () => overlays.size && syncOverlays());
+    // Al iniciar sesión: las apps marcadas arrancan en segundo plano, sin el hub.
+    const atLogin = process.argv.includes("--login") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
+    let autostart = [];
+    try { autostart = JSON.parse(fs.readFileSync(path.join(root(), "autostart.json"), "utf8")); } catch { /* ninguna */ }
+    if (atLogin && autostart.length && !launchTarget) { for (const appId of autostart) openTarget(appId); }
     // Abierta desde el acceso de una app: solo esa app. Si no, el hub.
-    if (launchTarget) openTarget(launchTarget); else createHub();
+    else if (launchTarget) openTarget(launchTarget); else createHub();
     setupSelfUpdate();
     send("central:changed");
     repairLaunchers().catch(() => {});
     notifyUpdates().catch(() => {});
     setInterval(() => checkForUpdates().catch(() => {}), 30 * 60 * 1000);
   });
+  app.on("before-quit", () => { quittingAll = true; });
   app.on("window-all-closed", async () => {
     for (const { host } of hosts.values()) await host.close().catch(() => {});
     app.quit();
   });
   // Reabrir desde el Dock: solo muestra el hub si no hay ninguna ventana visible.
-  app.on("activate", () => { if (!BrowserWindow.getAllWindows().some(window => window.isVisible())) showHub(); });
+  app.on("activate", () => { if (![hubWindow, ...appWindows.values()].some(window => window && !window.isDestroyed() && window.isVisible())) showHub(); });
 }

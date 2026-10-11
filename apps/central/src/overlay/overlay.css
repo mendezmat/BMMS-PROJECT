@@ -1,0 +1,53 @@
+/* Alerta de talkback a pantalla completa (ver apps/central/DESIGN.md).
+   Franja superior con el color del canal que se desvanece suavemente, y el nombre grande al centro.
+   La ventana es transparente y deja pasar los clics: solo se ve la franja. */
+@font-face { font-family: "Roboto"; font-weight: 900; src: url("../../hub/fonts/roboto-latin-900-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-weight: 500; src: url("../../hub/fonts/roboto-latin-500-normal.woff2") format("woff2"); }
+:root { --color: #ff3b30; --band: 150px; --opacity: .94; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; cursor: default; user-select: none; }
+body { font-family: "Roboto", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+.band, .dim, .edges { position: fixed; pointer-events: none; opacity: 0; }
+.band { transform: translateY(-14px); transition: opacity 180ms cubic-bezier(.2, .8, .2, 1), transform 220ms cubic-bezier(.2, .8, .2, 1); }
+.dim, .edges { transition: opacity 180ms ease-out; }
+body.is-on .band { opacity: var(--opacity); transform: none; }
+body.is-on .dim, body.is-on .edges { opacity: 1; }
+body:not(.is-on) .band { transition-duration: 450ms, 450ms; }
+body:not(.is-on) .dim, body:not(.is-on) .edges { transition-duration: 450ms; }
+
+/* Degradado con curva suave (sin escalones) y un brillo leve en el borde superior. */
+.band {
+  inset: 0 0 auto 0; height: var(--band);
+  display: grid; align-content: start; justify-items: center; gap: calc(var(--band) * .045);
+  padding-top: calc(var(--band) * .12);
+  background:
+    radial-gradient(60% 120% at 50% 0%, color-mix(in srgb, #fff 18%, transparent), transparent 70%),
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--color) 100%, transparent) 0%,
+      color-mix(in srgb, var(--color) 98%, transparent) 22%,
+      color-mix(in srgb, var(--color) 92%, transparent) 38%,
+      color-mix(in srgb, var(--color) 78%, transparent) 52%,
+      color-mix(in srgb, var(--color) 56%, transparent) 65%,
+      color-mix(in srgb, var(--color) 32%, transparent) 78%,
+      color-mix(in srgb, var(--color) 12%, transparent) 90%,
+      transparent 100%);
+}
+.tag { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, .28); color: rgba(255, 255, 255, .92); font-weight: 500; font-size: clamp(10px, calc(var(--band) * .075), 15px); letter-spacing: .16em; text-transform: uppercase; }
+.tag i { width: .62em; height: .62em; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px color-mix(in srgb, var(--color) 70%, #000), 0 0 10px rgba(255, 255, 255, .8); }
+.names { display: flex; gap: .55em; flex-wrap: wrap; justify-content: center; max-width: 92vw; font-weight: 900; font-size: clamp(30px, calc(var(--band) * .33), 104px); line-height: .95; letter-spacing: -.01em; text-transform: uppercase; color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .18), 0 3px 22px rgba(0, 0, 0, .28); }
+.names span + span::before { content: ""; display: inline-block; width: .16em; height: .16em; margin: 0 .55em .22em 0; border-radius: 50%; background: rgba(255, 255, 255, .75); vertical-align: middle; }
+.text { max-width: 80vw; color: #fff; font-weight: 500; font-size: clamp(15px, calc(var(--band) * .12), 34px); text-align: center; text-shadow: 0 1px 10px rgba(0, 0, 0, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.text:empty { display: none; }
+
+/* Atenuación muy leve del resto de la pantalla para que la franja destaque. */
+.dim { inset: 0; background: rgba(0, 0, 0, .06); }
+body.is-flash .dim { background: color-mix(in srgb, var(--color) 12%, transparent); }
+
+/* "Todo el borde": además de la franja, un borde fino en los otros lados. */
+.edges { inset: 0; display: none; box-shadow: inset 0 0 0 calc(var(--band) * .05) color-mix(in srgb, var(--color) 85%, transparent); }
+body.is-all .edges { display: block; }
+
+body.is-on.is-pulse .band { animation: pulse 1400ms ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: calc(var(--opacity) * .72); } }
+@media (prefers-reduced-motion: reduce) { .band { transform: none; } body.is-on.is-pulse .band { animation: none; } }
