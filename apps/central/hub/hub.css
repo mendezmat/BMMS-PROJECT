@@ -134,3 +134,5 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .pill-small:hover:not(:disabled) { background: var(--accent-hover); }
 .pill-small:disabled { background: #3a3a3a; color: var(--text-3); }
 .link.is-danger { color: #ff8a80; }
+.thumb.has-image { background: none; box-shadow: none; border-radius: 10px; }
+.thumb.has-image img { width: 44px; height: 44px; object-fit: contain; }

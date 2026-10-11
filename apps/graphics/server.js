@@ -402,6 +402,9 @@ const server = http.createServer(async (request, response) => {
   if (request.method === "GET" && url.pathname === "/tb-vad.js") {
     return serveFile(response, "tb-vad.js", "text/javascript; charset=utf-8");
   }
+  if (request.method === "GET" && url.pathname === "/tb-icon.png") {
+    return serveFile(response, "tb-icon.png", "image/png");
+  }
   if (request.method === "GET" && url.pathname === "/tb.css") {
     return serveFile(response, "tb.css", "text/css; charset=utf-8");
   }

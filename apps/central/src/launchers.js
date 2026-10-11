@@ -49,7 +49,9 @@ async function macIcon(BrowserWindow, app, resourcesDir) {
   const work = await fsp.mkdtemp(path.join(os.tmpdir(), "bmms-icon-"));
   try {
     const png = path.join(work, "icon.png");
-    await fsp.writeFile(png, await renderIconPng(BrowserWindow, app));
+    // El logo de la app si lo trae; si no, uno generado con sus iniciales.
+    if (app.iconPath) await fsp.copyFile(app.iconPath, png);
+    else await fsp.writeFile(png, await renderIconPng(BrowserWindow, app));
     const iconset = path.join(work, "icon.iconset");
     await fsp.mkdir(iconset);
     for (const size of [16, 32, 128, 256, 512]) {
@@ -123,7 +125,7 @@ export async function createLauncher({ electronApp, shell, BrowserWindow }, app)
 
 // Lo que define el aspecto del lanzador: si cambia (nombre, iniciales, color), se vuelve a crear.
 // v2: la app es independiente (copia del motor); se rehace si cambia el motor de Central.
-const launcherSignature = app => ({ v: 2, id: app.id, name: app.name, short: app.short || null, color: app.color || null, engine: app.engine || null, standalone: Boolean(app.standalone) });
+const launcherSignature = app => ({ v: 2, id: app.id, name: app.name, short: app.short || null, color: app.color || null, engine: app.engine || null, standalone: Boolean(app.standalone), icon: app.iconHash || null });
 
 export async function launcherExists({ electronApp }, app) {
   if (process.platform === "darwin") {
@@ -274,7 +276,7 @@ async function createWindowsStandalone(electronApp, shell, BrowserWindow, app) {
   await fsp.writeFile(path.join(staging, "resources", "bmms-app-mode.json"), JSON.stringify({ appId: id, name: app.name, centralExe: process.execPath }));
   await fsp.writeFile(path.join(staging, "resources", "bmms-launcher.json"), JSON.stringify(launcherSignature(app)));
   const icon = path.join(staging, "resources", "bmms-app.ico");
-  await fsp.writeFile(icon, pngToIco(await renderIconPng(BrowserWindow, app, 256))).catch(() => {});
+  await fsp.writeFile(icon, pngToIco(app.iconPng256 || await renderIconPng(BrowserWindow, app, 256))).catch(() => {});
   await fsp.rm(dir, { recursive: true, force: true });
   await fsp.rename(staging, dir);
   const finalIcon = path.join(dir, "resources", "bmms-app.ico");
@@ -290,6 +292,29 @@ export async function createStandalone({ electronApp, shell, BrowserWindow }, ap
   if (electronApp.isPackaged && isPackagedMac()) return [await createMacStandalone(BrowserWindow, { ...app, standalone: true })];
   if (process.platform === "win32" && electronApp.isPackaged) return [await createWindowsStandalone(electronApp, shell, BrowserWindow, { ...app, standalone: true })];
   return createLauncher({ electronApp, shell, BrowserWindow }, app); // en desarrollo: acceso que abre Central
+}
+
+// Si la app está abierta y solo cambió el logo, se actualiza el icono sin reemplazar la app.
+export async function refreshStandaloneIcon({ electronApp, BrowserWindow }, app) {
+  if (process.platform === "darwin") {
+    for (const target of macTargets(app.name)) {
+      const resources = path.join(target, "Contents", "Resources");
+      let saved;
+      try { saved = JSON.parse(await fsp.readFile(path.join(resources, "bmms-launcher.json"), "utf8")); } catch { continue; }
+      if (saved.engine !== (app.engine || null)) return false; // cambió el motor: hay que rehacer la app completa (cuando esté cerrada)
+      const work = await fsp.mkdtemp(path.join(os.tmpdir(), "bmms-icon-"));
+      try {
+        await macIcon(BrowserWindow, app, work);
+        await fsp.rename(path.join(work, "icon.icns"), path.join(resources, "bmms-app.icns"));
+      } finally { await fsp.rm(work, { recursive: true, force: true }); }
+      await fsp.writeFile(path.join(resources, "bmms-launcher.json"), JSON.stringify(launcherSignature({ ...app, standalone: true })));
+      await run("codesign", ["--force", "--deep", "--sign", "-", target]).catch(() => {});
+      await run("touch", [target]).catch(() => {});
+      await run("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister", ["-f", target]).catch(() => {});
+      return true;
+    }
+  }
+  return false;
 }
 
 export async function standaloneSignatureMatches(electronApp, app) {

@@ -5,7 +5,7 @@
       "id": "tb-tool",
       "name": "TB Tool",
       "status": "available",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "category": "Comunicación",
       "color": "#ff3b30",
       "summary": "Alerta visual de talkback. Se enciende solo cuando reconoce voz, con ventana flotante siempre encima y transcripción sin internet.",
@@ -21,7 +21,10 @@
         "public/tb-whisper-worker.js": "apps/graphics/public/tb-whisper-worker.js",
         "public/vendor/ort/": "apps/graphics/public/vendor/ort/",
         "public/vendor/vad/": "apps/graphics/public/vendor/vad/",
-        "public/vendor/transformers/": "apps/graphics/public/vendor/transformers/"
+        "public/vendor/transformers/": "apps/graphics/public/vendor/transformers/",
+        "public/tb-icon.png": "apps/graphics/public/tb-icon.png",
+        "public/tb-trayTemplate.png": "apps/graphics/public/tb-trayTemplate.png",
+        "public/tb-trayTemplate-2x.png": "apps/graphics/public/tb-trayTemplate-2x.png"
       },
       "assets": {
         "localRoot": "apps/graphics/public/vendor/models",
@@ -57,14 +60,16 @@
           }
         ]
       },
-      "short": "TB"
+      "short": "TB",
+      "icon": "public/tb-icon.png",
+      "trayIcon": "public/tb-trayTemplate.png"
     },
     {
       "id": "central-ui",
       "name": "Diseño de BMMS Central",
       "status": "available",
       "hidden": true,
-      "version": "1.0.1",
+      "version": "1.0.2",
       "minCentral": "0.1.0",
       "category": "Central",
       "color": "#ff9f0a",

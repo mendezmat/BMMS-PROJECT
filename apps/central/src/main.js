@@ -2,12 +2,13 @@
 // Hub de aplicaciones: lee el manifiesto firmado, instala/actualiza apps por archivos y las abre.
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, screen, session, shell, systemPreferences, Tray } from "electron";
 import electronUpdater from "electron-updater";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
-import { createStandalone, isStandaloneRunning, PROTOCOL, removeStandalone, renderIconPng, standaloneInstalled, standaloneSignatureMatches, targetFromArgs, targetFromUrl } from "./launchers.js";
+import { createStandalone, isStandaloneRunning, PROTOCOL, refreshStandaloneIcon, removeStandalone, renderIconPng, standaloneInstalled, standaloneSignatureMatches, targetFromArgs, targetFromUrl } from "./launchers.js";
 import { spawn } from "node:child_process";
 import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
 
@@ -91,7 +92,7 @@ async function catalog() {
     const installedHash = state?.current?.files ? JSON.stringify(state.current.files.map(file => [file.path, file.sha256])) : null;
     const latestHash = entry.files ? JSON.stringify(entry.files.map(file => [file.path, file.sha256])) : null;
     apps.push({
-      id: entry.id, name: entry.name, short: entry.short || null, status: entry.status, category: entry.category, color: entry.color, summary: entry.summary,
+      id: entry.id, name: entry.name, short: entry.short || null, icon: await appIconDataUrl(entry, state), status: entry.status, category: entry.category, color: entry.color, summary: entry.summary,
       version: entry.version || null,
       installed: state?.current ? { version: state.current.version, installedAt: state.current.installedAt } : null,
       previous: state?.previous ? { version: state.previous.version } : null,
@@ -109,6 +110,22 @@ async function catalog() {
     publishedAt: manifest?.publishedAt || null,
     central: { version: app.getVersion(), update: selfUpdate, ui }
   };
+}
+
+// Logo de la app (archivo dentro del paquete instalado) como imagen para el hub.
+const iconCache = new Map();
+function appIconPath(entry, state) {
+  if (!entry?.icon || !state?.current) return null;
+  try { return path.join(currentAppDir(root(), state), ...String(entry.icon).split("/").filter(part => part && part !== "..")); } catch { return null; }
+}
+async function appIconDataUrl(entry, state) {
+  const file = appIconPath(entry, state);
+  if (!file) return null;
+  if (!iconCache.has(file)) {
+    const image = nativeImage.createFromPath(file);
+    iconCache.set(file, image.isEmpty() ? null : image.resize({ width: 96, height: 96 }).toDataURL());
+  }
+  return iconCache.get(file);
 }
 
 // Estado del diseño de Central: instalado desde el canal, o el que vino con el instalador.
@@ -197,12 +214,29 @@ async function installOrUpdate(appId, { fromFolder = null } = {}) {
   });
 }
 
-const launcherApp = entry => ({ id: entry.id, name: entry.name, short: entry.short, color: entry.color || "#666", version: entry.version, engine: app.getVersion() });
+function launcherApp(entry) {
+  const state = entry.__state;
+  const iconPath = appIconPath(entry, state);
+  let iconHash = null, iconPng256 = null;
+  if (iconPath) {
+    try {
+      const bytes = fs.readFileSync(iconPath);
+      iconHash = (crypto.createHash("sha256").update(bytes).digest("hex")).slice(0, 16);
+      iconPng256 = nativeImage.createFromPath(iconPath).resize({ width: 256, height: 256 }).toPNG();
+    } catch { /* sin logo propio */ }
+  }
+  return { id: entry.id, name: entry.name, short: entry.short, color: entry.color || "#666", version: entry.version, engine: app.getVersion(), iconPath, iconHash, iconPng256 };
+}
 
-async function ensureLauncher(entry) {
+async function ensureLauncher(entryInput) {
+  const entry = { ...entryInput, __state: await readInstallState(root(), entryInput.id) };
   // No se rehace mientras la app está abierta: se intenta en la próxima revisión.
-  if (await isStandaloneRunning(app, launcherApp(entry))) return [];
-  return createStandalone(osTools(), launcherApp(entry));
+  const target = launcherApp(entry);
+  if (await isStandaloneRunning(app, target)) {
+    await refreshStandaloneIcon(osTools(), target).catch(() => {}); // solo el logo; el resto al cerrarla
+    return [];
+  }
+  return createStandalone(osTools(), target);
 }
 
 // Repara los accesos de las apps instaladas (por ejemplo, si alguien los borró).
@@ -210,7 +244,8 @@ async function repairLaunchers() {
   for (const entry of manifest?.apps || []) {
     if (entry.status !== "available" || entry.hidden || entry.id === UI_ID) continue;
     if (!(await readInstallState(root(), entry.id))?.current) continue;
-    if (!(await standaloneSignatureMatches(app, launcherApp(entry)))) await ensureLauncher(entry).catch(error => console.warn("App independiente", error));
+    const withState = { ...entry, __state: await readInstallState(root(), entry.id) };
+    if (!(await standaloneSignatureMatches(app, launcherApp(withState)))) await ensureLauncher(entry).catch(error => console.warn("App independiente", error));
   }
 }
 
@@ -296,7 +331,7 @@ async function launchStandalone(appId) {
   if (APP_MODE) return false;
   const entry = manifest?.apps.find(item => item.id === appId);
   if (!entry) return false;
-  const target = await standaloneInstalled(app, launcherApp(entry));
+  const target = await standaloneInstalled(app, { id: entry.id, name: entry.name });
   if (!target) return false;
   if (process.platform === "darwin") spawn("open", ["-a", target.bundle], { detached: true, stdio: "ignore" }).unref();
   else spawn(target.exe, [], { detached: true, stdio: "ignore" }).unref();
@@ -387,7 +422,20 @@ async function createTray(appId, entry) {
   const size = process.platform === "darwin" ? 18 : 16;
   let icon = null;
   // En la app independiente ya existe su icono; si no, se dibuja.
-  for (const file of ["bmms-app.icns", "bmms-app.ico"]) {
+  const state = await readInstallState(root(), appId);
+  const dir = currentAppDir(root(), state);
+  if (dir && process.platform === "darwin" && entry?.trayIcon) {
+    const trayFile = path.join(dir, ...String(entry.trayIcon).split("/").filter(part => part && part !== ".."));
+    const template = nativeImage.createFromPath(trayFile);
+    if (!template.isEmpty()) {
+      try { template.addRepresentation({ scaleFactor: 2, buffer: fs.readFileSync(trayFile.replace(/\.png$/, "-2x.png")) }); } catch { /* sin versión retina */ }
+      template.setTemplateImage(true); // se adapta a la barra clara u oscura
+      icon = template;
+    }
+  }
+  const logo = !icon && appIconPath(entry, state);
+  if (logo) { const image = nativeImage.createFromPath(logo); if (!image.isEmpty()) icon = image.resize({ width: size, height: size }); }
+  for (const file of icon ? [] : ["bmms-app.icns", "bmms-app.ico"]) {
     const image = nativeImage.createFromPath(path.join(process.resourcesPath || "", file));
     if (!image.isEmpty()) { icon = image.resize({ width: size, height: size }); break; }
   }
@@ -530,6 +578,7 @@ function showHub() {
 
 function createHub() {
   hubWindow = new BrowserWindow({
+    show: !process.env.BMMS_TEST_HIDDEN, // pruebas sin ventanas en pantalla
     width: 1180, height: 780, minWidth: 820, minHeight: 560,
     title: "BMMS Central", backgroundColor: "#0b0d11", autoHideMenuBar: true,
     webPreferences: { preload: path.join(here, "hub-preload.cjs"), contextIsolation: true, sandbox: true }
@@ -673,7 +722,7 @@ const handlers = {
     const entry = manifest?.apps.find(item => item.id === appId);
     await quitApp(appId);
     await uninstallApp(root(), appId);
-    if (entry) await removeStandalone(osTools(), launcherApp(entry));
+    if (entry) await removeStandalone(osTools(), launcherApp({ ...entry, __state: null }));
     return { ok: true };
   },
   "central:update-all": async () => {

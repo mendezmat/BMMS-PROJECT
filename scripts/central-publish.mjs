@@ -104,6 +104,8 @@ const apps = [];
 for (const app of catalog.apps) {
   const entry = { id: app.id, name: app.name, status: app.status, category: app.category, color: app.color, summary: app.summary };
   if (app.short) entry.short = app.short;
+  if (app.icon) entry.icon = app.icon;          // ruta dentro del paquete de la app
+  if (app.trayIcon) entry.trayIcon = app.trayIcon;
   if (app.hidden) entry.hidden = true;
   if (app.minCentral) entry.minCentral = app.minCentral;
   if (app.status === "available") {

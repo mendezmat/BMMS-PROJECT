@@ -137,3 +137,5 @@ body.tb-float { margin: 0; min-height: 100vh; display: grid; grid-template-rows:
 .tb-float-live { border-left: 5px solid var(--line-color, transparent); padding-left: 8px; }
 .tb-keywords { grid-column: 1 / -1; }
 .tb-keywords textarea { width: 100%; border: 1px solid #343b46; background: #181c22; color: white; border-radius: 8px; padding: 8px 10px; font: inherit; resize: vertical; }
+.tb-logo { width: 40px; height: 40px; margin-right: -4px; }
+.tb-top > .tb-logo + .tb-brand { margin-right: auto; }

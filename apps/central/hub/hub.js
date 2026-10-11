@@ -82,7 +82,12 @@ function renderRow(app) {
   const thumb = document.createElement("div");
   thumb.className = "thumb";
   thumb.style.setProperty("--app-color", app.color || "#666");
+  // Logo: el de la app instalada, o el icono incluido en el diseño de Central; si no hay, las iniciales.
   thumb.textContent = app.short || initials(app.name);
+  const logo = new Image();
+  logo.alt = "";
+  logo.onload = () => { thumb.classList.add("has-image"); thumb.replaceChildren(logo); };
+  logo.src = app.icon || `icons/${encodeURIComponent(app.id)}.png`;
   const names = document.createElement("div");
   names.className = "names";
   const title = document.createElement("strong");
