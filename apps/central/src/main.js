@@ -275,19 +275,28 @@ async function openApp(appId) {
   // Ventana flotante del TB Tool: una ventana real del sistema, siempre encima de todo.
   window.webContents.setWindowOpenHandler(({ url: target, frameName }) => {
     if (frameName === "tbfloat") {
-      return { action: "allow", overrideBrowserWindowOptions: { width: 460, height: 300, minWidth: 220, minHeight: 140, alwaysOnTop: true, autoHideMenuBar: true, backgroundColor: "#090b0e", title: "BMMS TB", fullscreenable: false } };
+      return { action: "allow", overrideBrowserWindowOptions: { width: 460, height: 300, minWidth: 220, minHeight: 140, show: false, alwaysOnTop: true, autoHideMenuBar: true, backgroundColor: "#090b0e", title: "BMMS TB", fullscreenable: false, minimizable: false } };
     }
     if (/^https?:\/\//.test(target) && !isLocal(target)) shell.openExternal(target);
     return { action: "deny" };
   });
+  // La alerta flotante nunca le quita el foco a otras apps (OBS, ProPresenter): aparece sin activarse.
   window.webContents.on("did-create-window", child => {
     child.setAlwaysOnTop(true, "screen-saver");
     child.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    child.showInactive();
   });
   if (process.platform === "win32") window.setAppDetails({ appId: `com.bmms.app.${appId}`, appIconPath: process.execPath, relaunchCommand: `"${process.execPath}" --open-app=${appId}`, relaunchDisplayName: `BMMS ${entry?.name || appId}` });
-  window.on("closed", () => { appWindows.delete(appId); send("central:changed"); });
+  window.on("closed", () => {
+    appWindows.delete(appId);
+    // Al cerrar la última app, el hub oculto vuelve (si no, Central quedaría abierto sin ventanas).
+    if (!appWindows.size && hubWindow && !hubWindow.isDestroyed() && !hubWindow.isVisible()) hubWindow.show();
+    send("central:changed");
+  });
   appWindows.set(appId, window);
   await window.loadURL(`${url}/tb`);
+  // El hub se oculta al abrir una app: así nada lo vuelve a traer al frente mientras se usa la app.
+  if (hubWindow && !hubWindow.isDestroyed()) hubWindow.hide();
   send("central:changed");
 }
 
@@ -430,7 +439,14 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.setPermissionRequestHandler((_, permission, callback, details) => callback(permission === "media" && isLocal(details.requestingUrl)));
     session.defaultSession.setPermissionCheckHandler((_, permission, origin) => permission === "media" && isLocal(`${origin}/`));
     ready = true;
-    if (process.platform === "darwin") app.dock?.setMenu(Menu.buildFromTemplate([{ label: "Abrir BMMS Central", click: () => showHub() }]));
+    if (process.platform === "darwin") {
+      app.dock?.setMenu(Menu.buildFromTemplate([{ label: "Abrir BMMS Central", click: () => showHub() }]));
+      Menu.setApplicationMenu(Menu.buildFromTemplate([
+        { role: "appMenu", submenu: [{ label: "Abrir BMMS Central", accelerator: "CmdOrCtrl+Shift+B", click: () => showHub() }, { type: "separator" }, { role: "hide" }, { role: "hideOthers" }, { type: "separator" }, { role: "quit" }] },
+        { role: "editMenu" },
+        { role: "windowMenu" }
+      ]));
+    }
     await loadManifest();
     // Abierta desde el acceso de una app: solo esa app. Si no, el hub.
     if (launchTarget) openTarget(launchTarget); else createHub();
@@ -444,5 +460,6 @@ if (!app.requestSingleInstanceLock()) {
     for (const { host } of hosts.values()) await host.close().catch(() => {});
     app.quit();
   });
-  app.on("activate", () => { if (!hubWindow && !appWindows.size) createHub(); });
+  // Reabrir desde el Dock: solo muestra el hub si no hay ninguna ventana visible.
+  app.on("activate", () => { if (!BrowserWindow.getAllWindows().some(window => window.isVisible())) showHub(); });
 }
