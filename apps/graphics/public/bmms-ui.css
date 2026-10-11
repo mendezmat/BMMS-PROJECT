@@ -25,5 +25,9 @@
   --bmms-warn: #ffd479;
   --bmms-danger: #ff8a80;
   --bmms-radius: 4px;
+  /* Escala única de controles: botones, listas y campos miden lo mismo en todas las pantallas. */
+  --bmms-control-h: 32px;
+  --bmms-control-font: 13px;
+  --bmms-label-font: 11px;
   --bmms-font: "Roboto", "Segoe UI", system-ui, sans-serif;
 }

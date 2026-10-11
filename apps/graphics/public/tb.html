@@ -14,7 +14,7 @@
   </div>
 
   <header class="tb-top">
-    <img class="tb-logo" src="/tb-icon.png" alt=""><div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.4.0</span></div>
+    <img class="tb-logo" src="/tb-icon.png" alt=""><div class="tb-brand"><strong>BMMS TB Tool</strong><span>Alerta visual de talkback · versión 1.4.1</span></div>
     <div class="tb-top-actions">
       <span class="tb-state" id="tbState">Detenido</span>
       <button class="primary" id="tbStart">Iniciar monitoreo</button>
@@ -62,28 +62,32 @@
         <span class="tb-save-state" id="tbSaveState" role="status"></span>
         <button class="tb-exit" id="tbExitAlertMode">Salir del modo alerta</button>
         <div class="tb-transcript-actions">
-          <label class="tb-check"><input type="checkbox" id="tbTranscribe"> Transcribir</label>
-          <select id="tbEngine" aria-label="Motor de transcripción">
-            <option value="local">Sin internet (Whisper)</option>
-            <option value="browser">Navegador (requiere internet)</option>
-          </select>
-          <select id="tbModel" aria-label="Modelo de transcripción">
-            <option value="auto">Modelo automático</option>
-            <option value="small">Preciso (small)</option>
-            <option value="base">Rápido (base)</option>
-          </select>
-          <select id="tbLanguage" aria-label="Idioma">
-            <option value="es-US">Español (Latinoamérica)</option>
-            <option value="es-MX">Español (México)</option>
-            <option value="es-ES">Español (España)</option>
-            <option value="en-US">Inglés (EE. UU.)</option>
-          </select>
-          <button id="tbFontDown" title="Texto más pequeño">A−</button>
-          <button id="tbFontUp" title="Texto más grande">A+</button>
-          <button id="tbSave" title="Guardar esta transcripción como sesión (Cmd+S)">Guardar</button>
-          <button id="tbSessions" title="Ver sesiones guardadas">Guardadas</button>
-          <button id="tbExport">Exportar</button>
-          <button id="tbClear">Limpiar</button>
+          <div class="tb-toolbar-group">
+            <label class="tb-check"><input type="checkbox" id="tbTranscribe"> Transcribir</label>
+            <select id="tbEngine" aria-label="Motor de transcripción">
+              <option value="local">Sin internet (Whisper)</option>
+              <option value="browser">Navegador (requiere internet)</option>
+            </select>
+            <select id="tbModel" aria-label="Modelo de transcripción">
+              <option value="auto">Modelo automático</option>
+              <option value="small">Preciso (small)</option>
+              <option value="base">Rápido (base)</option>
+            </select>
+            <select id="tbLanguage" aria-label="Idioma">
+              <option value="es-US">Español (Latinoamérica)</option>
+              <option value="es-MX">Español (México)</option>
+              <option value="es-ES">Español (España)</option>
+              <option value="en-US">Inglés (EE. UU.)</option>
+            </select>
+          </div>
+          <div class="tb-toolbar-group">
+            <button id="tbFontDown" title="Texto más pequeño">A−</button>
+            <button id="tbFontUp" title="Texto más grande">A+</button>
+            <button id="tbSave" title="Guardar esta transcripción como sesión (Cmd+S)">Guardar</button>
+            <button id="tbSessions" title="Ver sesiones guardadas">Guardadas</button>
+            <button id="tbExport">Exportar</button>
+            <button id="tbClear">Limpiar</button>
+          </div>
         </div>
       </div>
       <ol class="tb-lines" id="tbLines"></ol>
@@ -118,12 +122,14 @@
         <label>Ataque (ms)<input type="number" data-field="attackMs" min="0" max="2000" step="10"></label>
         <label>Retención (ms)<input type="number" data-field="holdMs" min="0" max="10000" step="50"></label>
       </div>
+      <span class="tb-channel-status" data-role="status"></span>
       <div class="tb-channel-foot">
         <label class="tb-check"><input type="checkbox" data-field="transcribe"> Transcribir este canal</label>
         <span class="tb-voice-chip" data-role="voice">VOZ</span>
-        <span class="tb-channel-status" data-role="status"></span>
-        <button data-action="calibrate">Calibrar ruido</button>
-        <button data-action="test">Probar alerta</button>
+        <span class="tb-channel-actions">
+          <button data-action="calibrate">Calibrar ruido</button>
+          <button data-action="test">Probar alerta</button>
+        </span>
       </div>
     </article>
   </template>
