@@ -7,16 +7,28 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAppHost } from "./app-host.js";
-import { createLauncher, launcherExists, PROTOCOL, removeLauncher, renderIconPng, targetFromArgs, targetFromUrl } from "./launchers.js";
+import { createStandalone, isStandaloneRunning, PROTOCOL, removeStandalone, renderIconPng, standaloneInstalled, standaloneSignatureMatches, targetFromArgs, targetFromUrl } from "./launchers.js";
+import { spawn } from "node:child_process";
 import { currentAppDir, installApp, installAssets, missingAssets, readInstallState, rollbackApp, uninstallApp, verifyManifest, versionAtLeast } from "./updater.js";
 
 const { autoUpdater } = electronUpdater;
-if (process.env.BMMS_CENTRAL_USERDATA) app.setPath("userData", process.env.BMMS_CENTRAL_USERDATA); // pruebas
+// Modo app: este mismo motor, copiado como "BMMS TB Tool", corre solo esa app con proceso, nombre e
+// identidad propios. Lee archivos, modelos y datos desde la carpeta de Central (que instala y actualiza).
+function readAppMode() {
+  if (process.env.BMMS_APP_MODE) return { appId: process.env.BMMS_APP_MODE, name: process.env.BMMS_APP_NAME || "TB Tool" };
+  try { return JSON.parse(fs.readFileSync(path.join(process.resourcesPath || "", "bmms-app-mode.json"), "utf8")); } catch { return null; }
+}
+const APP_MODE = readAppMode();
+const CENTRAL_ROOT = process.env.BMMS_CENTRAL_USERDATA || path.join(app.getPath("appData"), "BMMS Central");
+if (APP_MODE) {
+  app.setName(`BMMS ${APP_MODE.name || APP_MODE.appId}`);
+  app.setPath("userData", path.join(process.env.BMMS_APP_USERDATA || app.getPath("appData"), `BMMS ${APP_MODE.name || APP_MODE.appId}`));
+} else if (process.env.BMMS_CENTRAL_USERDATA) app.setPath("userData", process.env.BMMS_CENTRAL_USERDATA); // pruebas
 const here = path.dirname(fileURLToPath(import.meta.url));
 const CHANNEL_URL = process.env.BMMS_CENTRAL_CHANNEL || "https://raw.githubusercontent.com/mendezmat/BMMS-PROJECT/main/central/channel/stable.json";
 const PUBLIC_KEY = fs.readFileSync(path.join(here, "central-public-key.pem"), "utf8");
 
-const root = () => app.getPath("userData");
+const root = () => CENTRAL_ROOT;
 const dataDir = () => path.join(root(), "data");       // ajustes y sesiones del usuario: nunca se tocan al actualizar
 const assetsDir = () => path.join(root(), "assets");   // modelos compartidos (descarga única)
 const cachePath = () => path.join(root(), "channel-cache");
@@ -185,8 +197,12 @@ async function installOrUpdate(appId, { fromFolder = null } = {}) {
   });
 }
 
+const launcherApp = entry => ({ id: entry.id, name: entry.name, short: entry.short, color: entry.color || "#666", version: entry.version, engine: app.getVersion() });
+
 async function ensureLauncher(entry) {
-  return createLauncher(osTools(), { id: entry.id, name: entry.name, short: entry.short, color: entry.color || "#666", version: entry.version });
+  // No se rehace mientras la app está abierta: se intenta en la próxima revisión.
+  if (await isStandaloneRunning(app, launcherApp(entry))) return [];
+  return createStandalone(osTools(), launcherApp(entry));
 }
 
 // Repara los accesos de las apps instaladas (por ejemplo, si alguien los borró).
@@ -194,7 +210,7 @@ async function repairLaunchers() {
   for (const entry of manifest?.apps || []) {
     if (entry.status !== "available" || entry.hidden || entry.id === UI_ID) continue;
     if (!(await readInstallState(root(), entry.id))?.current) continue;
-    if (!(await launcherExists(osTools(), entry))) await ensureLauncher(entry).catch(() => {});
+    if (!(await standaloneSignatureMatches(app, launcherApp(entry)))) await ensureLauncher(entry).catch(error => console.warn("App independiente", error));
   }
 }
 
@@ -275,7 +291,20 @@ let quittingAll = false;
 
 // Abrir una app: si no estaba corriendo, arranca en segundo plano (sin ventana) y empieza a escuchar.
 // Si ya corría, muestra su ventana de ajustes.
+// En Central, abrir una app instalada lanza su aplicación independiente (si existe).
+async function launchStandalone(appId) {
+  if (APP_MODE) return false;
+  const entry = manifest?.apps.find(item => item.id === appId);
+  if (!entry) return false;
+  const target = await standaloneInstalled(app, launcherApp(entry));
+  if (!target) return false;
+  if (process.platform === "darwin") spawn("open", ["-a", target.bundle], { detached: true, stdio: "ignore" }).unref();
+  else spawn(target.exe, [], { detached: true, stdio: "ignore" }).unref();
+  return true;
+}
+
 async function openApp(appId, { show = null } = {}) {
+  if (await launchStandalone(appId)) return;
   const existing = appWindows.get(appId);
   if (existing && !existing.isDestroyed()) {
     if (show !== false) { existing.show(); existing.focus(); }
@@ -313,6 +342,7 @@ async function openApp(appId, { show = null } = {}) {
     if (quittingAll || quittingApp === appId) return;
     event.preventDefault();
     window.hide();
+    if (APP_MODE && process.platform === "darwin") app.dock?.hide(); // en segundo plano solo queda el icono de la barra de menú
   });
   window.on("closed", () => {
     appWindows.delete(appId);
@@ -349,8 +379,17 @@ async function quitApp(appId) {
 
 async function createTray(appId, entry) {
   if (trays.has(appId)) return;
-  const png = await renderIconPng(BrowserWindow, { name: entry?.name || appId, short: entry?.short, color: entry?.color || "#ff3b30" });
-  const icon = nativeImage.createFromBuffer(png).resize({ width: process.platform === "darwin" ? 18 : 16, height: process.platform === "darwin" ? 18 : 16 });
+  const size = process.platform === "darwin" ? 18 : 16;
+  let icon = null;
+  // En la app independiente ya existe su icono; si no, se dibuja.
+  for (const file of ["bmms-app.icns", "bmms-app.ico"]) {
+    const image = nativeImage.createFromPath(path.join(process.resourcesPath || "", file));
+    if (!image.isEmpty()) { icon = image.resize({ width: size, height: size }); break; }
+  }
+  if (!icon) {
+    const png = await renderIconPng(BrowserWindow, { name: entry?.name || appId, short: entry?.short, color: entry?.color || "#ff3b30" }).catch(() => null);
+    icon = png ? nativeImage.createFromBuffer(png).resize({ width: size, height: size }) : nativeImage.createEmpty();
+  }
   const tray = new Tray(icon);
   tray.setToolTip(`BMMS ${entry?.name || appId}`);
   trays.set(appId, tray);
@@ -361,7 +400,17 @@ async function createTray(appId, entry) {
 
 function showAppWindow(appId) {
   const window = appWindows.get(appId);
-  if (window && !window.isDestroyed()) { window.show(); window.focus(); }
+  if (!window || window.isDestroyed()) return;
+  if (APP_MODE && process.platform === "darwin") app.dock?.show();
+  window.show();
+  window.focus();
+}
+
+// "Abrir BMMS Central": en la app independiente abre el programa Central; dentro de Central, el hub.
+function openCentral() {
+  if (!APP_MODE) { showHub(); return; }
+  if (process.platform === "darwin") spawn("open", APP_MODE.centralBundle ? ["-a", APP_MODE.centralBundle] : ["-b", "com.bmms.central"], { detached: true, stdio: "ignore" }).unref();
+  else if (APP_MODE.centralExe) spawn(APP_MODE.centralExe, [], { detached: true, stdio: "ignore" }).unref();
 }
 
 function command(appId, name) {
@@ -369,10 +418,12 @@ function command(appId, name) {
 }
 
 function loginItemEnabled(appId) {
+  if (APP_MODE) return app.getLoginItemSettings().openAtLogin;
   try { return JSON.parse(fs.readFileSync(path.join(root(), "autostart.json"), "utf8")).includes(appId); } catch { return false; }
 }
 
 function setLoginItem(appId, enabled) {
+  if (APP_MODE) { if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled }); return; }
   let list = [];
   try { list = JSON.parse(fs.readFileSync(path.join(root(), "autostart.json"), "utf8")); } catch { /* vacío */ }
   list = enabled ? [...new Set([...list, appId])] : list.filter(item => item !== appId);
@@ -396,7 +447,7 @@ function updateTrayMenu(appId, entry) {
     { label: "Abrir ajustes y transcripción", click: () => showAppWindow(appId) },
     { type: "separator" },
     { label: "Abrir al iniciar sesión", type: "checkbox", checked: loginItemEnabled(appId), click: item => setLoginItem(appId, item.checked) },
-    { label: "Abrir BMMS Central", click: () => showHub() },
+    { label: "Abrir BMMS Central", click: () => openCentral() },
     { type: "separator" },
     { label: `Salir de ${name}`, click: () => quitApp(appId) }
   ]));
@@ -540,7 +591,7 @@ const handlers = {
     const entry = manifest?.apps.find(item => item.id === appId);
     await quitApp(appId);
     await uninstallApp(root(), appId);
-    if (entry) await removeLauncher(osTools(), entry);
+    if (entry) await removeStandalone(osTools(), launcherApp(entry));
     return { ok: true };
   },
   "central:update-all": async () => {
@@ -591,11 +642,11 @@ for (const [channel, handler] of Object.entries(handlers)) {
 /* ---------- Arranque ---------- */
 
 // Enlaces bmms-central://open/<id> (lanzadores de Aplicaciones en Mac) y --open-app=<id> (Windows).
-if (!process.env.BMMS_CENTRAL_USERDATA) { // en pruebas no se registra, para no quitarle el enlace a la Central instalada
+if (!process.env.BMMS_CENTRAL_USERDATA && !APP_MODE) { // en pruebas no se registra, para no quitarle el enlace a la Central instalada
   if (process.defaultApp) app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1] || ".")]);
   else app.setAsDefaultProtocolClient(PROTOCOL);
 }
-if (process.platform === "win32") app.setAppUserModelId("com.bmms.central");
+if (process.platform === "win32") app.setAppUserModelId(APP_MODE ? `com.bmms.app.${APP_MODE.appId}` : "com.bmms.central");
 
 let launchTarget = targetFromArgs(process.argv);
 let ready = false;
@@ -617,8 +668,36 @@ app.on("open-url", (event, url) => {
   if (ready) openTarget(target); else launchTarget = target;
 });
 
+async function startAppMode() {
+  const appId = APP_MODE.appId;
+  session.defaultSession.setPermissionRequestHandler((_, permission, callback, details) => callback(permission === "media" && isLocal(details.requestingUrl)));
+  session.defaultSession.setPermissionCheckHandler((_, permission, origin) => permission === "media" && isLocal(`${origin}/`));
+  if (process.platform === "darwin") {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: "appMenu", submenu: [{ role: "hide" }, { role: "hideOthers" }, { type: "separator" }, { role: "quit" }] }, { role: "editMenu" }, { role: "windowMenu" }]));
+    app.dock?.hide();
+  }
+  screen.on("display-added", () => overlays.size && syncOverlays());
+  screen.on("display-removed", () => overlays.size && syncOverlays());
+  screen.on("display-metrics-changed", () => overlays.size && syncOverlays());
+  await loadManifest();
+  if (!(await readInstallState(root(), appId))?.current) {
+    await dialog.showMessageBox({ type: "warning", message: `BMMS ${APP_MODE.name || appId} no está instalado.`, detail: "Instálalo de nuevo desde BMMS Central." });
+    openCentral();
+    app.quit();
+    return;
+  }
+  await openApp(appId, { show: false });
+  // Si Central instaló una actualización de la app, se usa la nueva versión sin reiniciar.
+  setInterval(() => restartHost(appId).catch(() => {}), 30 * 1000);
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
+} else if (APP_MODE) {
+  app.on("second-instance", () => showAppWindow(APP_MODE.appId));
+  app.on("activate", () => showAppWindow(APP_MODE.appId));
+  app.on("before-quit", () => { quittingAll = true; });
+  app.whenReady().then(() => startAppMode().catch(error => { dialog.showErrorBox("BMMS", String(error?.message || error)); app.quit(); }));
 } else {
   app.on("second-instance", (_, argv) => {
     const target = targetFromArgs(argv);

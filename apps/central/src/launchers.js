@@ -16,6 +16,7 @@ export const launcherName = name => `BMMS ${name}`;
 
 // Destinos posibles del lanzador en Mac (el primero escribible gana).
 function macTargets(name) {
+  if (process.env.BMMS_LAUNCHER_DIR) return [path.join(process.env.BMMS_LAUNCHER_DIR, `${launcherName(name)}.app`)]; // pruebas: no toca Aplicaciones
   return [path.join("/Applications", `${launcherName(name)}.app`), path.join(os.homedir(), "Applications", `${launcherName(name)}.app`)];
 }
 
@@ -27,7 +28,7 @@ function windowsTargets(electronApp, name) {
 }
 
 // Icono redondo con las iniciales y el color de la app, dibujado por Electron (sin archivos externos).
-export async function renderIconPng(BrowserWindow, { name, short, color }) {
+export async function renderIconPng(BrowserWindow, { name, short, color }, size = 1024) {
   const initials = short ? String(short).slice(0, 3).toUpperCase() : name.replace(/^BMMS\s+/i, "").split(/\s+/).map(word => word[0]).join("").slice(0, 2).toUpperCase();
   const html = `<!doctype html><html><body style="margin:0;width:1024px;height:1024px;background:transparent;display:grid;place-items:center">
     <div style="width:824px;height:824px;border-radius:50%;display:grid;place-items:center;
@@ -38,7 +39,7 @@ export async function renderIconPng(BrowserWindow, { name, short, color }) {
     await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     await new Promise(resolve => setTimeout(resolve, 150));
     const image = await window.webContents.capturePage();
-    return image.resize({ width: 1024, height: 1024 }).toPNG();
+    return image.resize({ width: size, height: size }).toPNG();
   } finally {
     window.destroy();
   }
@@ -121,7 +122,8 @@ export async function createLauncher({ electronApp, shell, BrowserWindow }, app)
 }
 
 // Lo que define el aspecto del lanzador: si cambia (nombre, iniciales, color), se vuelve a crear.
-const launcherSignature = app => ({ v: 1, id: app.id, name: app.name, short: app.short || null, color: app.color || null });
+// v2: la app es independiente (copia del motor); se rehace si cambia el motor de Central.
+const launcherSignature = app => ({ v: 2, id: app.id, name: app.name, short: app.short || null, color: app.color || null, engine: app.engine || null, standalone: Boolean(app.standalone) });
 
 export async function launcherExists({ electronApp }, app) {
   if (process.platform === "darwin") {
@@ -159,4 +161,154 @@ export function targetFromArgs(argv = []) {
 export function targetFromUrl(url) {
   const match = new RegExp(`^${PROTOCOL}://open/([a-z0-9-]+)/?$`, "i").exec(String(url || ""));
   return match ? match[1] : null;
+}
+
+/* ---------- Apps independientes ----------
+   La app instalada es una copia del motor de Central con su propio nombre, icono e identidad
+   (Dock / barra de tareas). Al abrirla corre sola, sin Central. Lee los archivos de la app,
+   los modelos y los datos desde la carpeta de Central, que es quien instala y actualiza. */
+
+const isPackagedMac = () => process.platform === "darwin" && /\.app\/Contents\/MacOS\/[^/]+$/.test(process.execPath);
+const centralBundle = () => path.resolve(process.execPath, "../../..");
+
+export function standaloneTarget(electronApp, app) {
+  if (process.platform === "darwin") return macTargets(app.name).map(target => ({ bundle: target, exe: path.join(target, "Contents", "MacOS") }));
+  if (process.platform === "win32") {
+    const dir = path.join(process.env.BMMS_LAUNCHER_DIR || path.join(electronApp.getPath("home"), "AppData", "Local", "Programs"), launcherName(app.name));
+    return [{ dir, exe: path.join(dir, `${launcherName(app.name)}.exe`) }];
+  }
+  return [];
+}
+
+export async function isStandaloneRunning(electronApp, app) {
+  try {
+    if (process.platform === "darwin") {
+      for (const target of macTargets(app.name)) {
+        const { stdout } = await run("pgrep", ["-f", `${target}/Contents/MacOS/`]).catch(() => ({ stdout: "" }));
+        if (stdout.trim()) return true;
+      }
+      return false;
+    }
+    if (process.platform === "win32") {
+      const { stdout } = await run("tasklist", ["/FI", `IMAGENAME eq ${launcherName(app.name)}.exe`, "/NH"]);
+      return stdout.toLowerCase().includes(`${launcherName(app.name)}.exe`.toLowerCase());
+    }
+  } catch { /* sin información */ }
+  return false;
+}
+
+async function createMacStandalone(BrowserWindow, app) {
+  const source = centralBundle();
+  let lastError = null;
+  for (const target of macTargets(app.name)) {
+    const staging = `${target}.tmp-${process.pid}`;
+    try {
+      await fsp.rm(staging, { recursive: true, force: true });
+      await run("ditto", [source, staging]);
+      const plist = path.join(staging, "Contents", "Info.plist");
+      const id = safeId(app.id);
+      const set = (key, value) => run("plutil", ["-replace", key, "-string", value, plist]);
+      await set("CFBundleName", launcherName(app.name));
+      await set("CFBundleDisplayName", launcherName(app.name));
+      await set("CFBundleIdentifier", `com.bmms.app.${id}`);
+      await set("CFBundleIconFile", "bmms-app.icns");
+      // El proceso también se llama como la app (Monitor de Actividad, Dock).
+      const oldExe = String((await run("plutil", ["-extract", "CFBundleExecutable", "raw", plist])).stdout).trim();
+      await fsp.rename(path.join(staging, "Contents", "MacOS", oldExe), path.join(staging, "Contents", "MacOS", launcherName(app.name)));
+      await set("CFBundleExecutable", launcherName(app.name));
+      await run("plutil", ["-remove", "CFBundleURLTypes", plist]).catch(() => {}); // los enlaces bmms-central:// siguen siendo de Central
+      await run("plutil", ["-remove", "ElectronAsarIntegrity", plist]).catch(() => {});
+      // Electron busca sus procesos auxiliares por el nombre de la app: "<Nombre> Helper*.app".
+      const frameworks = path.join(staging, "Contents", "Frameworks");
+      const oldName = String((await run("plutil", ["-extract", "CFBundleName", "raw", path.join(source, "Contents", "Info.plist")])).stdout).trim();
+      for (const entry of await fsp.readdir(frameworks)) {
+        if (!entry.startsWith(`${oldName} Helper`) || !entry.endsWith(".app")) continue;
+        const suffix = entry.slice(oldName.length, -4); // " Helper", " Helper (GPU)", ...
+        const newName = `${launcherName(app.name)}${suffix}`;
+        const helper = path.join(frameworks, `${newName}.app`);
+        await fsp.rename(path.join(frameworks, entry), helper);
+        await fsp.rename(path.join(helper, "Contents", "MacOS", `${oldName}${suffix}`), path.join(helper, "Contents", "MacOS", newName));
+        const helperPlist = path.join(helper, "Contents", "Info.plist");
+        for (const key of ["CFBundleExecutable", "CFBundleName", "CFBundleDisplayName"]) await run("plutil", ["-replace", key, "-string", newName, helperPlist]);
+        await run("plutil", ["-replace", "CFBundleIdentifier", "-string", `com.bmms.app.${id}.helper${suffix.replace(/[^a-z]/gi, "").toLowerCase().replace(/^helper/, "")}`, helperPlist]);
+      }
+      const resources = path.join(staging, "Contents", "Resources");
+      await fsp.writeFile(path.join(resources, "bmms-app-mode.json"), JSON.stringify({ appId: id, name: app.name, centralBundle: source }));
+      const work = await fsp.mkdtemp(path.join(os.tmpdir(), "bmms-icon-"));
+      try {
+        await macIcon(BrowserWindow, app, work);
+        await fsp.rename(path.join(work, "icon.icns"), path.join(resources, "bmms-app.icns"));
+      } catch { /* sin icono propio */ } finally { await fsp.rm(work, { recursive: true, force: true }); }
+      await fsp.writeFile(path.join(resources, "bmms-launcher.json"), JSON.stringify(launcherSignature(app)));
+      await run("codesign", ["--force", "--deep", "--sign", "-", staging]).catch(() => {}); // firma local (ad hoc) tras cambiar el Info.plist
+      await run("xattr", ["-dr", "com.apple.quarantine", staging]).catch(() => {});
+      await fsp.rm(target, { recursive: true, force: true });
+      await fsp.rename(staging, target);
+      await run("/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister", ["-f", target]).catch(() => {});
+      return target;
+    } catch (error) {
+      lastError = error;
+      await fsp.rm(staging, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+  throw lastError || new Error("No se pudo crear la app en Aplicaciones.");
+}
+
+// Icono .ico (PNG dentro de ICO, válido desde Windows Vista).
+function pngToIco(png) {
+  const header = Buffer.alloc(22);
+  header.writeUInt16LE(0, 0); header.writeUInt16LE(1, 2); header.writeUInt16LE(1, 4);
+  header.writeUInt8(0, 6); header.writeUInt8(0, 7); header.writeUInt8(0, 8); header.writeUInt8(0, 9);
+  header.writeUInt16LE(1, 10); header.writeUInt16LE(32, 12); header.writeUInt32LE(png.length, 14); header.writeUInt32LE(22, 18);
+  return Buffer.concat([header, png]);
+}
+
+async function createWindowsStandalone(electronApp, shell, BrowserWindow, app) {
+  const [{ dir, exe }] = standaloneTarget(electronApp, app);
+  const source = path.dirname(process.execPath);
+  const staging = `${dir}.tmp-${process.pid}`;
+  await fsp.rm(staging, { recursive: true, force: true });
+  await fsp.cp(source, staging, { recursive: true, filter: file => !/Uninstall BMMS Central\.exe$/i.test(file) });
+  await fsp.rename(path.join(staging, path.basename(process.execPath)), path.join(staging, path.basename(exe)));
+  const id = safeId(app.id);
+  await fsp.writeFile(path.join(staging, "resources", "bmms-app-mode.json"), JSON.stringify({ appId: id, name: app.name, centralExe: process.execPath }));
+  await fsp.writeFile(path.join(staging, "resources", "bmms-launcher.json"), JSON.stringify(launcherSignature(app)));
+  const icon = path.join(staging, "resources", "bmms-app.ico");
+  await fsp.writeFile(icon, pngToIco(await renderIconPng(BrowserWindow, app, 256))).catch(() => {});
+  await fsp.rm(dir, { recursive: true, force: true });
+  await fsp.rename(staging, dir);
+  const finalIcon = path.join(dir, "resources", "bmms-app.ico");
+  for (const target of windowsTargets(electronApp, app.name)) {
+    await fsp.mkdir(path.dirname(target), { recursive: true });
+    shell.writeShortcutLink(target, "create", { target: exe, description: `${app.name} — BMMS`, icon: finalIcon, iconIndex: 0, appUserModelId: `com.bmms.app.${id}` });
+  }
+  return dir;
+}
+
+export async function createStandalone({ electronApp, shell, BrowserWindow }, app) {
+  if (isPackagedMac()) return [await createMacStandalone(BrowserWindow, { ...app, standalone: true })];
+  if (process.platform === "win32" && electronApp.isPackaged) return [await createWindowsStandalone(electronApp, shell, BrowserWindow, { ...app, standalone: true })];
+  return createLauncher({ electronApp, shell, BrowserWindow }, app); // en desarrollo: acceso que abre Central
+}
+
+export async function standaloneSignatureMatches(electronApp, app) {
+  const files = process.platform === "darwin"
+    ? macTargets(app.name).map(target => path.join(target, "Contents", "Resources", "bmms-launcher.json"))
+    : standaloneTarget(electronApp, app).map(target => path.join(target.dir, "resources", "bmms-launcher.json"));
+  for (const file of files) {
+    try { return JSON.stringify(JSON.parse(await fsp.readFile(file, "utf8"))) === JSON.stringify(launcherSignature({ ...app, standalone: true })); } catch { /* siguiente */ }
+  }
+  return false;
+}
+
+export async function standaloneInstalled(electronApp, app) {
+  for (const target of standaloneTarget(electronApp, app)) {
+    try { await fsp.access(path.join(target.bundle || target.dir, process.platform === "darwin" ? "Contents/Resources/bmms-app-mode.json" : "resources/bmms-app-mode.json")); return target; } catch { /* siguiente */ }
+  }
+  return null;
+}
+
+export async function removeStandalone({ electronApp }, app) {
+  for (const target of standaloneTarget(electronApp, app)) await fsp.rm(target.bundle || target.dir, { recursive: true, force: true }).catch(() => {});
+  await removeLauncher({ electronApp }, app);
 }
